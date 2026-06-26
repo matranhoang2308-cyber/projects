@@ -34,7 +34,7 @@ function projectsBaseRedirect() {
 }
 
 export default defineConfig({
-  base: '/projects/',
+  // base: '/projects/',
   plugins: [
     projectsBaseRedirect(),
     figmaAssetResolver(),

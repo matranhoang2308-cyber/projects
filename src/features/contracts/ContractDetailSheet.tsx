@@ -32,6 +32,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { PaymentExtensionDialog } from "./PaymentExtensionDialog";
 import { ContractTableView } from "./ContractTableView";
 import { ContractTransferDialog } from "./ContractTransferDialog";
+import { buildTransferContractDetailSections } from "./transferContractDetailSchema";
+import { TransferContractTableView } from "./TransferContractTableView";
+import { TransferContractBlockView } from "./TransferContractBlockView";
 import type { Contract, PaymentRecord, PaymentExtension, TransferLog } from "@/data/mockDataHopDong";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -306,6 +309,15 @@ function ContractDetailContent({
   const [localTransferHistory, setLocalTransferHistory] = useState<TransferLog[]>(contract.transferHistory ?? []);
   const [localTransferCount, setLocalTransferCount] = useState(contract.transferCount ?? 0);
 
+  const contractWithLocalState: Contract = {
+    ...contract,
+    owner: localOwner,
+    coOwners: localCoOwners,
+    transferHistory: localTransferHistory,
+    transferCount: localTransferCount,
+  };
+  const sections = buildTransferContractDetailSections(contractWithLocalState);
+
   const switchTab = useCallback((t: ViewTab) => {
     setActiveTab(t);
     try { sessionStorage.setItem("contractDetailTab", t); } catch {}
@@ -388,14 +400,9 @@ function ContractDetailContent({
       {/* ── Tab content ── */}
       {activeTab === "table" ? (
         /* TABLE VIEW */
-        <ContractTableView
-          contract={{
-            ...contract,
-            owner: localOwner,
-            coOwners: localCoOwners,
-            transferHistory: localTransferHistory,
-            transferCount: localTransferCount,
-          }}
+        <TransferContractTableView
+          sections={sections}
+          contract={contractWithLocalState}
         />
       ) : (
         /* DETAIL VIEW */
@@ -495,68 +502,8 @@ function ContractDetailContent({
             </AccordionItem>
           </Accordion>
 
-          {/* ── Owner section ── */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200">
-              <Users className="w-4 h-4 text-slate-500" />
-              <span className="text-sm text-slate-800" style={{ fontWeight: 500 }}>
-                Thông tin chủ sở hữu
-              </span>
-              {localTransferCount > 0 && (
-                <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
-                  {localTransferCount} lần CN
-                </span>
-              )}
-            </div>
-            <div className="px-4 py-3 space-y-3">
-              {localOwner ? (
-                <div className="grid grid-cols-2 gap-2.5">
-                  {[
-                    { label: "Họ và tên",       value: localOwner.name },
-                    { label: "Ngày sinh",        value: localOwner.dob },
-                    { label: "CCCD",             value: localOwner.cccd },
-                    { label: "Ngày cấp",         value: localOwner.cccdDate },
-                    { label: "Số điện thoại",    value: localOwner.phone },
-                    { label: "Email",            value: localOwner.email },
-                    { label: "Địa chỉ thường trú", value: localOwner.permanentAddress },
-                    { label: "Địa chỉ liên hệ", value: localOwner.contactAddress },
-                    { label: "Số tài khoản",     value: localOwner.bankAccount },
-                    { label: "Ngân hàng",        value: localOwner.bank },
-                  ].map((f) => (
-                    <div key={f.label} className="bg-slate-50 rounded-lg p-2.5">
-                      <p className="text-xs text-slate-400 mb-0.5">{f.label}</p>
-                      <p className="text-xs text-slate-800" style={{ fontWeight: 500 }}>{f.value || "—"}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 italic py-2">Chưa có thông tin chủ sở hữu</p>
-              )}
-
-              {localCoOwners.length > 0 && (
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 mb-2" style={{ fontWeight: 600 }}>
-                    ĐỒNG SỞ HỮU ({localCoOwners.length})
-                  </p>
-                  {localCoOwners.map((co, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2 mb-2">
-                      {[
-                        { label: `ĐSH ${i + 1} – Họ tên`, value: co.name },
-                        { label: "CCCD",               value: co.cccd },
-                        { label: "Số điện thoại",      value: co.phone },
-                        { label: "Email",              value: co.email },
-                      ].map((f) => (
-                        <div key={f.label} className="bg-slate-50 rounded-lg p-2.5">
-                          <p className="text-xs text-slate-400 mb-0.5">{f.label}</p>
-                          <p className="text-xs text-slate-800" style={{ fontWeight: 500 }}>{f.value || "—"}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* ── Schema Sections (Block View) ── */}
+          <TransferContractBlockView sections={sections} />
 
           {/* ── Transfer history section ── */}
           <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -650,7 +597,7 @@ function ContractDetailContent({
           <ContractTransferDialog
             open={transferOpen}
             onClose={() => setTransferOpen(false)}
-            contract={{ ...contract, owner: localOwner, coOwners: localCoOwners, transferCount: localTransferCount, transferHistory: localTransferHistory }}
+            contract={contractWithLocalState}
             onSuccess={handleTransferSuccess}
           />
         </div>

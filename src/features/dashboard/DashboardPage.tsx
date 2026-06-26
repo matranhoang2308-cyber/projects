@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardBootstrap, DashboardFilters, getDashboardBootstrap } from "./dashboardApi";
 import { defaultDashboardFilters, SharedFilters } from "./SharedFilters";
+import { ContractDashboardReport } from "./ContractDashboardReport";
+import { DebtDashboardReport } from "./DebtDashboardReport";
 import { SalesInventoryReport } from "./SalesInventoryReport";
 
 const reportSelectorClass = "crm-native-select h-11 w-full rounded-xl border border-blue-200 bg-white text-sm font-semibold text-slate-900 shadow-[0_1px_2px_rgba(37,99,235,0.06)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 lg:w-80";
@@ -14,14 +16,14 @@ function PendingReport({ label }: { label: string }) {
 
 export function DashboardPage() {
   const [bootstrap, setBootstrap] = useState<DashboardBootstrap | null>(null);
-  const [reportType, setReportType] = useState("");
+  const [reportType, setReportType] = useState("sales-inventory");
   const [filters, setFilters] = useState<DashboardFilters>(defaultDashboardFilters);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController(); setError(null);
-    getDashboardBootstrap(controller.signal).then((value) => { setBootstrap(value); setReportType((current) => current || value.defaultReportType || value.reportTypes[0]?.value || ""); }).catch((reason: unknown) => { if (!(reason instanceof DOMException && reason.name === "AbortError")) setError(reason instanceof Error ? reason.message : "Không thể tải cấu hình Dashboard"); });
+    getDashboardBootstrap(controller.signal).then((value) => { setBootstrap(value); setReportType((current) => value.reportTypes.some((item) => item.value === current) ? current : value.defaultReportType); }).catch((reason: unknown) => { if (!(reason instanceof DOMException && reason.name === "AbortError")) setError(reason instanceof Error ? reason.message : "Không thể tải cấu hình Dashboard"); });
     return () => controller.abort();
   }, [reloadKey]);
 
@@ -34,9 +36,11 @@ export function DashboardPage() {
       </header>
 
       {error && <div role="alert" className="flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><span>Không thể tải cấu hình Dashboard. {error}</span><Button variant="outline" size="sm" className="gap-1.5 border-red-200 bg-white" onClick={() => setReloadKey((v) => v + 1)}><RotateCw className="size-4" /> Thử lại</Button></div>}
-      {bootstrap && <SharedFilters filters={filters} options={bootstrap.filterOptions} onChange={setFilters} />}
+      {bootstrap && <SharedFilters filters={filters} options={bootstrap.filterOptions} reportType={reportType} onChange={setFilters} />}
       {bootstrap && reportType === "sales-inventory" && <SalesInventoryReport filters={filters} />}
-      {bootstrap && reportType && reportType !== "sales-inventory" && <PendingReport label={selectedLabel} />}
+      {bootstrap && reportType === "contracts" && <ContractDashboardReport filters={filters} />}
+      {bootstrap && reportType === "debt" && <DebtDashboardReport filters={filters} />}
+      {bootstrap && reportType && !["sales-inventory", "contracts", "debt"].includes(reportType) && <PendingReport label={selectedLabel} />}
     </div>
   );
 }

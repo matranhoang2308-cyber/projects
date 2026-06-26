@@ -11,6 +11,12 @@ export interface DashboardFilters {
   agency?: string;
   productId?: string;
   productStatus?: "sold" | "available";
+  dossierStatus?: string;
+  paymentStage?: string;
+  customerId?: string;
+  salesUnit?: string;
+  apartmentType?: string;
+  paymentStatus?: string;
 }
 
 export interface ReportTypeOption { label: string; value: string }
@@ -22,6 +28,12 @@ export interface DashboardFilterOptions {
   productTypes: string[];
   agencies: string[];
   products: { id: string; name: string }[];
+  dossierStatuses: string[];
+  paymentStages: string[];
+  customers: { id: string; name: string }[];
+  salesUnits: string[];
+  apartmentTypes: string[];
+  paymentStatuses: string[];
 }
 
 export interface DashboardBootstrap {
@@ -116,30 +128,47 @@ const buildingsList = [
   { id: "toa-d", name: "Tòa D", zone: "harmonie" },
 ] as const;
 
-const productTypes = ["Duplex Garden", "Penhouse", "Sky Garden", "Sky Villa Residence"] as const;
+const productTypes = ["Sky Garden", "Penhouse", "Sky Villa Residence", "Duplex Garden"] as const;
 
 const demoBootstrap: DashboardBootstrap = {
   defaultReportType: "sales-inventory",
   reportTypes: [
-    { label: "Giỏ hàng & Bán hàng", value: "sales-inventory" },
+    { label: "Giỏ hàng và bán hàng", value: "sales-inventory" },
     { label: "Hợp đồng", value: "contracts" },
     { label: "Công nợ", value: "debt" },
-    { label: "Khách hàng", value: "customers" },
-    { label: "Nhân viên", value: "employees" },
-    { label: "Booking", value: "booking" },
   ],
   filterOptions: {
     projects: [{ id: "iki-village", name: "Iki village" }],
     zones: towerBlocks.map((item) => ({ ...item, project: "iki-village" })),
     buildings: [...buildingsList],
     productTypes: [...productTypes],
-    agencies: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand"],
+    agencies: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand", "Lâm Trà My", "Nguyễn Hoàng Phúc", "Trần Minh Khoa"],
     products: [
-      { id: "SP-001", name: "Tòa A - Duplex Garden 01" },
-      { id: "SP-002", name: "Tòa B - Sky Garden 08" },
-      { id: "SP-003", name: "Tòa C - Penhouse 12" },
-      { id: "SP-004", name: "Tòa D - Sky Villa Residence 18" },
+      { id: "TM-IKV-A-0501", name: "TM-IKV-A-0501" },
+      { id: "TM-IKV-B-0912", name: "TM-IKV-B-0912" },
+      { id: "TM-IKV-C-1208", name: "TM-IKV-C-1208" },
+      { id: "TM-IKV-A-0004", name: "TM-IKV-A-0004" },
+      { id: "S1.05-12", name: "S1.05-12" },
+      { id: "B3.08-22", name: "B3.08-22" },
+      { id: "B1.09-03", name: "B1.09-03" },
+      { id: "MT2.06-15", name: "MT2.06-15" },
+      { id: "E1.14-21", name: "E1.14-21" },
     ],
+    dossierStatuses: ["Đã cọc", "Đã phát hành", "Đã ký", "Đã đóng dấu", "Chờ trả HĐMB", "Đã trả", "Bàn giao"],
+    paymentStages: ["Đợt 1", "Đợt 2", "Đợt 3", "Đợt 4", "Đợt 5", "Đợt 6"],
+    customers: [
+      { id: "1", name: "Nguyễn Văn An" },
+      { id: "2", name: "Trần Thị Bích" },
+      { id: "3", name: "Lê Minh Cường" },
+      { id: "4", name: "Phạm Thị Dung" },
+      { id: "5", name: "Hoàng Văn Em" },
+      { id: "6", name: "Vũ Thị Phương" },
+      { id: "7", name: "Đặng Văn Giang" },
+      { id: "8", name: "Bùi Thị Hoa" },
+    ],
+    salesUnits: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand", "Lâm Trà My", "Nguyễn Hoàng Phúc", "Trần Minh Khoa"],
+    apartmentTypes: [...productTypes],
+    paymentStatuses: ["Chưa đến hạn", "Sắp đến hạn", "Đã thanh toán", "Thanh toán một phần", "Quá hạn", "Gia hạn"],
   },
 };
 

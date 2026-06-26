@@ -306,7 +306,15 @@ export function CustomerContracts() {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
 
-  const customer = customers.find((c) => c.id === customerId);
+  let targetCustomerId = customerId;
+  if (customerId && customerId.startsWith("C")) {
+    const num = parseInt(customerId.substring(1), 10);
+    if (!isNaN(num) && num >= 1 && num <= 5) {
+      targetCustomerId = String(num);
+    }
+  }
+
+  const customer = customers.find((c) => c.id === targetCustomerId);
 
   if (!customer) {
     return (

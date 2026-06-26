@@ -95,15 +95,47 @@ export function CustomerPage() {
       const matchSearch =
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.phone.includes(search) ||
-        c.email.toLowerCase().includes(search.toLowerCase());
+        c.email.toLowerCase().includes(search.toLowerCase()) ||
+        c.id.toLowerCase().includes(search.toLowerCase()) ||
+        (c.cccd || "").includes(search);
+
       const matchType = typeFilter === "all" || c.type === typeFilter;
+
+      // Nhóm khách hàng filter
+      let matchGroup = true;
+      if (groupFilter !== "all") {
+        const group = getCustomerGroup(c, c.stats.count);
+        if (groupFilter === "vip") {
+          matchGroup = group === "VIP";
+        } else if (groupFilter === "partner") {
+          matchGroup = group === "Đối tác";
+        } else if (groupFilter === "normal") {
+          matchGroup = group === "Thông thường";
+        } else if (groupFilter === "other") {
+          matchGroup = !["VIP", "Đối tác", "Thông thường"].includes(group);
+        }
+      }
+
+      // Trạng thái khách hàng filter
+      let matchCustomerStatus = true;
+      if (customerStatusFilter !== "all") {
+        const hasActiveContract = c.stats.activeCount > 0;
+        if (customerStatusFilter === "active") {
+          matchCustomerStatus = hasActiveContract;
+        } else if (customerStatusFilter === "disabled") {
+          matchCustomerStatus = !hasActiveContract;
+        }
+      }
+
+      // Trạng thái hợp đồng filter
       let matchAct = true;
       if (actFilter === "active") matchAct = c.stats.activeCount > 0;
       if (actFilter === "multi")  matchAct = c.stats.count >= 2;
       if (actFilter === "none")   matchAct = c.stats.count === 0;
-      return matchSearch && matchType && matchAct;
+
+      return matchSearch && matchType && matchGroup && matchCustomerStatus && matchAct;
     });
-  }, [enriched, search, typeFilter, actFilter]);
+  }, [enriched, search, typeFilter, groupFilter, customerStatusFilter, actFilter]);
 
   // Global summary
   const totalCustomers     = customerList.length;
@@ -205,8 +237,8 @@ export function CustomerPage() {
       {/* Customer Table */}
       <Card className="max-w-full overflow-visible border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
         <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
-          <div className="grid min-w-0 grid-cols-[minmax(180px,1fr)_118px_126px_142px_142px_94px] items-center gap-2">
-            <div className="relative min-w-0">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none max-w-full min-w-0 flex-nowrap whitespace-nowrap">
+            <div className="relative min-w-[180px] flex-1 lg:max-w-xs flex-shrink-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
@@ -218,7 +250,7 @@ export function CustomerPage() {
             </div>
 
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-full`}>
+              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`}>
                 <SelectValue placeholder="Loại khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -229,7 +261,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={groupFilter} onValueChange={setGroupFilter}>
-              <SelectTrigger aria-label="Lọc theo nhóm khách hàng" className={`${compactFilterTriggerClass} w-full`}>
+              <SelectTrigger aria-label="Lọc theo nhóm khách hàng" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`}>
                 <SelectValue placeholder="Nhóm khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -242,7 +274,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={customerStatusFilter} onValueChange={setCustomerStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái khách hàng" className={`${compactFilterTriggerClass} w-full`}>
+              <SelectTrigger aria-label="Lọc theo trạng thái khách hàng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
                 <SelectValue placeholder="Trạng thái khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -253,7 +285,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={actFilter} onValueChange={setActFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-full`}>
+              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
                 <SelectValue placeholder="Trạng thái hợp đồng" />
               </SelectTrigger>
               <SelectContent>
@@ -264,7 +296,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={displayFilter} onValueChange={setDisplayFilter}>
-              <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-full`}>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}>
                 <SelectValue placeholder="Hiển thị" />
               </SelectTrigger>
               <SelectContent>

@@ -1,0 +1,16 @@
+export const CONTRACT_STATUS_FLOW = [
+  "Đã cọc",
+  "Chờ xác nhận dòng tiền",
+  "Đã xác nhận dòng tiền",
+  "Chờ kiểm tra pháp lý",
+  "Đủ điều kiện ký",
+  "Đã phát hành",
+  "Đã ký",
+  "Đã hậu kiểm chữ ký",
+  "Đang trình ký",
+  "Đã ký CĐT",
+  "Đã đóng dấu",
+  "Chờ trả hợp đồng",
+  "Đã trả",
+  "Bàn giao",
+] as const;

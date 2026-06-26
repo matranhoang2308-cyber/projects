@@ -12,6 +12,7 @@ import {
   Banknote,
   TrendingDown,
   CalendarDays,
+  ChevronRight,
   ChevronDown,
   FileText,
   Download,
@@ -27,6 +28,7 @@ import {
   ShieldX,
   ShieldCheck,
   User,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   customers,
@@ -65,6 +67,15 @@ import { Separator } from "@/components/ui/separator";
 import { ExtensionDialog } from "./ExtensionDialog";
 import { ExtensionPaymentConfirmDialog } from "./ExtensionPaymentConfirmDialog";
 import { PaymentConfirmDialog } from "./PaymentConfirmDialog";
+import { DebtAdjustmentDialog } from "./DebtAdjustmentDialog";
+import { AuditHistorySection } from "./AuditHistorySection";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,26 +135,20 @@ function paymentStatusToStageStatus(status: PaymentStatus): StageStatus {
   return "in-progress";
 }
 
-function buildPaymentInstallments(stages: PaymentStage[]): PaymentStage[] {
+function buildPaymentInstallmentStages(stages: PaymentStage[]): PaymentStage[] {
   let installmentNumber = 0;
 
   return stages.flatMap((stage) =>
     stage.records.map((record) => {
       installmentNumber += 1;
       const paidAmount =
-        record.paidAmount ??
-        (record.status === "paid" || record.status === "overpaid"
-          ? record.baseAmount
-          : 0);
+        record.paidAmount ?? (record.status === "paid" || record.status === "overpaid" ? record.baseAmount : 0);
 
       return {
         ...stage,
-        id: stage.id,
         stageNumber: installmentNumber,
-        name: record.label
-          .replace(/^Đợt\s+\d+\s*[–-]\s*/i, "")
-          .replace(/\s*[–-]\s*Đợt\s+\d+\s*/i, " ")
-          .trim(),
+        name: record.label,
+        description: stage.description,
         period: `Hạn ${fmtDate(record.dueDate)}`,
         totalAmount: record.baseAmount,
         paidAmount,
@@ -400,21 +405,7 @@ function InvoiceDialog({
 
 // ─── Stage Icon ───────────────────────────────────────────────────────────────
 
-function StageIcon({
-  status,
-  number,
-  isOverdue = false,
-}: {
-  status: StageStatus;
-  number: number;
-  isOverdue?: boolean;
-}) {
-  if (isOverdue)
-    return (
-      <div className="flex size-8 items-center justify-center rounded-full bg-rose-600 text-white shrink-0">
-        <AlertTriangle className="size-4" strokeWidth={2.5} />
-      </div>
-    );
+function StageIcon({ status, number }: { status: StageStatus; number: number }) {
   if (status === "completed")
     return (
       <div className="flex size-8 items-center justify-center rounded-full bg-emerald-500 text-white shrink-0">
@@ -487,29 +478,6 @@ function StageBlock({
 
   const [historyOpen, setHistoryOpen] = useState<Set<string>>(new Set());
 
-  const [extensionOpen, setExtensionOpen] = useState<Set<string>>(
-    () =>
-      new Set(
-        stage.records.flatMap((record) => {
-          const list = record.extensions ?? [];
-          return list.length > 0 ? [list[list.length - 1].id] : [];
-        })
-      )
-  );
-
-  const [installmentOpen, setInstallmentOpen] = useState<Set<string>>(
-    () =>
-      new Set(
-        stage.records.flatMap((record) =>
-          (record.extensions ?? []).flatMap((extension) =>
-            extension.installments
-              .filter((installment) => installment.status !== "upcoming")
-              .map((installment) => installment.id)
-          )
-        )
-      )
-  );
-
   const [confirmPayTarget, setConfirmPayTarget] = useState<{
     recordId: string;
     installment: ExtensionInstallment;
@@ -517,6 +485,23 @@ function StageBlock({
 
   // State for original installment payment confirmation
   const [paymentConfirmTarget, setPaymentConfirmTarget] = useState<PaymentRecord | null>(null);
+
+  // State for debt adjustment dialog
+  const [debtAdjustTarget, setDebtAdjustTarget] = useState<PaymentRecord | null>(null);
+
+  // State for audit history dialog
+  const [auditHistoryRecord, setAuditHistoryRecord] = useState<PaymentRecord | null>(null);
+
+  // Local audit logs per record (augmented by adjustments made in-session)
+  const [localAuditLogs, setLocalAuditLogs] = useState<Map<string, import("../data/mockData").DebtAuditLog[]>>(
+    () => {
+      const m = new Map<string, import("../data/mockData").DebtAuditLog[]>();
+      stage.records.forEach((r) => {
+        if (r.auditLogs && r.auditLogs.length > 0) m.set(r.id, r.auditLogs);
+      });
+      return m;
+    }
+  );
 
   const getExtList = (recordId: string): PaymentExtension[] =>
     localExtensions.get(recordId) ?? [];
@@ -526,22 +511,6 @@ function StageBlock({
       const next = new Set(prev);
       if (next.has(recordId)) next.delete(recordId);
       else next.add(recordId);
-      return next;
-    });
-
-  const toggleExtension = (extensionId: string) =>
-    setExtensionOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(extensionId)) next.delete(extensionId);
-      else next.add(extensionId);
-      return next;
-    });
-
-  const toggleInstallment = (installmentId: string) =>
-    setInstallmentOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(installmentId)) next.delete(installmentId);
-      else next.add(installmentId);
       return next;
     });
 
@@ -559,7 +528,6 @@ function StageBlock({
       }
       return new Map(prev).set(recordId, list);
     });
-    setExtensionOpen((prev) => new Set(prev).add(ext.id));
     setExtDialog(null);
   };
 
@@ -588,6 +556,17 @@ function StageBlock({
     setConfirmPayTarget(null);
   };
 
+  // Handler for debt adjustment confirmation — appends audit log
+  const handleDebtAdjustConfirm = (auditLog: import("../data/mockData").DebtAuditLog) => {
+    if (!debtAdjustTarget) return;
+    const recordId = debtAdjustTarget.id;
+    setLocalAuditLogs((prev) => {
+      const existing = prev.get(recordId) ?? [];
+      return new Map(prev).set(recordId, [...existing, auditLog]);
+    });
+    setDebtAdjustTarget(null);
+  };
+
   // Handler for original installment payment confirmation
   const handleOriginalPaymentConfirm = (
     paidAmount: number,
@@ -602,301 +581,377 @@ function StageBlock({
     // Optionally: refresh page or update local state
   };
 
-  const getInstallmentLateFee = (
-    ext: PaymentExtension,
-    record: PaymentRecord,
-    installment: ExtensionInstallment
-  ) => {
-    if (ext.type !== "with-penalty" || installment.status === "paid") return 0;
-    const daysFromOriginalDue = Math.max(
-      0,
-      Math.round(
-        (new Date(installment.dueDate).getTime() -
-          new Date(record.dueDate).getTime()) /
-          86400000
-      )
-    );
-    return calcLateFee(
-      installment.amount,
-      ext.penaltyRatePercent,
-      daysFromOriginalDue
-    );
-  };
-
+  // ── Render installment rows for one extension ──────────────────────────────
   const renderInstRows = (
     ext: PaymentExtension,
     record: PaymentRecord,
     isActive: boolean
-  ) => {
-    const totalAmount = ext.installments.reduce((sum, item) => sum + item.amount, 0);
-    const totalPaid = ext.installments.reduce(
-      (sum, item) => sum + (item.status === "paid" ? item.amount : 0),
-      0
-    );
-    const totalLateFee = ext.installments.reduce(
-      (sum, item) => sum + getInstallmentLateFee(ext, record, item),
-      0
-    );
-    const paidPercent =
-      totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0;
+  ) => (
+    <div className="px-4 py-3 space-y-2">
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+        Lịch thanh toán · {ext.installments.length} đợt
+      </p>
+      {ext.installments.map((inst, iIdx) => {
+        const daysFromOrig = Math.max(
+          0,
+          Math.round(
+            (new Date(inst.dueDate).getTime() - new Date(record.dueDate).getTime()) /
+            86400000
+          )
+        );
+        const instLateFee =
+          ext.type === "with-penalty"
+            ? calcLateFee(inst.amount, ext.penaltyRatePercent, daysFromOrig)
+            : 0;
 
-    return (
-      <div className="space-y-3 border-t border-border/50 px-4 py-4">
-        <div>
-          <p className="text-sm text-foreground">
-            Lịch thanh toán {ext.installments.length} đợt
-          </p>
-          <div className="mt-3 grid grid-cols-1 gap-x-10 gap-y-3 sm:grid-cols-2">
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Tổng tiền phải đóng</p>
-                <p className="mt-0.5 text-sm text-foreground">{formatVND(totalAmount)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Tổng đã thu</p>
-                <p className="mt-0.5 text-sm text-foreground">{formatVND(totalPaid)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Tổng số đợt</p>
-                <p className="mt-0.5 text-sm text-foreground">{ext.installments.length} đợt</p>
-              </div>
+        return (
+          <div key={inst.id} className="space-y-1.5">
+            <div
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 ${inst.status === "overdue"
+                ? "border-red-200 bg-red-50/50"
+                : inst.status === "paid"
+                  ? "border-emerald-200 bg-emerald-50/50"
+                  : "border-border/60 bg-muted/20"
+                }`}
+            >
+              <span className="text-[11px] text-muted-foreground w-4 text-center shrink-0">
+                {iIdx + 1}
+              </span>
+              {inst.status === "paid" ? (
+                <BadgeCheck className="size-3.5 text-emerald-500 shrink-0" />
+              ) : inst.status === "overdue" ? (
+                <AlertTriangle className="size-3.5 text-red-500 shrink-0" />
+              ) : (
+                <Circle className="size-3.5 text-blue-400 shrink-0" />
+              )}
+              <span className="text-xs text-foreground flex-1 truncate">{inst.label}</span>
+              <span
+                className={`text-xs shrink-0 ${inst.status === "overdue"
+                  ? "text-red-600"
+                  : inst.status === "paid"
+                    ? "text-emerald-600"
+                    : "text-muted-foreground"
+                  }`}
+              >
+                {inst.status === "paid" && inst.paidDate
+                  ? fmtDate(inst.paidDate)
+                  : fmtDate(inst.dueDate)}
+              </span>
+              <span className="text-xs text-foreground shrink-0">
+                {formatVND(inst.amount)}
+              </span>
+              {ext.type === "with-penalty" && instLateFee > 0 && inst.status !== "paid" && (
+                <span className="text-[11px] text-orange-600 shrink-0">
+                  +{formatVND(instLateFee)} phạt
+                </span>
+              )}
+              {inst.status === "paid" && inst.invoice && (
+                <div className="flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 shrink-0">
+                  <FileText className="size-2.5 text-red-500" />
+                  <span className="text-[10px] text-red-600">PDF</span>
+                </div>
+              )}
+              <Badge
+                className={`text-[10px] px-1.5 h-4 shrink-0 ${statusConfig[inst.status].className}`}
+              >
+                {statusConfig[inst.status].label}
+              </Badge>
+              {isActive && inst.status === "paid" && inst.invoice ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] px-2 gap-1 border-border/60 shrink-0"
+                  onClick={() =>
+                    setActiveInvoice({
+                      invoice: inst.invoice!,
+                      record: {
+                        id: inst.id,
+                        label: inst.label,
+                        dueDate: inst.dueDate,
+                        paidDate: inst.paidDate,
+                        baseAmount: inst.amount,
+                        status: "paid",
+                        invoice: inst.invoice,
+                      },
+                    })
+                  }
+                >
+                  <FileText className="size-2.5" />
+                  Xem HĐ
+                </Button>
+              ) : isActive && inst.status !== "paid" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[11px] px-2 gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0"
+                  onClick={() =>
+                    setConfirmPayTarget({ recordId: record.id, installment: inst })
+                  }
+                >
+                  <CheckCircle2 className="size-2.5" />
+                  Xác nhận TT
+                </Button>
+              ) : null}
+              {isActive && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Mở menu thao tác cho ${inst.label}`}
+                      title="Thao tác khác"
+                      className="size-8 text-muted-foreground hover:text-foreground shrink-0"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <MoreHorizontal aria-hidden="true" className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="text-xs w-52">
+                    {inst.status !== "paid" && (
+                      <DropdownMenuItem
+                        className="text-xs gap-2"
+                        onSelect={() =>
+                          setConfirmPayTarget({ recordId: record.id, installment: inst })
+                        }
+                      >
+                        <CheckCircle2 className="size-3.5 text-emerald-600" />
+                        Xác nhận thanh toán
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      className="text-xs gap-2"
+                      onSelect={() => {
+                        const syntheticRecord: import("../data/mockData").PaymentRecord = {
+                          ...record,
+                          id: inst.id,
+                          label: inst.label,
+                          dueDate: inst.dueDate,
+                          paidDate: inst.paidDate,
+                          baseAmount: inst.amount,
+                          paidAmount: inst.status === "paid" ? inst.amount : 0,
+                          remainingAmount: inst.status === "paid" ? 0 : inst.amount,
+                          status: inst.status,
+                          debtStatus: "current",
+                        };
+                        setDebtAdjustTarget(syntheticRecord);
+                      }}
+                    >
+                      <Pencil className="size-3.5 text-muted-foreground" />
+                      Điều chỉnh công nợ
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-xs gap-2"
+                      onSelect={() => {
+                        const syntheticRecord: import("../data/mockData").PaymentRecord = {
+                          ...record,
+                          id: inst.id,
+                          label: inst.label,
+                          dueDate: inst.dueDate,
+                          baseAmount: inst.amount,
+                          paidAmount: inst.status === "paid" ? inst.amount : 0,
+                          remainingAmount: inst.status === "paid" ? 0 : inst.amount,
+                          status: inst.status,
+                          debtStatus: "current",
+                          auditLogs: localAuditLogs.get(inst.id) ?? [],
+                        };
+                        setAuditHistoryRecord(syntheticRecord);
+                      }}
+                    >
+                      <History className="size-3.5 text-muted-foreground" />
+                      Xem lịch sử công nợ
+                      {(localAuditLogs.get(inst.id)?.length ?? 0) === 0 && (
+                        <span className="ml-auto text-[10px] text-muted-foreground">Chưa có</span>
+                      )}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Lãi phạt</p>
-                <p className={`mt-0.5 text-sm ${totalLateFee > 0 ? "text-red-600" : "text-foreground"}`}>
-                  {formatVND(totalLateFee)}
-                </p>
+
+            {inst.status === "paid" && inst.invoice && (
+              <div className="ml-7 rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-red-100 border border-red-200 shrink-0">
+                    <FileText className="size-3.5 text-red-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground truncate">{inst.invoice.fileName}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[11px] text-muted-foreground">
+                        #{inst.invoice.invoiceNumber}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">·</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {inst.invoice.bankName} · {inst.invoice.transactionRef}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-600 mt-0.5">
+                      Thanh toán: {inst.paidDate ? fmtDate(inst.paidDate) : "—"} ·{" "}
+                      {formatVND(inst.amount)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5 border-border/60 shrink-0"
+                    onClick={() =>
+                      setActiveInvoice({
+                        invoice: inst.invoice!,
+                        record: {
+                          id: inst.id,
+                          label: inst.label,
+                          dueDate: inst.dueDate,
+                          paidDate: inst.paidDate,
+                          baseAmount: inst.amount,
+                          status: "paid",
+                          invoice: inst.invoice,
+                        },
+                      })
+                    }
+                  >
+                    <FileText className="size-3" />
+                    Xem
+                  </Button>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">% khách hàng thanh toán</p>
-                <p className="mt-0.5 text-sm text-foreground">{paidPercent}%</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Tổng phải thu</p>
-                <p className="mt-0.5 text-sm font-medium text-foreground">
-                  {formatVND(totalAmount + totalLateFee)}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
+        );
+      })}
 
-        <div className="space-y-2">
-          {ext.installments.map((inst, index) => {
-            const isOpen = installmentOpen.has(inst.id);
-            const lateFee = getInstallmentLateFee(ext, record, inst);
-            const paidAmount = inst.status === "paid" ? inst.amount : 0;
-            const previousDebt = ext.installments
-              .slice(0, index)
-              .reduce(
-                (sum, item) => sum + (item.status === "paid" ? 0 : item.amount),
-                0
-              );
-            const daysOverdue =
-              inst.status === "overdue"
-                ? Math.max(
+      <div className="flex items-center justify-between pt-1 border-t border-border/40">
+        <span className="text-[11px] text-muted-foreground">Tổng gia hạn</span>
+        <span className="text-xs text-foreground">
+          {formatVND(ext.installments.reduce((s, i) => s + i.amount, 0))}
+          {ext.type === "with-penalty" && (
+            <span className="text-orange-600 ml-1.5">
+              +{formatVND(
+                ext.installments.reduce((s, i) => {
+                  const days = Math.max(
                     0,
                     Math.round(
-                      (new Date().getTime() - new Date(inst.dueDate).getTime()) /
-                        86400000
+                      (new Date(i.dueDate).getTime() -
+                        new Date(record.dueDate).getTime()) /
+                      86400000
                     )
-                  )
-                : 0;
-            const installmentPercent = inst.status === "paid" ? 100 : 0;
-
-            return (
-              <div key={inst.id} className="overflow-hidden rounded-lg border border-border/60 bg-muted/10">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30"
-                  onClick={() => toggleInstallment(inst.id)}
-                  aria-expanded={isOpen}
-                >
-                  <span className="flex-1 text-sm text-foreground">
-                    {index + 1}. {inst.label}
-                  </span>
-                  <Badge className={`text-[10px] ${statusConfig[inst.status].className}`}>
-                    {statusConfig[inst.status].label}
-                  </Badge>
-                  <ChevronDown className={`size-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                </button>
-
-                {isOpen && (
-                  <div className="border-t border-border/50 px-4 py-4">
-                    <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-3">
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Ngày đến hạn</p>
-                          <p className="mt-0.5 text-sm text-foreground">{fmtDate(inst.dueDate)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Lãi phí phạt</p>
-                          <p className={`mt-0.5 text-sm ${lateFee > 0 ? "text-red-600" : "text-foreground"}`}>
-                            {formatVND(lateFee)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Tổng đã thu</p>
-                          <p className="mt-0.5 text-sm text-foreground">{formatVND(paidAmount)}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Ngày thanh toán</p>
-                          <p className={`mt-0.5 text-sm ${inst.paidDate ? "text-emerald-600" : "text-foreground"}`}>
-                            {inst.paidDate ? fmtDate(inst.paidDate) : "—"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Dư nợ đợt trước</p>
-                          <p className="mt-0.5 text-sm text-foreground">{formatVND(previousDebt)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Số ngày quá hạn</p>
-                          <p className={`mt-0.5 text-sm ${daysOverdue > 0 ? "text-red-600" : "text-foreground"}`}>
-                            {daysOverdue} ngày
-                          </p>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Tổng tiền thu theo đợt</p>
-                          <p className="mt-0.5 text-sm text-foreground">{formatVND(inst.amount)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Tổng tiền phải thu</p>
-                          <p className="mt-0.5 text-sm text-foreground">{formatVND(inst.amount + lateFee)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">% khách hàng thanh toán</p>
-                          <p className={`mt-0.5 text-sm ${installmentPercent === 100 ? "text-emerald-600" : "text-foreground"}`}>
-                            {installmentPercent}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                      {inst.status === "overdue" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() =>
-                            onNavigate(
-                              `/customer/${customerId}/contract/${contractId}/stage/${stage.id}/payment/${record.id}`
-                            )
-                          }
-                        >
-                          Xem chi tiết tính lãi
-                        </Button>
-                      )}
-                      {isActive && inst.status !== "paid" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 border-emerald-300 text-xs text-emerald-700"
-                          onClick={() =>
-                            setConfirmPayTarget({ recordId: record.id, installment: inst })
-                          }
-                        >
-                          Xác nhận thanh toán
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                  );
+                  return s + calcLateFee(i.amount, ext.penaltyRatePercent, days);
+                }, 0)
+              )}{" "}
+              phạt
+            </span>
+          )}
+        </span>
       </div>
-    );
-  };
+    </div>
+  );
 
+  // ── Render one extension card ───────────────────────────────────────────────
   const renderExtCard = (
     ext: PaymentExtension,
     genIdx: number,
     isActive: boolean,
     record: PaymentRecord,
     totalCount: number
-  ) => {
-    const isOpen = extensionOpen.has(ext.id);
-
-    return (
-      <div key={ext.id} className="overflow-hidden rounded-xl border border-border/60 bg-background">
-        <div className={`${ext.type === "with-penalty" ? "bg-rose-50" : "bg-amber-50"}`}>
-          <div className="flex items-start gap-2 px-4 py-3">
-            <button
-              type="button"
-              className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
-              onClick={() => toggleExtension(ext.id)}
-              aria-expanded={isOpen}
-            >
-              <CalendarClock className={`mt-0.5 size-4 shrink-0 ${ext.type === "with-penalty" ? "text-rose-500" : "text-amber-500"}`} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">
-                    Lịch gia hạn · Lần {genIdx + 1}/{totalCount}
-                  </span>
-                  <Badge className={`text-[10px] ${ext.type === "with-penalty" ? "border-rose-200 bg-rose-100 text-rose-700" : "border-amber-200 bg-amber-100 text-amber-700"}`}>
-                    {ext.type === "with-penalty" ? <ShieldX className="mr-1 size-2.5" /> : <ShieldCheck className="mr-1 size-2.5" />}
-                    {ext.type === "with-penalty" ? "Có phí phạt" : "Không mất phí"}
-                  </Badge>
-                  {isActive && <Badge className="border-blue-200 bg-blue-50 text-[10px] text-blue-700">Hiện tại</Badge>}
-                </div>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span>Người duyệt: <strong className="font-medium text-foreground">{ext.approvedBy}</strong></span>
-                  <span>·</span>
-                  <span>Ngày duyệt: <strong className="font-medium text-foreground">{fmtDate(ext.approvedDate)}</strong></span>
-                  <span>·</span>
-                  <span>Ngày yêu cầu: <strong className="font-medium text-foreground">{fmtDate(ext.requestDate)}</strong></span>
-                </div>
-              </div>
-              <ChevronDown className={`mt-1 size-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {isActive && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 shrink-0 gap-1 text-xs"
-                onClick={() => setExtDialog({ record, editingIdx: genIdx })}
+  ) => (
+    <div
+      key={ext.id}
+      className={`rounded-xl border overflow-hidden ${isActive ? "border-border/70" : "border-border/40 opacity-75"
+        }`}
+    >
+      <div
+        className={`px-4 py-3 flex items-start justify-between gap-3 ${isActive
+          ? ext.type === "with-penalty"
+            ? "bg-orange-50 border-b border-orange-100"
+            : "bg-emerald-50 border-b border-emerald-100"
+          : "bg-muted/30 border-b border-border/40"
+          }`}
+      >
+        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+          <CalendarClock
+            className={`size-4 mt-0.5 shrink-0 ${isActive
+              ? ext.type === "with-penalty"
+                ? "text-orange-500"
+                : "text-emerald-500"
+              : "text-muted-foreground"
+              }`}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span
+                className={`text-xs font-medium ${isActive
+                  ? ext.type === "with-penalty"
+                    ? "text-orange-700"
+                    : "text-emerald-700"
+                  : "text-muted-foreground"
+                  }`}
               >
-                <Pencil className="size-3" />
-                Chỉnh sửa
-              </Button>
-            )}
+                Gia hạn lần {genIdx + 1}
+                {totalCount > 1 ? `/${totalCount}` : ""}
+              </span>
+              {isActive && (
+                <Badge className="text-[10px] px-1.5 h-4 border-blue-200 bg-blue-50 text-blue-700">
+                  Hiện tại
+                </Badge>
+              )}
+              <Badge
+                className={`text-[10px] px-1.5 h-4 ${ext.type === "with-penalty"
+                  ? "border-orange-200 bg-orange-100 text-orange-700"
+                  : "border-emerald-200 bg-emerald-100 text-emerald-700"
+                  }`}
+              >
+                {ext.type === "with-penalty" ? (
+                  <ShieldX className="size-2.5 mr-0.5 inline" />
+                ) : (
+                  <ShieldCheck className="size-2.5 mr-0.5 inline" />
+                )}
+                {ext.type === "with-penalty"
+                  ? `Có phí ${ext.penaltyRatePercent}%/năm`
+                  : "Miễn phí phạt"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <User className="size-3" />
+                {ext.approvedBy}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Duyệt: {fmtDate(ext.approvedDate)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                YC: {fmtDate(ext.requestDate)}
+              </span>
+            </div>
           </div>
         </div>
-
-        {isOpen && (
-          <div>
-            <div className="grid grid-cols-1 gap-4 border-t border-border/50 px-4 py-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-muted-foreground">Lý do gia hạn</p>
-                <p className="mt-1 text-sm text-foreground">{ext.reason}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Ghi chú</p>
-                <p className="mt-1 text-sm text-foreground">{ext.notes || "—"}</p>
-              </div>
-            </div>
-            {renderInstRows(ext, record, isActive)}
-          </div>
+        {isActive && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1 shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => setExtDialog({ record, editingIdx: genIdx })}
+          >
+            <Pencil className="size-3" />
+            Sửa
+          </Button>
         )}
       </div>
-    );
-  };
 
-  const isStageOverdue = stage.records[0]?.status === "overdue";
-  const isStageUpcoming = stage.records[0]?.status === "upcoming";
-  const sl = isStageOverdue
-    ? { label: "Quá hạn", cls: "text-red-600 font-medium" }
-    : isStageUpcoming
-    ? { label: "Sắp đến hạn", cls: "text-blue-600 font-medium" }
-    : stageLabelMap[stage.stageStatus];
+      <div className="px-4 py-3 border-b border-border/40 space-y-1.5">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Lý do gia hạn</p>
+        <p className="text-xs text-foreground leading-relaxed">{ext.reason}</p>
+        {ext.notes && (
+          <p className="text-[11px] text-muted-foreground italic">Ghi chú: {ext.notes}</p>
+        )}
+      </div>
+
+      {renderInstRows(ext, record, isActive)}
+    </div>
+  );
+
+  const sl = stageLabelMap[stage.stageStatus];
   const overdueRecords = stage.records.filter((r) => r.status === "overdue");
   const progress =
     stage.totalAmount > 0
@@ -960,24 +1015,46 @@ function StageBlock({
         />
       )}
 
+      {debtAdjustTarget && (
+        <DebtAdjustmentDialog
+          open={true}
+          onClose={() => setDebtAdjustTarget(null)}
+          record={debtAdjustTarget}
+          contractName={projectName}
+          onConfirm={handleDebtAdjustConfirm}
+        />
+      )}
+
+      {auditHistoryRecord && (
+        <Dialog open={true} onOpenChange={(v) => !v && setAuditHistoryRecord(null)}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center gap-2">
+                <History className="size-4 text-muted-foreground" />
+                <DialogTitle className="text-sm">
+                  Lịch sử công nợ · {auditHistoryRecord.label}
+                </DialogTitle>
+              </div>
+              <DialogDescription className="sr-only">
+                Lịch sử điều chỉnh công nợ cho đợt thanh toán này
+              </DialogDescription>
+            </DialogHeader>
+            <AuditHistorySection auditLogs={localAuditLogs.get(auditHistoryRecord.id) ?? []} />
+          </DialogContent>
+        </Dialog>
+      )}
+
       <div className="flex gap-4">
         <div className="flex flex-col items-center">
-          <StageIcon
-            status={stage.stageStatus}
-            number={stage.stageNumber}
-            isOverdue={isStageOverdue}
-          />
+          <StageIcon status={stage.stageStatus} number={stage.stageNumber} />
           {!isLast && (
             <div
-              className={`w-px flex-1 mt-2 min-h-6 ${
-                isStageOverdue
-                  ? "bg-red-200"
-                  : stage.stageStatus === "completed"
-                  ? "bg-emerald-200"
-                  : stage.stageStatus === "in-progress"
+              className={`w-px flex-1 mt-2 min-h-6 ${stage.stageStatus === "completed"
+                ? "bg-emerald-200"
+                : stage.stageStatus === "in-progress"
                   ? "bg-blue-200"
                   : "bg-border"
-              }`}
+                }`}
             />
           )}
         </div>
@@ -1008,15 +1085,12 @@ function StageBlock({
             </div>
             <Progress
               value={progress}
-              className={`h-1 ${
-                isStageOverdue
-                  ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
-                  : stage.stageStatus === "completed"
-                  ? "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
-                  : stage.stageStatus === "in-progress"
+              className={`h-1 ${stage.stageStatus === "completed"
+                ? "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
+                : stage.stageStatus === "in-progress"
                   ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
                   : "bg-muted [&>[data-slot=progress-indicator]]:bg-muted-foreground"
-              }`}
+                }`}
             />
           </div>
 
@@ -1034,22 +1108,6 @@ function StageBlock({
                 const canAddExtension =
                   record.status === "overdue" || record.status === "upcoming";
                 const isHistOpen = historyOpen.has(record.id);
-                const showFinancialDetails =
-                  record.status === "paid" || record.status === "overdue";
-                const paidAmount =
-                  record.paidAmount ?? (record.status === "paid" ? record.baseAmount : 0);
-                const remainingAmount =
-                  record.remainingAmount ?? Math.max(record.baseAmount - paidAmount, 0);
-                const lateAmount =
-                  record.adjustedLateInterest ??
-                  record.lateInterest ??
-                  record.lateFee ??
-                  0;
-                const paymentPercent =
-                  record.baseAmount > 0
-                    ? Math.min(100, Math.round((paidAmount / record.baseAmount) * 100))
-                    : 0;
-                const totalReceivable = remainingAmount + lateAmount;
 
                 return (
                   <AccordionItem
@@ -1059,7 +1117,19 @@ function StageBlock({
                   >
                     <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-accent/30 text-xs">
                       <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
-                        <span className="text-sm text-foreground">Trạng thái</span>
+                        {record.status === "paid" ? (
+                          <BadgeCheck className="size-4 text-emerald-500 shrink-0" />
+                        ) : record.status === "overdue" ? (
+                          <AlertTriangle className="size-4 text-red-500 shrink-0" />
+                        ) : (
+                          <Circle className="size-4 text-blue-400 shrink-0" />
+                        )}
+                        <span
+                          className={`text-sm truncate ${record.status === "overdue" ? "text-red-700" : "text-foreground"
+                            }`}
+                        >
+                          {record.label}
+                        </span>
 
                         {record.status === "paid" && record.invoice && (
                           <div className="flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 shrink-0">
@@ -1070,25 +1140,22 @@ function StageBlock({
 
                         {extList.length > 0 && (
                           <div
-                            className={`flex items-center gap-1 rounded border px-1.5 py-0.5 shrink-0 ${
-                              activeExt?.type === "with-penalty"
-                                ? "border-orange-200 bg-orange-50"
-                                : "border-emerald-200 bg-emerald-50"
-                            }`}
+                            className={`flex items-center gap-1 rounded border px-1.5 py-0.5 shrink-0 ${activeExt?.type === "with-penalty"
+                              ? "border-orange-200 bg-orange-50"
+                              : "border-emerald-200 bg-emerald-50"
+                              }`}
                           >
                             <CalendarClock
-                              className={`size-2.5 ${
-                                activeExt?.type === "with-penalty"
-                                  ? "text-orange-500"
-                                  : "text-emerald-500"
-                              }`}
+                              className={`size-2.5 ${activeExt?.type === "with-penalty"
+                                ? "text-orange-500"
+                                : "text-emerald-500"
+                                }`}
                             />
                             <span
-                              className={`text-[10px] ${
-                                activeExt?.type === "with-penalty"
-                                  ? "text-orange-600"
-                                  : "text-emerald-600"
-                              }`}
+                              className={`text-[10px] ${activeExt?.type === "with-penalty"
+                                ? "text-orange-600"
+                                : "text-emerald-600"
+                                }`}
                             >
                               {extList.length > 1 ? `GH ${extList.length} lần` : "Đã gia hạn"}
                             </span>
@@ -1096,125 +1163,132 @@ function StageBlock({
                         )}
 
                         <Badge
-                          className={`ml-auto shrink-0 text-[10px] px-1.5 py-0 ${
-                            statusConfig[record.status].className
-                          }`}
+                          className={`ml-auto shrink-0 text-[10px] px-1.5 py-0 ${statusConfig[record.status].className
+                            }`}
                         >
                           {statusConfig[record.status].label}
                         </Badge>
                       </div>
                     </AccordionTrigger>
 
-                    {(record.status === "upcoming" ||
-                      record.status === "overdue" ||
-                      record.status === "partial" ||
-                      record.status === "grace-period") && (
-                      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/40 bg-muted/10 px-4 py-3">
-                        {(record.status === "upcoming" ||
-                          record.status === "overdue" ||
-                          record.status === "partial" ||
-                          record.status === "grace-period") && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs gap-1.5 border-emerald-300 bg-emerald-500 text-white hover:bg-emerald-600 hover:text-white"
-                            onClick={() =>
-                              setPaymentConfirmTarget(normalizePaymentRecord(record))
-                            }
-                          >
-                            <BadgeCheck className="size-3.5" />
-                            Xác nhận thanh toán
-                          </Button>
-                        )}
-                        {record.status === "overdue" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs gap-1.5 border-border/70"
-                            onClick={() =>
-                              onNavigate(
-                                `/customer/${customerId}/contract/${contractId}/stage/${stage.id}/payment/${record.id}`
-                              )
-                            }
-                          >
-                            <FileText className="size-3.5" />
-                            Xem chi tiết tính lãi
-                          </Button>
-                        )}
-                      </div>
-                    )}
-
                     <AccordionContent className="px-4 pb-4 pt-0">
                       <div className="pl-7 space-y-3">
-                        {/* Payment details grid */}
-                        {showFinancialDetails ? (
-                          <div className="grid grid-cols-1 gap-x-12 gap-y-3 sm:grid-cols-2">
-                            <div className="space-y-3">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Ngày đến hạn</p>
-                                <p className={`mt-0.5 text-sm ${record.status === "overdue" ? "text-red-600" : "text-foreground"}`}>
-                                  {fmtDate(record.dueDate)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Tiền cọc</p>
-                                <p className="mt-0.5 text-sm text-foreground">{formatVND(record.baseAmount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Còn lại</p>
-                                <p className="mt-0.5 text-sm text-foreground">{formatVND(remainingAmount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Dư nợ đợt trước</p>
-                                <p className="mt-0.5 text-sm text-foreground">{formatVND(0)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Số ngày chậm nộp</p>
-                                <p className={`mt-0.5 text-sm ${(record.daysOverdue ?? record.daysAfterDue ?? 0) > 0 ? "text-red-600" : "text-foreground"}`}>
-                                  {record.daysOverdue ?? record.daysAfterDue ?? 0} ngày
-                                </p>
-                              </div>
-                            </div>
+                        {/* Quick actions */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {record.status !== "paid" && record.status !== "deposit-forfeited" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => setPaymentConfirmTarget(normalizePaymentRecord(record))}
+                            >
+                              <BadgeCheck className="size-3" />
+                              Xác nhận thanh toán
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                aria-label={`Mở menu thao tác cho ${record.label}`}
+                                title="Thao tác khác"
+                                className="size-9 border-border/60 text-muted-foreground hover:text-foreground"
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <MoreHorizontal aria-hidden="true" className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="text-xs w-52">
+                              <DropdownMenuItem
+                                className="text-xs gap-2"
+                                onSelect={() => setDebtAdjustTarget(normalizePaymentRecord(record))}
+                              >
+                                <Pencil className="size-3.5 text-muted-foreground" />
+                                Điều chỉnh công nợ
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-xs gap-2"
+                                onSelect={() => setAuditHistoryRecord(record)}
+                              >
+                                <History className="size-3.5 text-muted-foreground" />
+                                Xem lịch sử công nợ
+                                {(localAuditLogs.get(record.id)?.length ?? 0) === 0 && (
+                                  <span className="ml-auto text-[10px] text-muted-foreground">Chưa có</span>
+                                )}
+                              </DropdownMenuItem>
+                              {(record.status === "overdue" ||
+                                record.status === "grace-period" ||
+                                record.status === "partial" ||
+                                record.adjustedLateInterest != null) && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-xs gap-2"
+                                      onSelect={() =>
+                                        onNavigate(
+                                          `/customer/${customerId}/contract/${contractId}/stage/${stage.id}/payment/${record.id}`
+                                        )
+                                      }
+                                    >
+                                      <FileText className="size-3.5 text-muted-foreground" />
+                                      Xem chi tiết tính lãi
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
 
-                            <div className="space-y-3">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Ngày thanh toán</p>
-                                <p className={`mt-0.5 text-sm ${record.paidDate ? "text-emerald-600" : "text-foreground"}`}>
-                                  {record.paidDate ? fmtDate(record.paidDate) : "—"}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Tổng đã thu</p>
-                                <p className="mt-0.5 text-sm text-foreground">{formatVND(paidAmount)}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">% khách hàng thanh toán</p>
-                                <p className="mt-0.5 text-sm text-foreground">{paymentPercent}%</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Lãi chậm nộp</p>
-                                <p className={`mt-0.5 text-sm ${lateAmount > 0 ? "text-red-600" : "text-foreground"}`}>
-                                  {formatVND(lateAmount)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Tổng phải thu</p>
-                                <p className="mt-0.5 text-sm font-medium text-foreground">{formatVND(totalReceivable)}</p>
-                              </div>
-                            </div>
+                        {/* Payment details grid */}
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                          <div>
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                              Ngày đến hạn gốc
+                            </p>
+                            <p
+                              className={`text-sm mt-0.5 ${record.status === "overdue" ? "text-red-600" : "text-foreground"
+                                }`}
+                            >
+                              {fmtDate(record.dueDate)}
+                              {record.daysOverdue != null && (
+                                <span className="ml-1 text-xs text-red-500">
+                                  ({record.daysOverdue} ngày quá hạn)
+                                </span>
+                              )}
+                            </p>
                           </div>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                          {record.paidDate && (
                             <div>
-                              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Ngày đến hạn gốc</p>
-                              <p className="mt-0.5 text-sm text-foreground">{fmtDate(record.dueDate)}</p>
+                              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                                Ngày thanh toán
+                              </p>
+                              <p className="text-sm text-emerald-600 mt-0.5">
+                                {fmtDate(record.paidDate)}
+                              </p>
                             </div>
-                            <div>
-                              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Số tiền gốc</p>
-                              <p className="mt-0.5 text-sm text-foreground">{formatVND(record.baseAmount)}</p>
-                            </div>
+                          )}
+                          <div>
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                              Số tiền gốc
+                            </p>
+                            <p className="text-sm text-foreground mt-0.5">
+                              {formatVND(record.baseAmount)}
+                            </p>
                           </div>
-                        )}
+                          {record.lateFee != null && extList.length === 0 && (
+                            <div>
+                              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                                Phí phạt trễ hạn
+                              </p>
+                              <p className="text-sm text-red-600 mt-0.5">
+                                + {formatVND(record.lateFee)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
 
                         {record.status === "overdue" &&
                           record.lateFee != null &&
@@ -1283,9 +1357,8 @@ function StageBlock({
                               <History className="size-3.5" />
                               {historyExts.length} lần gia hạn trước
                               <ChevronDown
-                                className={`size-3.5 transition-transform ${
-                                  isHistOpen ? "rotate-180" : ""
-                                }`}
+                                className={`size-3.5 transition-transform ${isHistOpen ? "rotate-180" : ""
+                                  }`}
                               />
                             </button>
                             {isHistOpen && (
@@ -1308,6 +1381,7 @@ function StageBlock({
                             extList.length
                           )}
 
+                        {/* Add new extension button — always available while record is active */}
                         {canAddExtension && (
                           <div className="pt-1">
                             <Button
@@ -1325,7 +1399,6 @@ function StageBlock({
                             </Button>
                           </div>
                         )}
-
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -1357,7 +1430,7 @@ function MetricCard({
   valueClass?: string;
 }) {
   return (
-    <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
+    <Card className="border-border/60 shadow-none">
       <CardContent className="p-5">
         <div className="flex items-start gap-3">
           <div className={`p-2 rounded-lg mt-0.5 ${iconClass ?? "bg-slate-100"}`}>
@@ -1383,8 +1456,19 @@ export function PaymentDetails() {
   }>();
   const navigate = useNavigate();
 
-  const customer = customers.find((c) => c.id === customerId);
-  const contract = customer?.contracts.find((ct) => ct.id === contractId);
+  let targetCustomerId = customerId;
+  if (customerId && customerId.startsWith("C")) {
+    const num = parseInt(customerId.substring(1), 10);
+    if (!isNaN(num) && num >= 1 && num <= 5) {
+      targetCustomerId = String(num);
+    }
+  }
+
+  const customer = customers.find((c) => c.id === targetCustomerId);
+  let contract = customer?.contracts.find((ct) => ct.id === contractId);
+  if (customer && !contract && contractId) {
+    contract = customer.contracts[0];
+  }
 
   if (!customer || !contract) {
     return (
@@ -1404,7 +1488,7 @@ export function PaymentDetails() {
 
   const hasStages = contract.stages && contract.stages.length > 0;
   const paymentInstallments = hasStages
-    ? buildPaymentInstallments(contract.stages!)
+    ? buildPaymentInstallmentStages(contract.stages!)
     : [];
   const isOverdue = contract.status === "overdue";
   const remaining = contract.contractValue - contract.paidAmount;
@@ -1415,15 +1499,46 @@ export function PaymentDetails() {
     : [];
 
   return (
-    <div className="min-h-full bg-slate-50/80">
-      <section aria-labelledby="payment-details-title" className="mx-auto max-w-screen-lg space-y-6 p-6">
+    <div
+      className="min-h-screen bg-background"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
+      <header className="border-b border-border/60 bg-background sticky top-0 z-10">
+        <div className="max-w-screen-lg mx-auto px-6 h-14 flex items-center gap-3">
+          <div className="flex items-center gap-2 text-foreground">
+            <Building2 className="size-5" />
+            <span className="text-sm font-medium">RealCRM</span>
+          </div>
+          <Separator orientation="vertical" className="h-5 mx-1" />
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <button
+              onClick={() => navigate("/")}
+              className="hover:text-foreground transition-colors cursor-pointer"
+            >
+              Công nợ
+            </button>
+            <ChevronRight className="size-3" />
+            <button
+              onClick={() => navigate(`/customer/${customer.id}`)}
+              className="hover:text-foreground transition-colors cursor-pointer"
+            >
+              {customer.name}
+            </button>
+            <ChevronRight className="size-3" />
+            <span className="text-foreground truncate max-w-[160px]">
+              {contract.projectName}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
         <div className="flex items-start gap-4">
           <Button
             variant="ghost"
             size="icon"
             className="size-8 mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label={`Quay lại công nợ của ${customer.name}`}
-            onClick={() => navigate(`/debt/customer/${customer.id}`)}
+            onClick={() => navigate(`/customer/${customer.id}`)}
           >
             <ArrowLeft className="size-4" />
           </Button>
@@ -1435,7 +1550,7 @@ export function PaymentDetails() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 id="payment-details-title" className="text-foreground">{customer.name}</h1>
+                <h1 className="text-foreground">{customer.name}</h1>
                 <p className="text-xs text-muted-foreground">
                   {contract.projectName} · Căn {contract.unit}
                 </p>
@@ -1497,7 +1612,7 @@ export function PaymentDetails() {
           />
         </div>
 
-        <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
+        <Card className="border-border/60 shadow-none">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -1508,13 +1623,12 @@ export function PaymentDetails() {
             </div>
             <Progress
               value={contract.paymentProgress}
-              className={`h-2 ${
-                isOverdue
-                  ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
-                  : contract.status === "upcoming"
+              className={`h-2 ${isOverdue
+                ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
+                : contract.status === "upcoming"
                   ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
                   : "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
-              }`}
+                }`}
             />
             <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
               {hasStages ? (
@@ -1550,7 +1664,7 @@ export function PaymentDetails() {
         {hasStages ? (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-foreground">Lộ trình thanh toán</h2>
+              <h2 className="text-foreground">Lộ trình thanh toán 5 năm</h2>
               <p className="text-xs text-muted-foreground">
                 {paymentInstallments.filter((s) => s.stageStatus === "completed").length} /{" "}
                 {paymentInstallments.length} đợt hoàn thành
@@ -1559,7 +1673,7 @@ export function PaymentDetails() {
             <div className="space-y-0">
               {paymentInstallments.map((stage, idx) => (
                 <StageBlock
-                  key={stage.records[0]?.id ?? stage.id}
+                  key={stage.records[0]?.id ?? `${stage.id}-${idx}`}
                   stage={stage}
                   isLast={idx === paymentInstallments.length - 1}
                   customerName={customer.name}
@@ -1573,7 +1687,7 @@ export function PaymentDetails() {
             </div>
           </div>
         ) : (
-          <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
+          <Card className="border-border/60 shadow-none">
             <CardHeader className="pb-3">
               <CardTitle className="text-base text-foreground">Lộ trình thanh toán</CardTitle>
             </CardHeader>
@@ -1591,7 +1705,7 @@ export function PaymentDetails() {
             </CardContent>
           </Card>
         )}
-      </section>
+      </main>
     </div>
   );
 }

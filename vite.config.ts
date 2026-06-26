@@ -16,9 +16,27 @@ function figmaAssetResolver() {
   }
 }
 
+function projectsBaseRedirect() {
+  return {
+    name: 'projects-base-redirect',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/projects') {
+          res.statusCode = 302
+          res.setHeader('Location', '/projects/')
+          res.end()
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   base: '/projects/',
   plugins: [
+    projectsBaseRedirect(),
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

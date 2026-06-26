@@ -21,11 +21,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 interface SharedFiltersProps {
   filters: DashboardFilters;
   options: DashboardFilterOptions;
+  reportType?: string;
   disabled?: boolean;
   onChange: (filters: DashboardFilters) => void;
 }
 
-export function SharedFilters({ filters, options, disabled, onChange }: SharedFiltersProps) {
+export function SharedFilters({ filters, options, reportType, disabled, onChange }: SharedFiltersProps) {
   const zones = useMemo(() => filters.project ? options.zones.filter((item) => item.project === filters.project) : options.zones, [filters.project, options.zones]);
   const buildings = useMemo(() => {
     if (filters.zone) return options.buildings.filter((item) => item.zone === filters.zone);
@@ -52,16 +53,27 @@ export function SharedFilters({ filters, options, disabled, onChange }: SharedFi
           <RotateCcw className="h-3.5 w-3.5" /> Đặt lại{activeCount ? ` (${activeCount})` : ""}
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
-        <Field label="Thời gian"><select disabled={disabled} className={selectControlClass} value={filters.datePreset} onChange={(e) => update("datePreset", e.target.value as DatePreset)}>{dateOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-        <Field label="Dự án"><select disabled={disabled} className={selectControlClass} value={filters.project ?? ""} onChange={(e) => update("project", e.target.value)}><option value="">Tất cả dự án</option>{options.projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-        <Field label="Block tháp"><select disabled={disabled} className={selectControlClass} value={filters.zone ?? ""} onChange={(e) => update("zone", e.target.value)}><option value="">Tất cả block tháp</option>{zones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-        <Field label="Tòa"><select disabled={disabled} className={selectControlClass} value={filters.building ?? ""} onChange={(e) => update("building", e.target.value)}><option value="">Tất cả tòa</option>{buildings.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-        <Field label="Loại sản phẩm"><select disabled={disabled} className={selectControlClass} value={filters.productType ?? ""} onChange={(e) => update("productType", e.target.value)}><option value="">Tất cả loại</option>{options.productTypes.map((item) => <option key={item}>{item}</option>)}</select></Field>
-        <Field label="Đơn vị phân phối"><select disabled={disabled} className={selectControlClass} value={filters.agency ?? ""} onChange={(e) => update("agency", e.target.value)}><option value="">Tất cả đơn vị</option>{options.agencies.map((item) => <option key={item}>{item}</option>)}</select></Field>
-        <Field label="Sản phẩm"><select disabled={disabled} className={selectControlClass} value={filters.productId ?? ""} onChange={(e) => update("productId", e.target.value)}><option value="">Tất cả sản phẩm</option>{options.products.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
-        <Field label="Trạng thái"><select disabled={disabled} className={selectControlClass} value={filters.productStatus ?? ""} onChange={(e) => update("productStatus", e.target.value as DashboardFilters["productStatus"])}><option value="">Tất cả trạng thái</option><option value="sold">Đã bán</option><option value="available">Chưa bán</option></select></Field>
-      </div>
+      {reportType === "debt" ? (
+        <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
+          <Field label="Đợt thanh toán"><select aria-label="Đợt thanh toán" disabled={disabled} className={selectControlClass} value={filters.paymentStage ?? ""} onChange={(e) => update("paymentStage", e.target.value)}><option value="">Tất cả đợt</option>{options.paymentStages.map((item) => <option key={item}>{item}</option>)}</select></Field>
+          <Field label="Thời gian"><select disabled={disabled} className={selectControlClass} value={filters.datePreset} onChange={(e) => update("datePreset", e.target.value as DatePreset)}>{dateOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+          <Field label="Khách hàng"><select disabled={disabled} className={selectControlClass} value={filters.customerId ?? ""} onChange={(e) => update("customerId", e.target.value)}><option value="">Tất cả khách hàng</option>{options.customers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+          <Field label="Đơn vị bán hàng"><select disabled={disabled} className={selectControlClass} value={filters.salesUnit ?? ""} onChange={(e) => update("salesUnit", e.target.value)}><option value="">Tất cả đơn vị</option>{options.salesUnits.map((item) => <option key={item}>{item}</option>)}</select></Field>
+          <Field label="Phân khu"><select disabled={disabled} className={selectControlClass} value={filters.zone ?? ""} onChange={(e) => update("zone", e.target.value)}><option value="">Tất cả phân khu</option>{zones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+          <Field label="Loại căn"><select disabled={disabled} className={selectControlClass} value={filters.apartmentType ?? ""} onChange={(e) => update("apartmentType", e.target.value)}><option value="">Tất cả loại căn</option>{options.apartmentTypes.map((item) => <option key={item}>{item}</option>)}</select></Field>
+          <Field label="Sản phẩm"><select disabled={disabled} className={selectControlClass} value={filters.productId ?? ""} onChange={(e) => update("productId", e.target.value)}><option value="">Tất cả sản phẩm</option>{options.products.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+          <Field label="Tình trạng thanh toán"><select disabled={disabled} className={selectControlClass} value={filters.paymentStatus ?? ""} onChange={(e) => update("paymentStatus", e.target.value)}><option value="">Tất cả tình trạng</option>{options.paymentStatuses.map((item) => <option key={item}>{item}</option>)}</select></Field>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+          <Field label="Thời gian"><select disabled={disabled} className={selectControlClass} value={filters.datePreset} onChange={(e) => update("datePreset", e.target.value as DatePreset)}>{dateOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+          <Field label="Đơn vị phân phối"><select disabled={disabled} className={selectControlClass} value={filters.agency ?? ""} onChange={(e) => update("agency", e.target.value)}><option value="">Tất cả đơn vị</option>{options.agencies.map((item) => <option key={item}>{item}</option>)}</select></Field>
+          <Field label="Mã sản phẩm"><select disabled={disabled} className={selectControlClass} value={filters.productId ?? ""} onChange={(e) => update("productId", e.target.value)}><option value="">Tất cả mã sản phẩm</option>{options.products.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+          <Field label="Phân khu"><select disabled={disabled} className={selectControlClass} value={filters.zone ?? ""} onChange={(e) => update("zone", e.target.value)}><option value="">Tất cả phân khu</option>{zones.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
+          <Field label="Loại sản phẩm"><select disabled={disabled} className={selectControlClass} value={filters.productType ?? ""} onChange={(e) => update("productType", e.target.value)}><option value="">Tất cả loại</option>{options.productTypes.map((item) => <option key={item}>{item}</option>)}</select></Field>
+          <Field label="Trạng thái hồ sơ"><select disabled={disabled} className={selectControlClass} value={filters.dossierStatus ?? ""} onChange={(e) => update("dossierStatus", e.target.value)}><option value="">Tất cả trạng thái</option>{options.dossierStatuses.map((item) => <option key={item}>{item}</option>)}</select></Field>
+        </div>
+      )}
       {filters.datePreset === "custom" && <div className="mt-5 grid grid-cols-1 gap-x-4 gap-y-5 border-t border-slate-100 pt-5 sm:grid-cols-2 xl:grid-cols-4"><Field label="Từ ngày"><input disabled={disabled} className={dateControlClass} type="date" value={filters.from ?? ""} max={filters.to} onChange={(e) => update("from", e.target.value)} /></Field><Field label="Đến ngày"><input disabled={disabled} className={dateControlClass} type="date" value={filters.to ?? ""} min={filters.from} onChange={(e) => update("to", e.target.value)} /></Field></div>}
     </section>
   );

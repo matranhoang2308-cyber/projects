@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router";
 import {
   CheckCircle2, XCircle,
-  Eye, ChevronRight,
+  Eye, ChevronRight, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { ContractDetailSheet } from "../contracts/ContractDetailSheet";
 import type { Customer, Contract } from "@/data/mockDataHopDong";
 
@@ -325,11 +331,11 @@ function CustomerTabContent({
     case "extraInfo":
       return <CustomerExtraInfoTab customer={customer} />;
     case "debt":
-      return <CustomerDebtTab contracts={contracts} onOpenContract={onOpenContract} />;
+      return <CustomerDebtTab customer={customer} contracts={contracts} onOpenContract={onOpenContract} />;
     case "interactionHistory":
-      return <CustomerPlaceholderTab title="Lịch sử trao đổi" />;
+      return <CustomerInteractionHistoryTab />;
     case "journey":
-      return <CustomerPlaceholderTab title="Hành trình khách hàng" />;
+      return <CustomerJourneyTab />;
     case "pointHistory":
       return <CustomerPlaceholderTab title="Lịch sử tích đổi điểm" />;
     case "bookingHistory":
@@ -342,12 +348,15 @@ function CustomerTabContent({
 }
 
 function CustomerDebtTab({
+  customer,
   contracts,
   onOpenContract,
 }: {
+  customer: Customer;
   contracts: Contract[];
   onOpenContract: (contract: Contract) => void;
 }) {
+  const navigate = useNavigate();
   return (
     <div className="space-y-3 px-5 py-4">
       {contracts.length === 0 ? (
@@ -423,7 +432,7 @@ function CustomerDebtTab({
                   size="sm"
                   variant="outline"
                   className="h-7 gap-1.5 text-xs group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); onOpenContract(c); }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/debt/customer/${customer.id}/contract/${c.id}`); }}
                 >
                   <Eye className="w-3.5 h-3.5" />
                   Xem chi tiết HĐ
@@ -472,6 +481,454 @@ function CustomerPlaceholderTab({ title }: { title: string }) {
       <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center">
         <p className="text-sm text-slate-600" style={{ fontWeight: 600 }}>{title}</p>
         <p className="mt-1 text-xs text-slate-400">Nội dung sẽ được triển khai trong phase riêng.</p>
+      </div>
+    </div>
+  );
+}
+
+const parseDateString = (dateStr: string): Date => {
+  const parts = dateStr.split(" ");
+  const dateParts = parts[1].split("/");
+  const day = parseInt(dateParts[0], 10);
+  const month = parseInt(dateParts[1], 10) - 1;
+  const year = parseInt(dateParts[2], 10);
+  const timeParts = parts[0].split(":");
+  const hour = parseInt(timeParts[0], 10);
+  const minute = parseInt(timeParts[1], 10);
+  return new Date(year, month, day, hour, minute);
+};
+
+function CustomerInteractionHistoryTab() {
+  const [search, setSearch] = useState("");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [displayFilter, setDisplayFilter] = useState("default");
+  
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  const data = [
+    { time: "09:12 05/06/2026", source: "Facebook", content: "Khách hỏi về dự án Vinhomes Grand Park" },
+    { time: "14:30 06/06/2026", source: "Zalo", content: "Khách nhắn theo dõi OA" },
+    { time: "10:05 08/06/2026", source: "Website", content: "Khách hỏi tiến độ thanh toán" },
+    { time: "11:20 10/06/2026", source: "Zalo", content: "Khách gọi xác nhận lịch tham quan" },
+    { time: "16:45 12/06/2026", source: "Facebook", content: "Khách hỏi thêm về tiện ích nội khu" },
+    { time: "09:30 13/06/2026", source: "Hotline", content: "Nhân viên tư vấn gọi lại khách hàng" },
+    { time: "15:20 15/06/2026", source: "Email", content: "Gửi bảng giá và chính sách bán hàng" },
+    { time: "08:50 18/06/2026", source: "Zalo", content: "Khách xác nhận đã nhận tài liệu" },
+    { time: "13:10 20/06/2026", source: "Website", content: "Khách yêu cầu liên hệ lại" },
+    { time: "17:40 22/06/2026", source: "Facebook", content: "Khách hỏi chương trình ưu đãi mới" }
+  ];
+
+  const baselineDate = new Date(2026, 5, 25, 23, 59, 59);
+
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      if (search.trim() !== "") {
+        const query = search.toLowerCase();
+        const matchesSearch =
+          item.content.toLowerCase().includes(query) ||
+          item.source.toLowerCase().includes(query) ||
+          item.time.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+      
+      const itemDate = parseDateString(item.time);
+      if (timeFilter === "7") {
+        const sevenDaysAgo = new Date(baselineDate);
+        sevenDaysAgo.setDate(baselineDate.getDate() - 7);
+        if (itemDate < sevenDaysAgo || itemDate > baselineDate) return false;
+      } else if (timeFilter === "30") {
+        const thirtyDaysAgo = new Date(baselineDate);
+        thirtyDaysAgo.setDate(baselineDate.getDate() - 30);
+        if (itemDate < thirtyDaysAgo || itemDate > baselineDate) return false;
+      } else if (timeFilter === "60") {
+        const sixtyDaysAgo = new Date(baselineDate);
+        sixtyDaysAgo.setDate(baselineDate.getDate() - 60);
+        if (itemDate < sixtyDaysAgo || itemDate > baselineDate) return false;
+      } else if (timeFilter === "custom" && dateRange?.from) {
+        const start = new Date(dateRange.from);
+        start.setHours(0, 0, 0, 0);
+        const end = dateRange.to ? new Date(dateRange.to) : new Date(start);
+        end.setHours(23, 59, 59, 999);
+        if (itemDate < start || itemDate > end) return false;
+      }
+
+      if (sourceFilter !== "all" && item.source !== sourceFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [search, timeFilter, dateRange, sourceFilter, displayFilter]);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
+          <div className="grid min-w-0 grid-cols-[1fr_130px_120px_120px] items-center gap-2">
+            <div className="relative min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search"
+                aria-label="Tìm kiếm lịch sử trao đổi"
+                className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+
+            <Popover open={isCalendarOpen} onOpenChange={(open) => {
+              setIsCalendarOpen(open);
+              if (!open && timeFilter === "custom" && !dateRange) {
+                setTimeFilter("all");
+              }
+            }}>
+              <PopoverTrigger asChild>
+                <div className="w-full">
+                  <Select
+                    value={timeFilter}
+                    onValueChange={(val) => {
+                      setTimeFilter(val);
+                      if (val === "custom") {
+                        setTempRange(dateRange);
+                        setIsCalendarOpen(true);
+                      } else {
+                        setDateRange(undefined);
+                      }
+                    }}
+                  >
+                    <SelectTrigger aria-label="Lọc theo thời gian" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full truncate">
+                      <SelectValue placeholder="Thời gian">
+                        {timeFilter === "7" ? "7 ngày" :
+                         timeFilter === "30" ? "30 ngày" :
+                         timeFilter === "60" ? "60 ngày" :
+                         timeFilter === "custom" && dateRange?.from ? 
+                           `${format(dateRange.from, "dd/MM")}${dateRange.to ? ` - ${format(dateRange.to, "dd/MM")}` : ""}` :
+                           "Thời gian"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Thời gian</SelectItem>
+                      <SelectItem value="7">7 ngày</SelectItem>
+                      <SelectItem value="30">30 ngày</SelectItem>
+                      <SelectItem value="60">60 ngày</SelectItem>
+                      <SelectItem value="custom">Khoảng thời gian</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={new Date(2026, 5)}
+                  selected={tempRange}
+                  onSelect={setTempRange}
+                  numberOfMonths={2}
+                />
+                <div className="flex items-center justify-between border-t border-slate-100 p-3 bg-white">
+                  <span className="text-xs text-slate-500 font-medium">
+                    {tempRange?.from ? format(tempRange.from, "MM/dd/yyyy") : ""}
+                    {tempRange?.to ? ` - ${format(tempRange.to, "MM/dd/yyyy")}` : ""}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <Button variant="ghost" className="h-7 text-xs px-2.5" onClick={() => {
+                      setIsCalendarOpen(false);
+                      if (!dateRange) setTimeFilter("all");
+                    }}>Cancel</Button>
+                    <Button className="h-7 text-xs px-2.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white font-medium rounded-md" onClick={() => {
+                      setDateRange(tempRange);
+                      setIsCalendarOpen(false);
+                    }}>Apply</Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger aria-label="Lọc theo nguồn" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                <SelectValue placeholder="Nguồn" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Nguồn</SelectItem>
+                <SelectItem value="Facebook">Facebook</SelectItem>
+                <SelectItem value="Zalo">Zalo</SelectItem>
+                <SelectItem value="Website">Website</SelectItem>
+                <SelectItem value="Hotline">Hotline</SelectItem>
+                <SelectItem value="Email">Email</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={displayFilter} onValueChange={setDisplayFilter}>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                <SelectValue placeholder="Hiển thị" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Hiển thị</SelectItem>
+                <SelectItem value="all">Tất cả cột</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500">
+                <th className="h-10 w-[260px] border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Thời gian</th>
+                <th className="h-10 w-[220px] border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nguồn</th>
+                <th className="h-10 border-b border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nội dung</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((item, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600 font-medium">{item.time}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-800 font-medium">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                      item.source === "Facebook" ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                      item.source === "Zalo" ? "bg-sky-50 text-sky-700 border border-sky-100" :
+                      item.source === "Website" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                      item.source === "Email" ? "bg-orange-50 text-orange-700 border border-orange-100" :
+                      "bg-slate-50 text-slate-700 border border-slate-100"
+                    }`}>
+                      {item.source}
+                    </span>
+                  </td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-slate-700">{item.content}</td>
+                </tr>
+              ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-xs text-slate-400">
+                    Không tìm thấy kết quả phù hợp
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer/Pagination */}
+        <div className="flex h-12 items-center justify-between border-t border-[#E5EAF3] bg-white px-4 text-xs text-slate-500">
+          <div>Hiển thị {filteredData.length} / {data.length} dòng</div>
+          <div className="flex items-center gap-3">
+            <span className="tabular-nums">
+              {filteredData.length > 0 ? `1–${filteredData.length}` : "0–0"} of {filteredData.length > 0 ? 52 : 0}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>
+              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>›</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerJourneyTab() {
+  const [search, setSearch] = useState("");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [displayFilter, setDisplayFilter] = useState("default");
+
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  const data = [
+    { time: "09:12 05/06/2026", action: "Submit Form — Điền form quan tâm qua Landing Page" },
+    { time: "14:30 06/06/2026", action: "Follow OA — Theo dõi Zalo OA dự án" },
+    { time: "10:05 08/06/2026", action: "Chat OA — Trao đổi lần đầu qua Zalo OA" },
+    { time: "11:20 10/06/2026", action: "Tham quan nhà mẫu — Check-in tại showroom" },
+    { time: "16:45 12/06/2026", action: "Booking — Đặt chỗ giữ căn hộ tầng 12 block A" },
+    { time: "09:15 15/06/2026", action: "Đặt lịch ký HĐMB" },
+    { time: "14:40 18/06/2026", action: "Ký HĐMB thành công" },
+    { time: "10:30 20/06/2026", action: "Thanh toán đợt 1" },
+    { time: "16:00 22/06/2026", action: "Nhận bàn giao căn hộ" },
+    { time: "09:45 25/06/2026", action: "Hoàn tất hồ sơ khách hàng" }
+  ];
+
+  const baselineDate = new Date(2026, 5, 25, 23, 59, 59);
+
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      if (search.trim() !== "") {
+        const query = search.toLowerCase();
+        const matchesSearch =
+          item.action.toLowerCase().includes(query) ||
+          item.time.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+      
+      const itemDate = parseDateString(item.time);
+      if (timeFilter === "7") {
+        const sevenDaysAgo = new Date(baselineDate);
+        sevenDaysAgo.setDate(baselineDate.getDate() - 7);
+        if (itemDate < sevenDaysAgo || itemDate > baselineDate) return false;
+      } else if (timeFilter === "30") {
+        const thirtyDaysAgo = new Date(baselineDate);
+        thirtyDaysAgo.setDate(baselineDate.getDate() - 30);
+        if (itemDate < thirtyDaysAgo || itemDate > baselineDate) return false;
+      } else if (timeFilter === "60") {
+        const sixtyDaysAgo = new Date(baselineDate);
+        sixtyDaysAgo.setDate(baselineDate.getDate() - 60);
+        if (itemDate < sixtyDaysAgo || itemDate > baselineDate) return false;
+      } else if (timeFilter === "custom" && dateRange?.from) {
+        const start = new Date(dateRange.from);
+        start.setHours(0, 0, 0, 0);
+        const end = dateRange.to ? new Date(dateRange.to) : new Date(start);
+        end.setHours(23, 59, 59, 999);
+        if (itemDate < start || itemDate > end) return false;
+      }
+
+      if (displayFilter !== "default") {
+        if (displayFilter === "all") return true;
+      }
+      return true;
+    });
+  }, [search, timeFilter, dateRange, displayFilter]);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
+          <div className="grid min-w-0 grid-cols-[1fr_150px_120px] items-center gap-2">
+            <div className="relative min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search"
+                aria-label="Tìm kiếm hành trình khách hàng"
+                className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+
+            <Popover open={isCalendarOpen} onOpenChange={(open) => {
+              setIsCalendarOpen(open);
+              if (!open && timeFilter === "custom" && !dateRange) {
+                setTimeFilter("all");
+              }
+            }}>
+              <PopoverTrigger asChild>
+                <div className="w-full">
+                  <Select
+                    value={timeFilter}
+                    onValueChange={(val) => {
+                      setTimeFilter(val);
+                      if (val === "custom") {
+                        setTempRange(dateRange);
+                        setIsCalendarOpen(true);
+                      } else {
+                        setDateRange(undefined);
+                      }
+                    }}
+                  >
+                    <SelectTrigger aria-label="Lọc theo thời gian" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full truncate">
+                      <SelectValue placeholder="Thời gian">
+                        {timeFilter === "7" ? "7 ngày" :
+                         timeFilter === "30" ? "30 ngày" :
+                         timeFilter === "60" ? "60 ngày" :
+                         timeFilter === "custom" && dateRange?.from ? 
+                           `${format(dateRange.from, "dd/MM")}${dateRange.to ? ` - ${format(dateRange.to, "dd/MM")}` : ""}` :
+                           "Thời gian"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Thời gian</SelectItem>
+                      <SelectItem value="7">7 ngày</SelectItem>
+                      <SelectItem value="30">30 ngày</SelectItem>
+                      <SelectItem value="60">60 ngày</SelectItem>
+                      <SelectItem value="custom">Khoảng thời gian</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={new Date(2026, 5)}
+                  selected={tempRange}
+                  onSelect={setTempRange}
+                  numberOfMonths={2}
+                />
+                <div className="flex items-center justify-between border-t border-slate-100 p-3 bg-white">
+                  <span className="text-xs text-slate-500 font-medium">
+                    {tempRange?.from ? format(tempRange.from, "MM/dd/yyyy") : ""}
+                    {tempRange?.to ? ` - ${format(tempRange.to, "MM/dd/yyyy")}` : ""}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <Button variant="ghost" className="h-7 text-xs px-2.5" onClick={() => {
+                      setIsCalendarOpen(false);
+                      if (!dateRange) setTimeFilter("all");
+                    }}>Cancel</Button>
+                    <Button className="h-7 text-xs px-2.5 bg-[#0f62fe] hover:bg-[#0353e9] text-white font-medium rounded-md" onClick={() => {
+                      setDateRange(tempRange);
+                      setIsCalendarOpen(false);
+                    }}>Apply</Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Select value={displayFilter} onValueChange={setDisplayFilter}>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                <SelectValue placeholder="Hiển thị" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Hiển thị</SelectItem>
+                <SelectItem value="all">Tất cả cột</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500">
+                <th className="h-10 w-[260px] border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Thời gian</th>
+                <th className="h-10 border-b border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((item, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600 font-medium">{item.time}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-slate-700">{item.action}</td>
+                </tr>
+              ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="px-4 py-8 text-center text-xs text-slate-400">
+                    Không tìm thấy kết quả phù hợp
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer/Pagination */}
+        <div className="flex h-12 items-center justify-between border-t border-[#E5EAF3] bg-white px-4 text-xs text-slate-500">
+          <div>Hiển thị {filteredData.length} / {data.length} dòng</div>
+          <div className="flex items-center gap-3">
+            <span className="tabular-nums">
+              {filteredData.length > 0 ? `1–${filteredData.length}` : "0–0"} of {filteredData.length > 0 ? 52 : 0}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>
+              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>›</Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

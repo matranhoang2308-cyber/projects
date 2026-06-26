@@ -30,6 +30,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
 import {
   Cell,
@@ -45,6 +49,12 @@ import {
   type HdmbField,
   type HdmbRecord,
 } from "@/data/hdmbImportSchema";
+import { CONTRACT_STATUS_FLOW } from "@/constants/contractStatus";
+import { CONTRACT_STATUS_CLASSES, getNextContractStatus, isFinalContractStatus, canJumpToStatus } from "@/helpers/contractStatus";
+import { buildTransferContractDetailSections } from "./transferContractDetailSchema";
+import { TransferContractBlockView } from "./TransferContractBlockView";
+import { TransferContractTableView } from "./TransferContractTableView";
+import type { Contract } from "@/data/mockDataHopDong";
 
 const compactValue = (value?: string) => {
   if (!value || !value.trim()) return "—";
@@ -104,16 +114,6 @@ const contractApartmentTypeChartCategories = [
   "Penhouse",
   "Sky Garden",
   "Sky Villa Residence",
-];
-
-const contractPipelineSteps = [
-  { name: "Đã cọc", count: 500, percent: 100 },
-  { name: "Đã phát hành", count: 450, percent: 90 },
-  { name: "Đã ký", count: 420, percent: 84 },
-  { name: "Đã đóng dấu", count: 380, percent: 76 },
-  { name: "Chờ trả HĐMB", count: 320, percent: 64 },
-  { name: "Đã trả", count: 300, percent: 60 },
-  { name: "Bàn giao", count: 280, percent: 56 },
 ];
 
 type ContractTrendGroup = "day" | "week" | "month" | "year" | "custom";
@@ -666,41 +666,6 @@ function DetailSection({ section, record }: { section: string; record: HdmbRecor
   );
 }
 
-function DetailTableView({ record }: { record: HdmbRecord }) {
-  return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="max-h-[calc(100vh-300px)] overflow-auto">
-        <table className="w-full min-w-[760px] border-collapse text-xs">
-          <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
-            <tr>
-              <th className="w-16 border-b border-r border-slate-200 px-3 py-2 text-center">STT</th>
-              <th className="w-[44%] border-b border-r border-slate-200 px-3 py-2 text-left">Trường thông tin</th>
-              <th className="border-b border-slate-200 px-3 py-2 text-left">Giá trị</th>
-            </tr>
-          </thead>
-          <tbody>
-            {contractDetailSections.map((section, sectionIndex) => {
-              const fields = getContractDetailFields(section);
-              return [
-                <tr key={`${section}-header`} className="bg-emerald-50">
-                  <td className="border-b border-r border-emerald-100 px-3 py-2 text-center text-emerald-800" style={{ fontWeight: 700 }}>{sectionIndex + 1}</td>
-                  <td colSpan={2} className="border-b border-emerald-100 px-3 py-2 text-emerald-900" style={{ fontWeight: 700 }}>{section}</td>
-                </tr>,
-                ...fields.map((field, fieldIndex) => (
-                  <tr key={field.key} className="hover:bg-slate-50">
-                    <td className="border-b border-r border-slate-100 px-3 py-2 text-center text-slate-400">{fieldIndex + 1}</td>
-                    <td className="border-b border-r border-slate-100 px-3 py-2 text-slate-600">{field.label}</td>
-                    <td className="border-b border-slate-100 px-3 py-2 text-right text-slate-900">{compactValue(record.values[field.key])}</td>
-                  </tr>
-                )),
-              ];
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
 
 const transferPersonRows = (person: TransferPerson) => [
   ["Họ tên", person.name], ["Ngày sinh", person.birthDate], ["CMND/CCCD", person.idNo], ["Ngày cấp", person.idDate], ["Nơi cấp", person.idPlace], ["Địa chỉ thường trú", person.oldAddress], ["Địa chỉ liên hệ", person.newAddress], ["Số điện thoại", person.phone], ["Email", person.email], ["Nghề nghiệp", person.job],
@@ -868,6 +833,7 @@ function DetailDrawer({
   onClose,
   onSaveCheck,
   onSaveTransfer,
+  onUpdateStatus,
 }: {
   record: HdmbRecord | null;
   checkResult?: CheckResult;
@@ -875,6 +841,7 @@ function DetailDrawer({
   onClose: () => void;
   onSaveCheck: (recordId: string, result: CheckResult) => void;
   onSaveTransfer: (recordId: string, overrides: Record<string, string>, log: TransferLog) => void;
+  onUpdateStatus: (recordId: string, nextStatus: ContractStatus) => void;
 }) {
   const [detailView, setDetailView] = useState<"block" | "table">("block");
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
@@ -890,6 +857,50 @@ function DetailDrawer({
   const seller = record.values.c154 || "Chưa phân công";
   const price = record.values.c93 || record.values.c87 || "—";
   const paid = record.values.c95 || "—";
+
+  const dummyContract = {
+    id: record.id,
+    customer: record.values.c3 || record.values.c30 || "—",
+    date: record.values.c106 || "—",
+    property: record.values.c51 || "—",
+    status: record.status || "Đã cọc",
+    value: record.values.c93 || record.values.c87 || "—",
+    paid: 0,
+    total: 0,
+    pct: 0,
+    salesperson: record.values.c154 || "—",
+    type: record.values.c108 || "—",
+    address: record.values.c11 || "—",
+    phone: record.values.c12 || "—",
+    email: record.values.c13 || "—",
+    payments: [],
+    docs: [],
+    rawValues: record.values,
+    owner: {
+      name: record.values.c3,
+      cccd: record.values.c4,
+      cccdDate: record.values.c6,
+      cccdPlace: record.values.c7,
+      dob: record.values.c8,
+      phone: record.values.c12,
+      email: record.values.c13,
+      permanentAddress: record.values.c10,
+    },
+    coOwners: record.values.c19 && record.values.c19 !== "—" ? [
+      {
+        name: record.values.c19,
+        cccd: record.values.c20,
+        cccdDate: record.values.c21,
+        cccdPlace: record.values.c22,
+        dob: record.values.c23,
+        permanentAddress: record.values.c25,
+        phone: record.values.c27,
+        email: record.values.c28,
+      }
+    ] : []
+  } as unknown as Contract;
+
+  const sections = buildTransferContractDetailSections(dummyContract);
 
   const openCheckDialog = () => {
     setDraftStatus(checkResult?.status ?? "failed");
@@ -931,11 +942,16 @@ function DetailDrawer({
         <header className="shrink-0 border-b border-slate-200 bg-white px-5 py-3">
           <div className="mx-auto flex max-w-6xl items-start justify-between gap-4">
             <div>
-              <p className="text-xs text-slate-500">Chi tiết hợp đồng</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Chi tiết hợp đồng</span>
+              </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-slate-900" style={{ fontWeight: 700 }}>Mã hợp đồng:</span>
                 <span className="text-sm text-blue-600" style={{ fontWeight: 700 }}>{record.values.c157 || unitCode}</span>
                 <span className={`rounded-md px-2 py-1 text-[11px] ${checkResult ? (checkResult.status === "passed" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700") : "bg-indigo-50 text-indigo-700"}`}>{checkResult ? checkStatusLabel[checkResult.status] : "Đang kiểm tra"}</span>
+                <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
+                  {record.status || "Đã cọc"}
+                </span>
                 {transferLogs.length > 0 && <TransferBadge sequence={transferLogs.length} />}
               </div>
               <p className="mt-1 text-xs text-slate-500">
@@ -950,7 +966,29 @@ function DetailDrawer({
               </div>
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setTransferDialogOpen(true)}>Chuyển nhượng HĐ</Button>
               <Button size="sm" className="h-8 bg-blue-600 text-xs hover:bg-blue-700" onClick={openCheckDialog}>Xác nhận kiểm tra</Button>
-              <Button size="sm" className="h-8 bg-slate-900 text-xs hover:bg-slate-800">Cập nhật</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-8 bg-slate-900 text-xs hover:bg-slate-800 flex items-center gap-1">
+                    Cập nhật trạng thái <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                  {CONTRACT_STATUS_FLOW.map((status) => (
+                    <DropdownMenuItem
+                      key={status}
+                      className="flex items-center justify-between px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                      onClick={() => {
+                        if (canJumpToStatus(record.status || "Đã cọc", status)) {
+                          onUpdateStatus(record.id, status);
+                        }
+                      }}
+                    >
+                      <span>{status}</span>
+                      {(record.status || "Đã cọc") === status && <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}><X className="h-4 w-4" /></Button>
             </div>
           </div>
@@ -1020,12 +1058,10 @@ function DetailDrawer({
 
             {detailView === "block" ? <>
               {transferLogs.length > 0 && <TransferHistoryBlock logs={transferLogs} />}
-              {contractDetailSections.map((section) => (
-                <DetailSection key={section} section={section} record={record} />
-              ))}
+              <TransferContractBlockView sections={sections} />
               <PaymentTimelinePreview record={record} />
               <AttachmentPreview record={record} />
-            </> : <>{transferLogs.length > 0 && <TransferHistoryTable logs={transferLogs} />}<DetailTableView record={record} /><PaymentProgressTable record={record} /></>}
+            </> : <><TransferContractTableView sections={sections} contract={dummyContract} /><PaymentProgressTable record={record} /></>}
           </div>
         </main>
 
@@ -1034,7 +1070,29 @@ function DetailDrawer({
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>Đóng</Button>
             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setTransferDialogOpen(true)}>Chuyển nhượng HĐ</Button>
             <Button size="sm" className="h-8 bg-blue-600 text-xs hover:bg-blue-700" onClick={openCheckDialog}>Xác nhận kiểm tra</Button>
-            <Button size="sm" className="h-8 bg-slate-900 text-xs hover:bg-slate-800">Cập nhật</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="h-8 bg-slate-900 text-xs hover:bg-slate-800 flex items-center gap-1">
+                  Cập nhật trạng thái <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="w-56 max-h-72 overflow-y-auto bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                {CONTRACT_STATUS_FLOW.map((status) => (
+                  <DropdownMenuItem
+                    key={status}
+                    className="flex items-center justify-between px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                    onClick={() => {
+                      if (canJumpToStatus(record.status || "Đã cọc", status)) {
+                        onUpdateStatus(record.id, status);
+                      }
+                    }}
+                  >
+                    <span>{status}</span>
+                    {(record.status || "Đã cọc") === status && <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </footer>
       </div>
@@ -1345,47 +1403,37 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
   const [selectedStatus, setSelectedStatus] = useState("all");
   const trend = useContractTrendControl("month");
 
-  const timedSteps = useMemo(() => {
-    const counts = [0, 0, 0, 0, 0, 0, 0];
+  const allSteps = useMemo(() => {
+    const counts = CONTRACT_STATUS_FLOW.reduce<Record<string, number>>((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, {});
+
     filteredRecords.forEach((record) => {
-      const idNum = parseInt(record.id.replace(/\D/g, ""), 10);
-      const stageIndex = !isNaN(idNum) ? (idNum % 7) : 0;
-      for (let i = 0; i <= stageIndex; i++) {
-        counts[i]++;
-      }
+      const status = record.status || "Đã cọc";
+      counts[status] = (counts[status] ?? 0) + 1;
     });
 
-    const maxCount = filteredRecords.length;
-
-    return contractPipelineSteps.map((step, index) => {
-      const baseCount = counts[index] ?? 0;
-      const stepCount = Math.max(0, Math.round(baseCount * trend.factor));
-      const stepPercent = maxCount > 0 ? Math.round((baseCount / maxCount) * 100) : 0;
-      const timedPercent = Math.min(100, Math.round(stepPercent * Math.min(1, trend.factor + 0.2)));
-
-      return {
-        ...step,
-        count: stepCount,
-        percent: timedPercent,
-      };
-    });
+    return CONTRACT_STATUS_FLOW
+      .map((status) => ({
+        name: status,
+        count: Math.max(0, Math.round((counts[status] ?? 0) * trend.factor)),
+      }))
+      .sort((a, b) => b.count - a.count || CONTRACT_STATUS_FLOW.indexOf(a.name) - CONTRACT_STATUS_FLOW.indexOf(b.name));
   }, [filteredRecords, trend.factor]);
 
-  const completionRate = timedSteps[timedSteps.length - 1]?.percent ?? 0;
-  const lossRate = Math.max(0, 100 - completionRate);
+  const timedSteps = useMemo(() => {
+    return allSteps.filter((step) => selectedStatus === "all" || step.name === selectedStatus);
+  }, [allSteps, selectedStatus]);
 
+  const visibleSteps = timedSteps.filter((step) => step.count > 0);
+  const totalContracts = visibleSteps.reduce((sum, step) => sum + step.count, 0);
+  const maxCount = Math.max(...visibleSteps.map((step) => step.count), 0);
+  
   const bottleneckStep = useMemo(() => {
-    let bestStep = "Chờ trả HĐMB";
-    let maxDrop = -1;
-    for (let i = 1; i < timedSteps.length; i++) {
-      const drop = timedSteps[i - 1].count - timedSteps[i].count;
-      if (drop > maxDrop) {
-        maxDrop = drop;
-        bestStep = timedSteps[i].name;
-      }
-    }
-    return bestStep;
-  }, [timedSteps]);
+    const activeAllSteps = allSteps.filter((step) => step.count > 0);
+    return activeAllSteps[0]?.name ?? "";
+  }, [allSteps]);
 
   return (
     <Card className="min-h-[292px] rounded-[12px] border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
@@ -1405,7 +1453,7 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
                 onChange={(event) => setSelectedStatus(event.target.value)}
               >
                 <option value="all">Tất cả trạng thái</option>
-                {contractPipelineSteps.map((step) => <option key={step.name} value={step.name}>{step.name}</option>)}
+                {CONTRACT_STATUS_FLOW.map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
             </label>
             <ContractChartTimeControl
@@ -1420,51 +1468,63 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="overflow-x-auto pb-1">
-            <div className="grid min-w-[980px] grid-cols-7 gap-3" aria-label="Phễu xử lý hợp đồng theo trạng thái">
-              {timedSteps.map((step, index) => {
+        <div className="mt-5" aria-label="Biểu đồ thanh ngang phễu xử lý hợp đồng">
+          {visibleSteps.length === 0 ? (
+            <div className="flex min-h-[172px] items-center justify-center rounded-[10px] border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
+              Không có dữ liệu phù hợp
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleSteps.map((step) => {
+                const percent = totalContracts > 0 ? Math.round((step.count / totalContracts) * 100) : 0;
+                const width = maxCount > 0 ? Math.max((step.count / maxCount) * 100, 6) : 0;
                 const isBottleneck = step.name === bottleneckStep;
                 const isSelectedStatus = selectedStatus === step.name;
-                const tone = 700 - Math.min(index, 5) * 70;
+
                 return (
-                  <div key={step.name} className={`min-w-0 rounded-[10px] border bg-slate-50/70 p-3 ${isSelectedStatus || (selectedStatus === "all" && isBottleneck) ? "border-blue-300 ring-2 ring-blue-100" : "border-[#E5EAF3]"}`}>
-                    <div className="flex h-7 items-start justify-between gap-2">
-                      <p className="line-clamp-2 text-[11px] leading-3.5 text-slate-700" style={{ fontWeight: 650 }}>{step.name}</p>
-                      <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] tabular-nums text-slate-500 ring-1 ring-slate-200">{step.percent}%</span>
+                  <button
+                    key={step.name}
+                    type="button"
+                    className={`group relative grid w-full grid-cols-[168px_minmax(0,1fr)_104px] items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition hover:border-blue-200 hover:bg-blue-50/40 ${isSelectedStatus ? "border-blue-300 bg-blue-50/60 ring-2 ring-blue-100" : "border-transparent"}`}
+                    onClick={() => setSelectedStatus(step.name)}
+                    aria-pressed={isSelectedStatus}
+                    title={`${step.name}: ${step.count} hợp đồng (${percent}%)`}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-xs leading-5 text-slate-700" style={{ fontWeight: 650 }}>{step.name}</span>
+                      {isBottleneck && (
+                        <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] leading-4 text-blue-700" style={{ fontWeight: 700 }}>
+                          Điểm nghẽn
+                        </span>
+                      )}
                     </div>
-                    <p className="mt-3 text-xl leading-none tabular-nums text-slate-950" style={{ fontWeight: 750 }}>{step.count}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">hợp đồng</p>
-                    <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-blue-50">
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-blue-600"
-                        style={{ width: `${step.percent}%`, opacity: tone / 700 }}
+                        className="h-full rounded-full bg-blue-600 transition-[width,background-color] group-hover:bg-blue-700"
+                        style={{ width: `${width}%` }}
                       />
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400">
-                      <span>Bước {index + 1}</span>
-                      <span className="tabular-nums">{step.percent}%</span>
-                    </div>
-                  </div>
+                    <span className="text-right text-xs tabular-nums text-slate-900" style={{ fontWeight: 700 }}>
+                      {step.count} hợp đồng
+                    </span>
+                    <span className="pointer-events-none absolute left-44 top-[-34px] z-20 hidden rounded-md border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700 shadow-lg group-hover:block">
+                      <span className="block" style={{ fontWeight: 700 }}>{step.name}</span>
+                      <span>{step.count} hợp đồng · {percent}% tổng chart</span>
+                    </span>
+                  </button>
                 );
               })}
             </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 xl:grid-cols-1">
-            <div className="rounded-[10px] border border-[#E5EAF3] bg-white px-4 py-3">
-              <p className="text-[11px] leading-4 text-slate-500">Tỷ lệ hoàn thành</p>
-              <p className="mt-1 text-lg leading-none text-blue-700" style={{ fontWeight: 750 }}>{completionRate}%</p>
-            </div>
-            <div className="rounded-[10px] border border-[#E5EAF3] bg-white px-4 py-3">
-              <p className="text-[11px] leading-4 text-slate-500">Tỷ lệ thất thoát</p>
-              <p className="mt-1 text-lg leading-none text-slate-950" style={{ fontWeight: 750 }}>{lossRate}%</p>
-            </div>
-            <div className="rounded-[10px] border border-blue-200 bg-blue-50 px-4 py-3">
-              <p className="text-[11px] leading-4 text-blue-700">Điểm nghẽn lớn nhất</p>
-              <p className="mt-1 text-sm leading-5 text-blue-900" style={{ fontWeight: 750 }}>{bottleneckStep}</p>
-            </div>
-          </div>
+          )}
+          {selectedStatus !== "all" && (
+            <button
+              type="button"
+              className="mt-3 text-xs text-slate-500 underline-offset-4 hover:text-blue-700 hover:underline"
+              onClick={() => setSelectedStatus("all")}
+            >
+              Xem tất cả trạng thái
+            </button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -1479,6 +1539,7 @@ export function ContractListPage() {
   const [projectFilter, setProjectFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [contractStatusFilter, setContractStatusFilter] = useState("all");
   const [customerTypeFilter, setCustomerTypeFilter] = useState("all");
   const [customerFilter, setCustomerFilter] = useState("all");
   const [apartmentFilter, setApartmentFilter] = useState("all");
@@ -1494,6 +1555,7 @@ export function ContractListPage() {
   const [checkResults, setCheckResults] = useState<Record<string, CheckResult>>({});
   const [recordOverrides, setRecordOverrides] = useState<Record<string, Record<string, string>>>(() => readLocalState("crm-contract-owner-overrides", {}));
   const [transferLogs, setTransferLogs] = useState<Record<string, TransferLog[]>>(() => readLocalState("crm-contract-transfer-logs", {}));
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, ContractStatus>>(() => readLocalState("crm-contract-status-overrides", {}));
   const [importedFileName, setImportedFileName] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -1510,10 +1572,15 @@ export function ContractListPage() {
     localStorage.setItem("crm-contract-transfer-logs", JSON.stringify(transferLogs));
   }, [transferLogs]);
 
+  useEffect(() => {
+    localStorage.setItem("crm-contract-status-overrides", JSON.stringify(statusOverrides));
+  }, [statusOverrides]);
+
   const effectiveRecords = useMemo(() => hdmbImportRecords.map((record) => ({
     ...record,
+    status: statusOverrides[record.id] ?? record.status,
     values: { ...record.values, ...(recordOverrides[record.id] ?? {}) },
-  })), [recordOverrides]);
+  })), [recordOverrides, statusOverrides]);
 
   const selectedRecord = useMemo(() => effectiveRecords.find((record) => record.id === selectedRecordId) ?? null, [effectiveRecords, selectedRecordId]);
 
@@ -1550,9 +1617,10 @@ export function ContractListPage() {
       const matchCustomerType = customerTypeFilter === "all" || record.values.c108 === customerTypeFilter;
       const matchTime = timeFilter === "all" || (record.values.c106 || record.values.c107 || "").includes(timeFilter);
       const matchStatus = statusFilter === "all" || checkStatus === statusFilter;
-      return matchSearch && matchCustomer && matchApartment && matchTower && matchApartmentType && matchPaymentMethod && matchSales && matchSalesUnit && matchCustomerType && matchTime && matchStatus;
+      const matchContractStatus = contractStatusFilter === "all" || (record.status || "Đã cọc") === contractStatusFilter;
+      return matchSearch && matchCustomer && matchApartment && matchTower && matchApartmentType && matchPaymentMethod && matchSales && matchSalesUnit && matchCustomerType && matchTime && matchStatus && matchContractStatus;
     });
-  }, [apartmentFilter, apartmentTypeFilter, checkResults, customerFilter, customerTypeFilter, effectiveRecords, paymentMethodFilter, salesFilter, salesUnitFilter, search, statusFilter, timeFilter, towerFilter]);
+  }, [apartmentFilter, apartmentTypeFilter, checkResults, contractStatusFilter, customerFilter, customerTypeFilter, effectiveRecords, paymentMethodFilter, salesFilter, salesUnitFilter, search, statusFilter, timeFilter, towerFilter]);
 
   const towerChartData = useMemo<ContractChartDatum[]>(() => {
     const grouped = filteredRecords.reduce<Record<string, { count: number; revenue: number }>>((acc, record) => {
@@ -1635,7 +1703,7 @@ export function ContractListPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [apartmentFilter, apartmentTypeFilter, customerFilter, customerTypeFilter, paymentMethodFilter, projectFilter, salesFilter, salesUnitFilter, search, statusFilter, timeFilter, towerFilter]);
+  }, [apartmentFilter, apartmentTypeFilter, contractStatusFilter, customerFilter, customerTypeFilter, paymentMethodFilter, projectFilter, salesFilter, salesUnitFilter, search, statusFilter, timeFilter, towerFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredRecords.length / contractTablePageSize));
   const safeCurrentPage = Math.min(currentPage, pageCount);
@@ -1682,10 +1750,11 @@ export function ContractListPage() {
     setPaymentMethodFilter("all");
     setSalesFilter("all");
     setSalesUnitFilter("all");
+    setContractStatusFilter("all");
   };
 
-  const hasActiveFilters = search || [projectFilter, timeFilter, statusFilter, customerTypeFilter, customerFilter, apartmentFilter, towerFilter, apartmentTypeFilter, paymentMethodFilter, salesFilter, salesUnitFilter].some((value) => value !== "all");
-  const activeFilterCount = [projectFilter, timeFilter, statusFilter, customerTypeFilter, apartmentFilter, towerFilter, apartmentTypeFilter, paymentMethodFilter, salesFilter, salesUnitFilter].filter((value) => value !== "all").length;
+  const hasActiveFilters = search || [projectFilter, timeFilter, statusFilter, contractStatusFilter, customerTypeFilter, customerFilter, apartmentFilter, towerFilter, apartmentTypeFilter, paymentMethodFilter, salesFilter, salesUnitFilter].some((value) => value !== "all");
+  const activeFilterCount = [projectFilter, timeFilter, statusFilter, contractStatusFilter, customerTypeFilter, apartmentFilter, towerFilter, apartmentTypeFilter, paymentMethodFilter, salesFilter, salesUnitFilter].filter((value) => value !== "all").length;
 
   const exportContractList = () => {
     const escapeCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
@@ -1824,8 +1893,8 @@ export function ContractListPage() {
 
       <Card className="max-w-full overflow-visible border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
         <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
-          <div className="grid min-w-0 grid-cols-[minmax(160px,1fr)_86px_80px_94px_94px_78px_96px_86px_106px] items-center gap-2">
-            <div className="relative min-w-0">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none max-w-full min-w-0 flex-nowrap whitespace-nowrap">
+            <div className="relative min-w-[160px] flex-1 lg:max-w-xs flex-shrink-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
@@ -1837,36 +1906,45 @@ export function ContractListPage() {
             </div>
 
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger aria-label="Lọc theo dự án" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="Dự án" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo dự án" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Dự án" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Dự án</SelectItem><SelectItem value="iki-village">Iki village</SelectItem></SelectContent>
             </Select>
             <Select value={towerFilter} onValueChange={setTowerFilter}>
-              <SelectTrigger aria-label="Lọc theo block" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="Block" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo block" className={`${compactFilterTriggerClass} w-24 flex-shrink-0`}><SelectValue placeholder="Block" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Block</SelectItem>{towerOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger aria-label="Lọc theo thời gian" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="Thời gian" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo thời gian" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Thời gian" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Thời gian</SelectItem><SelectItem value="2025">2025</SelectItem><SelectItem value="2026">2026</SelectItem></SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="TT" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">Trạng thái</SelectItem><SelectItem value="pending">Chờ kiểm tra</SelectItem><SelectItem value="passed">Đạt</SelectItem><SelectItem value="failed">Không đạt</SelectItem></SelectContent>
+              <SelectTrigger aria-label="Lọc theo trạng thái kiểm tra" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`}><SelectValue placeholder="Kiểm tra hồ sơ" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Kiểm tra hồ sơ</SelectItem><SelectItem value="pending">Chờ kiểm tra</SelectItem><SelectItem value="passed">Đạt</SelectItem><SelectItem value="failed">Không đạt</SelectItem></SelectContent>
+            </Select>
+            <Select value={contractStatusFilter} onValueChange={setContractStatusFilter}>
+              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}><SelectValue placeholder="Trạng thái hợp đồng" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Trạng thái hợp đồng</SelectItem>
+                {CONTRACT_STATUS_FLOW.map((status) => (
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
             <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
-              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="MQH" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-24 flex-shrink-0`}><SelectValue placeholder="MQH" /></SelectTrigger>
               <SelectContent><SelectItem value="all">MQH</SelectItem>{customerTypeOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={salesFilter} onValueChange={setSalesFilter}>
-              <SelectTrigger aria-label="Lọc theo phụ trách" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="Phụ trách" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo phụ trách" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Phụ trách" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Phụ trách</SelectItem>{salesOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
 
-            <div className="relative min-w-0">
-              <Button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)} variant="outline" className="h-9 w-full rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none hover:bg-slate-50">
+            <div className="relative flex-shrink-0">
+              <Button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)} variant="outline" className="h-9 w-28 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none hover:bg-slate-50">
                 <Filter className="h-3.5 w-3.5 text-slate-500" />
                 Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </Button>
-              {filtersOpen && <div className="absolute right-0 bottom-[calc(100%+8px)] z-50 w-[520px] max-w-[calc(100vw-32px)] rounded-xl border border-[#E5EAF3] bg-white p-4 shadow-xl">
+              {filtersOpen && <div className="absolute right-0 bottom-[calc(100%+8px)] z-50 w-[520px] max-w-[calc(100vw-32px)] rounded-xl border border-[#E5EAF3] bg-white p-4 shadow-xl whitespace-normal">
                 <div className="mb-4 flex items-center justify-between">
                   <div><p className="text-sm font-semibold text-slate-900">Bộ lọc</p><p className="text-xs text-slate-500">Bổ sung điều kiện lọc chi tiết</p></div>
                   {hasActiveFilters && <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-500" onClick={clearFilters}>Xóa lọc</Button>}
@@ -1897,7 +1975,7 @@ export function ContractListPage() {
             </div>
 
             <Select value={showAllColumns ? "all" : "default"} onValueChange={(value) => setShowAllColumns(value === "all")}>
-              <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-full`}><SelectValue placeholder="Hiển thị" /></SelectTrigger>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Hiển thị" /></SelectTrigger>
               <SelectContent><SelectItem value="default">Hiển thị</SelectItem><SelectItem value="all">Tất cả cột</SelectItem></SelectContent>
             </Select>
 
@@ -1928,6 +2006,7 @@ export function ContractListPage() {
                 ))}
                 <th className="h-11 w-44 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái kiểm tra</th>
                 <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Người kiểm tra</th>
+                <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái</th>
                 <th className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</th>
               </tr>
             </thead>
@@ -1986,6 +2065,11 @@ export function ContractListPage() {
                   <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
                     <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>{checker}</p>
                   </td>
+                  <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
+                      {record.status || "Đã cọc"}
+                    </span>
+                  </td>
                   <td className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -2014,6 +2098,31 @@ export function ContractListPage() {
                           <Pencil className="h-3.5 w-3.5 text-slate-400" />
                           Chỉnh sửa
                         </DropdownMenuItem>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none">
+                            <ArrowRightLeft className="h-3.5 w-3.5 text-slate-400" />
+                            Đổi trạng thái
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuPortal>
+                            <DropdownMenuSubContent className="w-56 max-h-72 overflow-y-auto bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                              {CONTRACT_STATUS_FLOW.map((status) => (
+                                <DropdownMenuItem
+                                  key={status}
+                                  className="flex items-center justify-between px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    if (canJumpToStatus(record.status || "Đã cọc", status)) {
+                                      onUpdateStatus(record.id, status);
+                                    }
+                                  }}
+                                >
+                                  <span>{status}</span>
+                                  {(record.status || "Đã cọc") === status && <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuPortal>
+                        </DropdownMenuSub>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
@@ -2022,7 +2131,7 @@ export function ContractListPage() {
               })}
               {filteredRecords.length === 0 && (
                 <tr>
-                  <td colSpan={visibleFields.length + 4} className="px-4 py-12 text-center text-sm text-slate-400">Không tìm thấy dữ liệu phù hợp bộ lọc</td>
+                  <td colSpan={visibleFields.length + 5} className="px-4 py-12 text-center text-sm text-slate-400">Không tìm thấy dữ liệu phù hợp bộ lọc</td>
                 </tr>
               )}
             </tbody>
@@ -2051,6 +2160,9 @@ export function ContractListPage() {
         onSaveTransfer={(recordId, overrides, log) => {
           setRecordOverrides((prev) => ({ ...prev, [recordId]: { ...(prev[recordId] ?? {}), ...overrides } }));
           setTransferLogs((prev) => ({ ...prev, [recordId]: [...(prev[recordId] ?? []), log] }));
+        }}
+        onUpdateStatus={(recordId, nextStatus) => {
+          setStatusOverrides((prev) => ({ ...prev, [recordId]: nextStatus }));
         }}
       />
     </div>

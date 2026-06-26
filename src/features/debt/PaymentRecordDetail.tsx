@@ -401,9 +401,19 @@ export function PaymentRecordDetail() {
   const [interestDialogOpen, setInterestDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
 
-  // Find data
-  const customer = customers.find((c) => c.id === customerId);
-  const contract = customer?.contracts.find((ct) => ct.id === contractId);
+  let targetCustomerId = customerId;
+  if (customerId && customerId.startsWith("C")) {
+    const num = parseInt(customerId.substring(1), 10);
+    if (!isNaN(num) && num >= 1 && num <= 5) {
+      targetCustomerId = String(num);
+    }
+  }
+
+  const customer = customers.find((c) => c.id === targetCustomerId);
+  let contract = customer?.contracts.find((ct) => ct.id === contractId);
+  if (customer && !contract && contractId) {
+    contract = customer.contracts[0];
+  }
   const stage = contract?.stages?.find((s) => s.id === stageId);
   const record = stage?.records.find((r) => r.id === recordId);
 

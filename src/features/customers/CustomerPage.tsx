@@ -6,7 +6,21 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -235,10 +249,24 @@ export function CustomerPage() {
       </div>
 
       {/* Customer Table */}
-      <Card className="max-w-full overflow-visible border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
-        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none max-w-full min-w-0 flex-nowrap whitespace-nowrap">
-            <div className="relative min-w-[180px] flex-1 lg:max-w-xs flex-shrink-0">
+      <Card className="max-w-full overflow-hidden border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
+        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-900">Danh sách khách hàng</h2>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                {filtered.length} khách hàng phù hợp · {selectedCustomerIds.size} đang chọn · 10 cột đang hiển thị
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+              <span className="hidden sm:inline">Bấm vào dòng để xem chi tiết khách hàng</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 py-3">
+          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
+            <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
@@ -308,33 +336,33 @@ export function CustomerPage() {
         </div>
 
         <div className="max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full overflow-auto">
-          <table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
-            <thead className="sticky top-0 z-20">
-              <tr>
-                <th className="sticky left-0 z-40 w-12 border-b border-r border-[#24344f] bg-[#0F2747] px-2 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>
+          <Table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
+            <TableHeader className="sticky top-0 z-20">
+              <TableRow>
+                <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#24344f] bg-[#0F2747] px-2 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>
                   <button
                     type="button"
                     aria-label="Chọn tất cả khách hàng đang hiển thị"
                     aria-pressed={currentPageSelected}
-                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition ${currentPageSelected ? "border-white bg-white text-[#0F2747]" : "border-white/60 bg-white/10 text-transparent"}`}
+                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0F2747] ${currentPageSelected ? "border-white bg-white text-[#0F2747]" : "border-white/60 bg-white/10 text-transparent"}`}
                     onClick={toggleCurrentPageSelection}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
-                </th>
-                <th className="h-11 w-28 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Mã KH</th>
-                <th className="h-11 w-56 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Khách hàng</th>
-                <th className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>CCCD/HC</th>
-                <th className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Liên hệ</th>
-                <th className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Hợp đồng</th>
-                <th className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tổng giá trị</th>
-                <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tiến độ TT</th>
-                <th className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nhóm KH</th>
-                <th className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái KH</th>
-                <th className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="h-11 w-28 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Mã KH</TableHead>
+                <TableHead className="h-11 w-56 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Khách hàng</TableHead>
+                <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>CCCD/HC</TableHead>
+                <TableHead className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Liên hệ</TableHead>
+                <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Hợp đồng</TableHead>
+                <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tổng giá trị</TableHead>
+                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tiến độ TT</TableHead>
+                <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nhóm KH</TableHead>
+                <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái KH</TableHead>
+                <TableHead className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map((c, index) => {
                 const pct = c.stats.totalValue > 0
                   ? Math.round((c.stats.totalPaid / c.stats.totalValue) * 100)
@@ -347,11 +375,12 @@ export function CustomerPage() {
                 const identityNumber = c.cccd || c.taxCode || "—";
 
                 return (
-                  <tr
+                  <TableRow
                     key={c.id}
                     role="button"
                     tabIndex={0}
                     aria-label={`Mở chi tiết khách hàng ${c.name}`}
+                    data-state={isSelected ? "selected" : undefined}
                     className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
                     onClick={(event) => {
                       const target = event.target as HTMLElement;
@@ -371,10 +400,10 @@ export function CustomerPage() {
                       }
                     }}
                   >
-                    <td className="td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] bg-white px-2 py-1.5 text-center group-hover:bg-slate-50">
+                    <TableCell className="td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] bg-white px-2 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <button
                         type="button"
-                        className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition ${isSelected ? "border-[#0F2747] bg-[#0F2747] text-white" : "border-[#E5EAF3] bg-white text-transparent hover:border-slate-400"}`}
+                        className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-[#0F2747] bg-[#0F2747] text-white" : "border-[#E5EAF3] bg-white text-transparent hover:border-slate-400"}`}
                         title="Chọn dòng"
                         aria-label={`Chọn khách hàng ${index + 1}`}
                         aria-pressed={isSelected}
@@ -385,11 +414,11 @@ export function CustomerPage() {
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
                       </button>
-                    </td>
-                    <td className="h-11 w-28 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-28 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <p className="truncate text-xs text-slate-700" style={{ fontWeight: 650 }}>{c.id}</p>
-                    </td>
-                    <td className="h-11 w-56 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-56 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <div className="flex min-w-0 items-center gap-3">
                         <div
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white"
@@ -404,22 +433,22 @@ export function CustomerPage() {
                           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
                             <span className="truncate text-[11px] text-slate-400">{c.type}</span>
                             {customerGroup !== "Thông thường" && (
-                              <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] ring-1 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>
+                              <Badge variant="outline" className={`shrink-0 rounded-full border-transparent px-2 py-0.5 text-[11px] ring-1 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>
                                 {customerGroup}
-                              </span>
+                              </Badge>
                             )}
                           </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <p className={`truncate text-xs ${identityNumber === "—" ? "text-slate-300" : "text-slate-700"}`} title={identityNumber}>{identityNumber}</p>
-                    </td>
-                    <td className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>{c.phone}</p>
                       <p className="truncate text-[11px] text-slate-400">{c.email}</p>
-                    </td>
-                    <td className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <div className="flex items-center gap-2">
                         {hasActiveContract && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />}
                         <div>
@@ -427,12 +456,12 @@ export function CustomerPage() {
                           <p className="text-[11px] text-slate-400">Hợp đồng</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <p className="truncate text-xs text-slate-800" style={{ fontWeight: 700 }}>{c.stats.totalValue > 0 ? fmtVnd(c.stats.totalValue) : "—"}</p>
                       {c.stats.totalValue > 0 && <p className="truncate text-[11px] text-slate-400">Còn {fmtVnd(remainingValue)}</p>}
-                    </td>
-                    <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                    </TableCell>
+                    <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       {c.stats.totalValue > 0 ? (
                         <div className="flex items-center gap-2">
                           <div className="h-1.5 flex-1 rounded-full bg-slate-100">
@@ -443,19 +472,19 @@ export function CustomerPage() {
                       ) : (
                         <span className="text-xs text-slate-300">—</span>
                       )}
-                    </td>
-                    <td className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] ring-1 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>{customerGroup}</span>
-                    </td>
-                    <td className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] ring-1 ${hasActiveContract ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-slate-100 text-slate-600 ring-slate-200"}`} style={{ fontWeight: 650 }}>
+                    </TableCell>
+                    <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                      <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] ring-1 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>{customerGroup}</Badge>
+                    </TableCell>
+                    <TableCell className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                      <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] ring-1 ${hasActiveContract ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-slate-100 text-slate-600 ring-slate-200"}`} style={{ fontWeight: 650 }}>
                         {customerStatus}
-                      </span>
-                    </td>
-                    <td className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50">
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" aria-label={`Mở menu khách hàng ${c.name}`} className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100" onClick={(event) => event.stopPropagation()}>
+                          <Button variant="ghost" size="sm" aria-label={`Mở menu khách hàng ${c.name}`} className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300" onClick={(event) => event.stopPropagation()}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -493,33 +522,42 @@ export function CustomerPage() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
 
               {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-sm text-slate-400">
-                    Không tìm thấy khách hàng nào
-                  </td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={11} className="px-4 py-12 text-center">
+                    <div className="mx-auto max-w-sm space-y-1">
+                      <p className="text-sm font-medium text-slate-700">Không tìm thấy khách hàng phù hợp</p>
+                      <p className="text-xs text-slate-400">Thử đổi từ khóa tìm kiếm hoặc điều kiện lọc.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
-        <div className="flex h-12 items-center justify-between border-t border-[#E5EAF3] bg-white px-4 text-xs text-slate-500">
+        <div className="flex min-h-12 flex-col gap-2 border-t border-[#E5EAF3] bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <div>Hiển thị {filtered.length} / {customerList.length} khách hàng</div>
-          <div className="flex items-center gap-3">
-            <span className="tabular-nums">
-              {filtered.length === 0 ? "0-0" : `1-${filtered.length}`} of {filtered.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>
-              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>›</Button>
-            </div>
-          </div>
+          <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <span className="px-2 tabular-nums">
+                  {filtered.length === 0 ? "0-0" : `1-${filtered.length}`} of {filtered.length}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>
+              </PaginationItem>
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>›</Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </Card>
 

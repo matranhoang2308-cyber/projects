@@ -24,7 +24,22 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -1891,10 +1906,24 @@ export function ContractListPage() {
 
       <ContractPipelineFunnelCard filteredRecords={filteredRecords} />
 
-      <Card className="max-w-full overflow-visible border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
-        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none max-w-full min-w-0 flex-nowrap whitespace-nowrap">
-            <div className="relative min-w-[160px] flex-1 lg:max-w-xs flex-shrink-0">
+      <Card className="max-w-full overflow-hidden border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
+        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-900">Danh sách hợp đồng</h2>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                {filteredRecords.length} hợp đồng phù hợp · {selectedRecordIds.size} đang chọn · {visibleFields.length} cột đang hiển thị
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+              <span className="hidden sm:inline">Bấm vào dòng để xem chi tiết hợp đồng</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 py-3">
+          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
+            <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
@@ -1939,12 +1968,14 @@ export function ContractListPage() {
               <SelectContent><SelectItem value="all">Phụ trách</SelectItem>{salesOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
 
-            <div className="relative flex-shrink-0">
-              <Button type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)} variant="outline" className="h-9 w-28 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none hover:bg-slate-50">
-                <Filter className="h-3.5 w-3.5 text-slate-500" />
-                Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-              </Button>
-              {filtersOpen && <div className="absolute right-0 bottom-[calc(100%+8px)] z-50 w-[520px] max-w-[calc(100vw-32px)] rounded-xl border border-[#E5EAF3] bg-white p-4 shadow-xl whitespace-normal">
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" aria-expanded={filtersOpen} variant="outline" className="h-9 w-28 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none hover:bg-slate-50">
+                  <Filter className="h-3.5 w-3.5 text-slate-500" />
+                  Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[520px] max-w-[calc(100vw-32px)] rounded-xl border border-[#E5EAF3] bg-white p-4 shadow-xl whitespace-normal" align="end" side="top" sideOffset={8}>
                 <div className="mb-4 flex items-center justify-between">
                   <div><p className="text-sm font-semibold text-slate-900">Bộ lọc</p><p className="text-xs text-slate-500">Bổ sung điều kiện lọc chi tiết</p></div>
                   {hasActiveFilters && <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-500" onClick={clearFilters}>Xóa lọc</Button>}
@@ -1971,8 +2002,8 @@ export function ContractListPage() {
                     <SelectContent><SelectItem value="all">Mọi đơn vị bán hàng</SelectItem>{salesUnitOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-              </div>}
-            </div>
+              </PopoverContent>
+            </Popover>
 
             <Select value={showAllColumns ? "all" : "default"} onValueChange={(value) => setShowAllColumns(value === "all")}>
               <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Hiển thị" /></SelectTrigger>
@@ -1983,34 +2014,34 @@ export function ContractListPage() {
         </div>
 
         <div className="max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full overflow-auto">
-          <table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
-            <thead className="sticky top-0 z-20">
-              <tr>
-                <th className="sticky left-0 z-40 w-12 border-b border-r border-[#24344f] bg-[#0F2747] px-2 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>
+          <Table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
+            <TableHeader className="sticky top-0 z-20">
+              <TableRow>
+                <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#24344f] bg-[#0F2747] px-2 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>
                   <button
                     type="button"
                     aria-label="Chọn tất cả dòng trong trang"
                     aria-pressed={currentPageSelected}
-                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition ${currentPageSelected ? "border-white bg-white text-[#0F2747]" : "border-white/60 bg-white/10 text-transparent"}`}
+                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0F2747] ${currentPageSelected ? "border-white bg-white text-[#0F2747]" : "border-white/60 bg-white/10 text-transparent"}`}
                     onClick={toggleCurrentPageSelection}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
-                </th>
+                </TableHead>
                 {visibleFields.map((field) => (
-                  <th key={field.key} className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle">
+                  <TableHead key={field.key} className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle">
                     <p className="line-clamp-2 text-[11px] leading-4 text-white" title={`Cột ${field.column}: ${field.label}`} style={{ fontWeight: 650 }}>
                       {field.label}
                     </p>
-                  </th>
+                  </TableHead>
                 ))}
-                <th className="h-11 w-44 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái kiểm tra</th>
-                <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Người kiểm tra</th>
-                <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái</th>
-                <th className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</th>
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead className="h-11 w-44 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái kiểm tra</TableHead>
+                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Người kiểm tra</TableHead>
+                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái</TableHead>
+                <TableHead className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {paginatedRecords.map((record, index) => {
                 const checkResult = checkResults[record.id];
                 const checkLabel = checkResult?.status === "passed"
@@ -2026,17 +2057,35 @@ export function ContractListPage() {
                 const checker = checkResult?.checkedBy || record.values.c154 || "Lâm Trà My";
                 const isSelected = selectedRecordIds.has(record.id);
                 return (
-                <tr key={record.id} className="group h-11 cursor-pointer" onClick={(event) => {
-                  const target = event.target as HTMLElement;
-                  if (target.closest(".td-actions") || target.closest(".td-select")) {
-                    return;
-                  }
-                  setSelectedRecordId(record.id);
-                }}>
-                  <td className="td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] bg-white px-2 py-1.5 text-center group-hover:bg-slate-50">
+                <TableRow
+                  key={record.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Mở chi tiết hợp đồng ${record.values.c2 || pageStartIndex + index + 1}`}
+                  data-state={isSelected ? "selected" : undefined}
+                  className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                  onClick={(event) => {
+                    const target = event.target as HTMLElement;
+                    if (target.closest(".td-actions") || target.closest(".td-select")) {
+                      return;
+                    }
+                    setSelectedRecordId(record.id);
+                  }}
+                  onKeyDown={(event) => {
+                    const target = event.target as HTMLElement;
+                    if (target.closest(".td-actions") || target.closest(".td-select")) {
+                      return;
+                    }
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedRecordId(record.id);
+                    }
+                  }}
+                >
+                  <TableCell className="td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] bg-white px-2 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                     <button
                       type="button"
-                      className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition ${isSelected ? "border-[#0F2747] bg-[#0F2747] text-white" : "border-[#E5EAF3] bg-white text-transparent hover:border-slate-400"}`}
+                      className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-[#0F2747] bg-[#0F2747] text-white" : "border-[#E5EAF3] bg-white text-transparent hover:border-slate-400"}`}
                       title="Chọn dòng"
                       aria-label={`Chọn dòng ${pageStartIndex + index + 1}`}
                       aria-pressed={isSelected}
@@ -2047,33 +2096,33 @@ export function ContractListPage() {
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
                     </button>
-                  </td>
+                  </TableCell>
                   {visibleFields.map((field) => {
                     const value = record.values[field.key];
                     const isPrimary = ["c2", "c3", "c30", "c51", "c54", "c106"].includes(field.key);
                     return (
-                      <td key={field.key} className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                      <TableCell key={field.key} className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                         <p className={`line-clamp-2 text-xs ${value ? "text-slate-700" : "text-slate-300"}`} style={{ fontWeight: isPrimary && value ? 600 : 400 }} title={compactValue(value)}>
                           {compactValue(value)}
                         </p>
-                      </td>
+                      </TableCell>
                     );
                   })}
-                  <td className="h-11 w-44 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] ring-1 ${checkClass}`} style={{ fontWeight: 650 }}>{checkLabel}</span>
-                  </td>
-                  <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                  <TableCell className="h-11 w-44 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] ring-1 ${checkClass}`} style={{ fontWeight: 650 }}>{checkLabel}</Badge>
+                  </TableCell>
+                  <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                     <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>{checker}</p>
-                  </td>
-                  <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
+                  </TableCell>
+                  <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
                       {record.status || "Đã cọc"}
-                    </span>
-                  </td>
-                  <td className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50">
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" aria-label={`Mở menu bản ghi ${pageStartIndex + index + 1}`} className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100" onClick={(event) => event.stopPropagation()}>
+                        <Button variant="ghost" size="sm" aria-label={`Mở menu bản ghi ${pageStartIndex + index + 1}`} className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300" onClick={(event) => event.stopPropagation()}>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -2125,29 +2174,40 @@ export function ContractListPage() {
                         </DropdownMenuSub>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
                 );
               })}
               {filteredRecords.length === 0 && (
-                <tr>
-                  <td colSpan={visibleFields.length + 5} className="px-4 py-12 text-center text-sm text-slate-400">Không tìm thấy dữ liệu phù hợp bộ lọc</td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={visibleFields.length + 5} className="px-4 py-12 text-center">
+                    <div className="mx-auto max-w-sm space-y-1">
+                      <p className="text-sm font-medium text-slate-700">Không tìm thấy dữ liệu phù hợp</p>
+                      <p className="text-xs text-slate-400">Thử đổi từ khóa tìm kiếm hoặc điều kiện lọc.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
-        <div className="flex h-12 items-center justify-between border-t border-[#E5EAF3] bg-white px-4 text-xs text-slate-500">
+        <div className="flex min-h-12 flex-col gap-2 border-t border-[#E5EAF3] bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <div>10 dòng/trang</div>
-          <div className="flex items-center gap-3">
-            <span className="tabular-nums">
-              {filteredRecords.length === 0 ? "0-0" : `${pageStartIndex + 1}-${pageEndIndex}`} of {filteredRecords.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={safeCurrentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>‹</Button>
-              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={safeCurrentPage >= pageCount} onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}>›</Button>
-            </div>
-          </div>
+          <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <span className="px-2 tabular-nums">
+                  {filteredRecords.length === 0 ? "0-0" : `${pageStartIndex + 1}-${pageEndIndex}`} of {filteredRecords.length}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={safeCurrentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>‹</Button>
+              </PaginationItem>
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={safeCurrentPage >= pageCount} onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}>›</Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </Card>
 

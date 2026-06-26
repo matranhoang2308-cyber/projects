@@ -21,6 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+const isVercel = import.meta.env.VITE_IS_VERCEL === "true" || import.meta.env.VITE_IS_VERCEL === true;
+const showDebt = !isVercel || import.meta.env.VITE_SHOW_DEBT === "true";
+const showAddendum = !isVercel || import.meta.env.VITE_SHOW_ADDENDUM === "true";
+
 const navItems = [
   {
     group: "Tổng quan",
@@ -41,18 +45,18 @@ const navItems = [
       { label: "Danh sách khách hàng", icon: Users, path: "/customers" },
     ],
   },
-  {
+  ...(showDebt ? [{
     group: "Công nợ",
     items: [
       { label: "Quản lý công nợ", icon: Wallet, path: "/debt" },
     ],
-  },
-  {
+  }] : []),
+  ...(showAddendum ? [{
     group: "Tài liệu",
     items: [
       { label: "Quản lý phụ lục", icon: BookOpen, path: "/addendum" },
     ],
-  },
+  }] : []),
 ];
 
 export function Layout() {

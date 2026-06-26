@@ -43,6 +43,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  define: {
+    'import.meta.env.VITE_IS_VERCEL': JSON.stringify(process.env.VERCEL === '1'),
+  },
   resolve: {
     alias: {
       // Alias @ to the src directory

@@ -34,7 +34,7 @@ function projectsBaseRedirect() {
 }
 
 export default defineConfig({
-  base: '/projects/',
+  base: process.env.VERCEL === '1' ? '/' : '/projects/',
   plugins: [
     projectsBaseRedirect(),
     figmaAssetResolver(),

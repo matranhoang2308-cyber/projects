@@ -62,5 +62,9 @@ export const router = createBrowserRouter([
       },
     ],
   },
-], { basename: '/projects' });
+], { 
+  basename: (typeof window !== "undefined" && (window.location.hostname.includes("github.io") || window.location.pathname.startsWith("/projects")))
+    ? "/projects"
+    : "/"
+});
 

@@ -128,7 +128,7 @@ const buildingsList = [
   { id: "toa-d", name: "Tòa D", zone: "harmonie" },
 ] as const;
 
-const productTypes = ["Sky Garden", "Penhouse", "Sky Villa Residence", "Duplex Garden"] as const;
+const productTypes = ["Sky Garden", "Penhouse", "Sky Villa Residence", "Duplex Garden", "River View", "Garden Suite"] as const;
 
 const demoBootstrap: DashboardBootstrap = {
   defaultReportType: "sales-inventory",
@@ -142,7 +142,7 @@ const demoBootstrap: DashboardBootstrap = {
     zones: towerBlocks.map((item) => ({ ...item, project: "iki-village" })),
     buildings: [...buildingsList],
     productTypes: [...productTypes],
-    agencies: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand", "Lâm Trà My", "Nguyễn Hoàng Phúc", "Trần Minh Khoa"],
+    agencies: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand", "Lâm Trà My", "Nguyễn Hoàng Phúc", "Trần Minh Khoa", "Đại lý Đông Nam", "Sàn liên kết An Phú"],
     products: [
       { id: "TM-IKV-A-0501", name: "TM-IKV-A-0501" },
       { id: "TM-IKV-B-0912", name: "TM-IKV-B-0912" },
@@ -153,6 +153,12 @@ const demoBootstrap: DashboardBootstrap = {
       { id: "B1.09-03", name: "B1.09-03" },
       { id: "MT2.06-15", name: "MT2.06-15" },
       { id: "E1.14-21", name: "E1.14-21" },
+      { id: "S2.03-11", name: "S2.03-11" },
+      { id: "B4.04-12", name: "B4.04-12" },
+      { id: "B2.05-13", name: "B2.05-13" },
+      { id: "MT3.06-14", name: "MT3.06-14" },
+      { id: "LR1.07-15", name: "LR1.07-15" },
+      { id: "EPC.08-16", name: "EPC.08-16" },
     ],
     dossierStatuses: ["Đã cọc", "Đã phát hành", "Đã ký", "Đã đóng dấu", "Chờ trả HĐMB", "Đã trả", "Bàn giao"],
     paymentStages: ["Đợt 1", "Đợt 2", "Đợt 3", "Đợt 4", "Đợt 5", "Đợt 6"],
@@ -165,8 +171,14 @@ const demoBootstrap: DashboardBootstrap = {
       { id: "6", name: "Vũ Thị Phương" },
       { id: "7", name: "Đặng Văn Giang" },
       { id: "8", name: "Bùi Thị Hoa" },
+      { id: "demo-1", name: "Phạm Gia Hân" },
+      { id: "demo-2", name: "Đỗ Minh Quân" },
+      { id: "demo-3", name: "Võ Thanh Tùng" },
+      { id: "demo-4", name: "Mai Khánh Linh" },
+      { id: "demo-5", name: "Bùi Quốc Việt" },
+      { id: "demo-6", name: "Ngô Thu Trang" },
     ],
-    salesUnits: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand", "Lâm Trà My", "Nguyễn Hoàng Phúc", "Trần Minh Khoa"],
+    salesUnits: ["AKH Realty", "Đất Xanh Miền Bắc", "Cen Land", "NewstarLand", "Lâm Trà My", "Nguyễn Hoàng Phúc", "Trần Minh Khoa", "Đại lý Đông Nam", "Sàn liên kết An Phú"],
     apartmentTypes: [...productTypes],
     paymentStatuses: ["Chưa đến hạn", "Sắp đến hạn", "Đã thanh toán", "Thanh toán một phần", "Quá hạn", "Gia hạn"],
   },

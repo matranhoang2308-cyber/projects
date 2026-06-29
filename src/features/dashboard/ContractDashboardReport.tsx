@@ -7,8 +7,8 @@ import { hdmbImportRecords, type HdmbRecord } from "@/data/hdmbImportSchema";
 
 const number = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
 const axisStyle = { fontSize: 11, fill: "#64748b" };
-const chartSelectClass = "crm-native-select h-10 min-w-[176px] rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
-const dateInputClass = "h-10 min-w-0 w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const chartSelectClass = "crm-native-select h-9 min-w-[164px] rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const dateInputClass = "h-9 min-w-0 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
 
 const dossierStatuses = ["Đã cọc", "Đã phát hành", "Đã ký", "Đã đóng dấu", "Chờ trả HĐMB", "Đã trả", "Bàn giao"] as const;
 const trendOptions: Array<{ value: TrendGroup; label: string }> = [
@@ -196,8 +196,35 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
       <ChartCard title="Tiến độ xử lý" description="Tiến độ xử lý hợp đồng theo thời gian." action={<ChartTimeControl label="Tiến độ xử lý" group={progressGroup} setGroup={setProgressGroup} from={progressFrom} setFrom={setProgressFrom} to={progressTo} setTo={setProgressTo} />}>
         <ResponsiveContainer width="100%" height="100%"><LineChart data={progressData} margin={{ top: 8, right: 12, left: -10, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="date" tick={axisStyle} tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ stroke: "#cbd5e1", strokeDasharray: "3 3" }} formatter={(value) => [number(Number(value)), "Hợp đồng"]} /><Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 3, fill: "#ffffff", strokeWidth: 2 }} activeDot={{ r: 5 }} isAnimationActive={false} /></LineChart></ResponsiveContainer>
       </ChartCard>
-      <Card className="overflow-hidden rounded-2xl border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_24px_rgba(15,23,42,0.035)]">
-        <div className="max-h-[520px] overflow-auto"><table className="w-full min-w-[980px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_#e2e8f0]"><tr>{["Mã KH", "Khách hàng", "Mã sản phẩm", "Phân khu", "Loại sản phẩm", "Trạng thái hồ sơ", "Ngày"].map((label) => <th key={label} className="px-4 py-3 text-left text-xs font-semibold text-slate-500">{label}</th>)}</tr></thead><tbody>{records.map((record) => <tr key={record.id} className="border-b border-slate-100 hover:bg-blue-50/35"><td className="px-4 py-3 font-medium text-blue-700">{record.values.c2}</td><td className="px-4 py-3 font-semibold text-slate-900">{record.values.c3}</td><td className="px-4 py-3 text-slate-600">{record.values.c51}</td><td className="px-4 py-3 text-slate-600">{record.values.c52}</td><td className="px-4 py-3 text-slate-600">{record.values.c55}</td><td className="px-4 py-3 text-slate-700">{normalizeStatus(record.status)}</td><td className="px-4 py-3 text-slate-600">{record.values.c106 || record.values.c107 || "—"}</td></tr>)}</tbody></table></div>
+      <Card className="gap-0 rounded-xl border-slate-200 bg-white p-5 shadow-sm">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-950">Danh sách hợp đồng</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Chi tiết các hợp đồng mua bán phát sinh trong kỳ báo cáo.</p>
+        </div>
+        <div className="mt-4 max-h-[320px] overflow-auto">
+          <table className="w-full min-w-[980px] border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_#e2e8f0]">
+              <tr>
+                {["Mã KH", "Khách hàng", "Mã sản phẩm", "Phân khu", "Loại sản phẩm", "Trạng thái hồ sơ", "Ngày"].map((label) => (
+                  <th key={label} className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((record) => (
+                <tr key={record.id} className="border-b border-slate-100 hover:bg-blue-50/35">
+                  <td className="px-3 py-2.5 text-xs font-medium text-blue-700">{record.values.c2}</td>
+                  <td className="px-3 py-2.5 text-xs font-semibold text-slate-900">{record.values.c3}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-600">{record.values.c51}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-600">{record.values.c52}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-600">{record.values.c55}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-700">{normalizeStatus(record.status)}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-600">{record.values.c106 || record.values.c107 || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );

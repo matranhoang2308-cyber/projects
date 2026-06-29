@@ -98,7 +98,11 @@ function StatusIcon({ status }: { status: PaymentStatus }) {
   if (status === "paid")
     return <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />;
   if (status === "overdue")
-    return <AlertTriangle className="size-4 text-red-500 shrink-0" />;
+    return (
+      <div className="flex items-center justify-center rounded-full bg-red-500 shrink-0 size-4">
+        <AlertTriangle className="size-2.5 text-white stroke-[3px]" />
+      </div>
+    );
   return <Clock className="size-4 text-blue-400 shrink-0" />;
 }
 

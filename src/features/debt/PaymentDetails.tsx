@@ -29,6 +29,8 @@ import {
   ShieldCheck,
   User,
   MoreHorizontal,
+  LayoutList,
+  Table2,
 } from "lucide-react";
 import {
   customers,
@@ -79,21 +81,18 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const statusConfig: Record<
-  PaymentStatus,
-  { label: string; className: string }
-> = {
+const statusConfig: Record<PaymentStatus, { label: string; className: string }> = {
   "not-due": {
     label: "Chưa đến hạn",
     className: "border-slate-200 bg-slate-50 text-slate-700",
   },
   upcoming: {
     label: "Sắp đến hạn",
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    className: "border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm",
   },
   paid: {
     label: "Đã thanh toán",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm",
   },
   partial: {
     label: "Thanh toán một phần",
@@ -105,7 +104,7 @@ const statusConfig: Record<
   },
   overdue: {
     label: "Quá hạn",
-    className: "border-red-200 bg-red-50 text-red-700",
+    className: "border-red-300 bg-red-50 text-red-700 font-bold shadow-sm",
   },
   "grace-period": {
     label: "Quá hạn (trong ân hạn)",
@@ -129,9 +128,10 @@ function fmtDate(d: string) {
   });
 }
 
-function paymentStatusToStageStatus(status: PaymentStatus): StageStatus {
+function paymentStatusToStageStatus(status: PaymentStatus): StageStatus | "overdue" {
   if (status === "paid" || status === "overpaid") return "completed";
   if (status === "not-due") return "pending";
+  if (status === "overdue") return "overdue";
   return "in-progress";
 }
 
@@ -141,8 +141,8 @@ function buildPaymentInstallmentStages(stages: PaymentStage[]): PaymentStage[] {
   return stages.flatMap((stage) =>
     stage.records.map((record) => {
       installmentNumber += 1;
-      const paidAmount =
-        record.paidAmount ?? (record.status === "paid" || record.status === "overpaid" ? record.baseAmount : 0);
+      const normalized = normalizePaymentRecord(record);
+      const paidAmount = normalized.paidAmount;
 
       return {
         ...stage,
@@ -153,7 +153,7 @@ function buildPaymentInstallmentStages(stages: PaymentStage[]): PaymentStage[] {
         totalAmount: record.baseAmount,
         paidAmount,
         stageStatus: paymentStatusToStageStatus(record.status),
-        records: [record],
+        records: [normalized],
       };
     })
   );
@@ -405,11 +405,17 @@ function InvoiceDialog({
 
 // ─── Stage Icon ───────────────────────────────────────────────────────────────
 
-function StageIcon({ status, number }: { status: StageStatus; number: number }) {
+function StageIcon({ status, number }: { status: StageStatus | "overdue"; number: number }) {
   if (status === "completed")
     return (
       <div className="flex size-8 items-center justify-center rounded-full bg-emerald-500 text-white shrink-0">
         <CheckCircle2 className="size-4" />
+      </div>
+    );
+  if (status === "overdue")
+    return (
+      <div className="flex size-8 items-center justify-center rounded-full bg-red-500 text-white shrink-0 ring-4 ring-red-100">
+        <AlertTriangle className="size-4 text-white stroke-[2.5]" />
       </div>
     );
   if (status === "in-progress")
@@ -427,10 +433,11 @@ function StageIcon({ status, number }: { status: StageStatus; number: number }) 
 
 // ─── Stage Label ──────────────────────────────────────────────────────────────
 
-const stageLabelMap: Record<StageStatus, { label: string; cls: string }> = {
+const stageLabelMap: Record<StageStatus | "overdue", { label: string; cls: string }> = {
   completed: { label: "Hoàn thành", cls: "text-emerald-600" },
   "in-progress": { label: "Đang tiến hành", cls: "text-blue-600" },
   pending: { label: "Chưa bắt đầu", cls: "text-muted-foreground" },
+  overdue: { label: "Quá hạn", cls: "text-red-600 font-semibold" },
 };
 
 // ─── Stage Block ──────────────────────────────────────────────────────────────
@@ -620,7 +627,9 @@ function StageBlock({
               {inst.status === "paid" ? (
                 <BadgeCheck className="size-3.5 text-emerald-500 shrink-0" />
               ) : inst.status === "overdue" ? (
-                <AlertTriangle className="size-3.5 text-red-500 shrink-0" />
+                <div className="flex items-center justify-center rounded-full bg-red-500 shrink-0 size-3.5">
+                  <AlertTriangle className="size-2 text-white stroke-[3px]" />
+                </div>
               ) : (
                 <Circle className="size-3.5 text-blue-400 shrink-0" />
               )}
@@ -1051,9 +1060,11 @@ function StageBlock({
             <div
               className={`w-px flex-1 mt-2 min-h-6 ${stage.stageStatus === "completed"
                 ? "bg-emerald-200"
-                : stage.stageStatus === "in-progress"
-                  ? "bg-blue-200"
-                  : "bg-border"
+                : stage.stageStatus === "overdue"
+                  ? "bg-red-200"
+                  : stage.stageStatus === "in-progress"
+                    ? "bg-blue-200"
+                    : "bg-border"
                 }`}
             />
           )}
@@ -1087,9 +1098,11 @@ function StageBlock({
               value={progress}
               className={`h-1 ${stage.stageStatus === "completed"
                 ? "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
-                : stage.stageStatus === "in-progress"
-                  ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
-                  : "bg-muted [&>[data-slot=progress-indicator]]:bg-muted-foreground"
+                : stage.stageStatus === "overdue"
+                  ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
+                  : stage.stageStatus === "in-progress"
+                    ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
+                    : "bg-muted [&>[data-slot=progress-indicator]]:bg-muted-foreground"
                 }`}
             />
           </div>
@@ -1113,22 +1126,35 @@ function StageBlock({
                   <AccordionItem
                     key={record.id}
                     value={record.id}
-                    className={idx === 0 ? "border-t-0" : ""}
+                    className={`border-l-4 transition-all duration-200 bg-transparent ${
+                      record.status === "overdue"
+                        ? "border-l-red-500 data-[state=open]:bg-red-50/10"
+                        : record.status === "paid"
+                          ? "border-l-emerald-500 data-[state=open]:bg-emerald-50/5"
+                          : "border-l-blue-500 data-[state=open]:bg-blue-50/5"
+                    } ${idx === 0 ? "border-t-0" : ""}`}
                   >
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-accent/30 text-xs">
+                    <AccordionTrigger className="group px-4 py-3 hover:no-underline hover:bg-slate-50/60 text-xs">
                       <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
-                        {record.status === "paid" ? (
-                          <BadgeCheck className="size-4 text-emerald-500 shrink-0" />
-                        ) : record.status === "overdue" ? (
-                          <AlertTriangle className="size-4 text-red-500 shrink-0" />
-                        ) : (
-                          <Circle className="size-4 text-blue-400 shrink-0" />
-                        )}
-                        <span
-                          className={`text-sm truncate ${record.status === "overdue" ? "text-red-700" : "text-foreground"
-                            }`}
-                        >
-                          {record.label}
+                        <div className="group-data-[state=open]:hidden flex items-center gap-2">
+                          {record.status === "paid" ? (
+                            <BadgeCheck className="size-4 text-emerald-500 shrink-0" />
+                          ) : record.status === "overdue" ? (
+                            <div className="flex items-center justify-center rounded-full bg-red-500 shrink-0 size-4">
+                              <AlertTriangle className="size-2.5 text-white stroke-[3px]" />
+                            </div>
+                          ) : (
+                            <Circle className="size-4 text-blue-400 shrink-0" />
+                          )}
+                          <span
+                            className={`text-sm truncate ${record.status === "overdue" ? "text-red-700" : "text-foreground"
+                              }`}
+                          >
+                            {record.label}
+                          </span>
+                        </div>
+                        <span className="hidden group-data-[state=open]:inline text-sm font-medium text-foreground">
+                          Trạng thái
                         </span>
 
                         {record.status === "paid" && record.invoice && (
@@ -1243,51 +1269,89 @@ function StageBlock({
                         </div>
 
                         {/* Payment details grid */}
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 border-t border-border/40 pt-3">
                           <div>
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                              Ngày đến hạn gốc
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Ngày đến hạn
                             </p>
-                            <p
-                              className={`text-sm mt-0.5 ${record.status === "overdue" ? "text-red-600" : "text-foreground"
-                                }`}
-                            >
+                            <p className="text-sm font-semibold text-slate-800 mt-0.5">
                               {fmtDate(record.dueDate)}
-                              {record.daysOverdue != null && (
-                                <span className="ml-1 text-xs text-red-500">
-                                  ({record.daysOverdue} ngày quá hạn)
-                                </span>
-                              )}
                             </p>
                           </div>
-                          {record.paidDate && (
-                            <div>
-                              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                                Ngày thanh toán
-                              </p>
-                              <p className="text-sm text-emerald-600 mt-0.5">
-                                {fmtDate(record.paidDate)}
-                              </p>
-                            </div>
-                          )}
                           <div>
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                              Số tiền gốc
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Ngày thanh toán
                             </p>
-                            <p className="text-sm text-foreground mt-0.5">
+                            <p className={`text-sm font-semibold mt-0.5 ${record.paidDate ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
+                              {record.paidDate ? fmtDate(record.paidDate) : "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Tiền cọc
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800 mt-0.5">
                               {formatVND(record.baseAmount)}
                             </p>
                           </div>
-                          {record.lateFee != null && extList.length === 0 && (
-                            <div>
-                              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                                Phí phạt trễ hạn
-                              </p>
-                              <p className="text-sm text-red-600 mt-0.5">
-                                + {formatVND(record.lateFee)}
-                              </p>
-                            </div>
-                          )}
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Tổng đã thu
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-600 mt-0.5">
+                              {formatVND(record.paidAmount)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Còn lại
+                            </p>
+                            <p className={`text-sm font-bold mt-0.5 ${record.remainingAmount > 0 ? "text-orange-600" : "text-slate-500"}`}>
+                              {formatVND(record.remainingAmount)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              % khách hàng thanh toán
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                              {record.baseAmount > 0
+                                ? `${Math.round((record.paidAmount / record.baseAmount) * 100)}%`
+                                : "0%"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Dư nợ đợt trước
+                            </p>
+                            <p className="text-sm font-semibold text-slate-500 mt-0.5">
+                              0 VNĐ
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Lãi chậm nộp
+                            </p>
+                            <p className={`text-sm font-bold mt-0.5 ${(record.lateFee ?? 0) > 0 ? "text-red-600" : "text-slate-500"}`}>
+                              {formatVND(record.lateFee ?? 0)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Số ngày chậm nộp
+                            </p>
+                            <p className={`text-sm font-semibold mt-0.5 ${(record.daysOverdue ?? 0) > 0 ? "text-red-600" : "text-slate-500"}`}>
+                              {record.daysOverdue ?? 0} ngày
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Tổng phải thu
+                            </p>
+                            <p className={`text-sm font-bold mt-0.5 ${record.status === "overdue" ? "text-red-700 font-extrabold text-base" : "text-slate-500"}`}>
+                              {formatVND(record.status === "paid" ? 0 : record.remainingAmount + (record.lateFee ?? 0))}
+                            </p>
+                          </div>
                         </div>
 
                         {record.status === "overdue" &&
@@ -1454,6 +1518,7 @@ export function PaymentDetails() {
     customerId: string;
     contractId: string;
   }>();
+  const [viewMode, setViewMode] = useState<"detail" | "table">("detail");
   const navigate = useNavigate();
 
   let targetCustomerId = customerId;
@@ -1500,210 +1565,224 @@ export function PaymentDetails() {
 
   return (
     <div
-      className="min-h-screen bg-background"
+      className="min-h-screen bg-slate-50"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      <header className="border-b border-border/60 bg-background sticky top-0 z-10">
-        <div className="max-w-screen-lg mx-auto px-6 h-14 flex items-center gap-3">
-          <div className="flex items-center gap-2 text-foreground">
-            <Building2 className="size-5" />
-            <span className="text-sm font-medium">RealCRM</span>
-          </div>
-          <Separator orientation="vertical" className="h-5 mx-1" />
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <button
-              onClick={() => navigate("/")}
-              className="hover:text-foreground transition-colors cursor-pointer"
-            >
-              Công nợ
-            </button>
-            <ChevronRight className="size-3" />
-            <button
+      <header className="border-b border-border/60 bg-white sticky top-0 z-10 py-3.5 px-6 shadow-sm">
+        <div className="max-w-screen-lg mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 mt-1 shrink-0 text-muted-foreground hover:text-foreground border"
               onClick={() => navigate(`/customer/${customer.id}`)}
-              className="hover:text-foreground transition-colors cursor-pointer"
             >
-              {customer.name}
-            </button>
-            <ChevronRight className="size-3" />
-            <span className="text-foreground truncate max-w-[160px]">
-              {contract.projectName}
-            </span>
+              <ArrowLeft className="size-4" />
+            </Button>
+            <div>
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Chi tiết công nợ</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <h1 className="text-base font-bold text-foreground">
+                  Mã hợp đồng: <span className="text-blue-600">{contract.contractCode || contract.id}</span>
+                </h1>
+                <Badge className={`text-[10px] px-1.5 py-0 ${statusConfig[contract.status].className}`}>
+                  {statusConfig[contract.status].label}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                Mã căn hộ: <strong className="text-slate-700">{contract.unit}</strong> · Khách hàng chính: <strong className="text-slate-700">{customer.name}</strong> · Dự án: <strong className="text-slate-700">{contract.projectName}</strong> · Nhân viên KD: <strong className="text-slate-700">{contract.salesperson ?? "Nguyễn Hoàng Phúc"}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end md:self-center shrink-0">
+            {/* Export Document Button (Spreadsheet Icon) */}
+            <Button variant="outline" size="icon" className="size-9 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" title="Xuất file công nợ">
+              <FileText className="size-4" />
+            </Button>
+
+            {/* View Mode Toggle Switcher */}
+            <div className="flex items-center border border-slate-200 bg-slate-50 p-1 rounded-lg">
+              <button
+                onClick={() => setViewMode("detail")}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === "detail"
+                    ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+                title="Dạng chi tiết"
+              >
+                <LayoutList className="size-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === "table"
+                    ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+                title="Dạng bảng"
+              >
+                <Table2 className="size-4" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
-        <div className="flex items-start gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => navigate(`/customer/${customer.id}`)}
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
-          <div className="flex-1 flex flex-wrap items-start gap-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="size-10 shrink-0">
-                <AvatarFallback className={`text-sm ${customer.avatarColor}`}>
-                  {customer.initials}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h1 className="text-foreground">{customer.name}</h1>
-                <p className="text-xs text-muted-foreground">
-                  {contract.projectName} · Căn {contract.unit}
-                </p>
-              </div>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              <Badge className={`text-xs ${statusConfig[contract.status].className}`}>
-                {statusConfig[contract.status].label}
-              </Badge>
-            </div>
-          </div>
-        </div>
-
-        {isOverdue && overdueRecords.length > 0 && (
-          <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-800">
-            <AlertTriangle className="size-4 text-red-600" />
-            <AlertTitle className="text-red-800">Cảnh báo: Có khoản thanh toán quá hạn</AlertTitle>
-            <AlertDescription className="text-red-700">
-              Hợp đồng{" "}
-              <strong>
-                {contract.projectName} – Căn {contract.unit}
-              </strong>{" "}
-              đang có{" "}
-              <strong>{overdueRecords.length} khoản thanh toán quá hạn</strong>. Tổng phí
-              phạt trễ hạn ước tính: <strong>{formatVND(totalLateFee)}</strong> (lãi suất{" "}
-              {contract.latePenaltyRate}%/năm). Vui lòng liên hệ khách hàng để xử lý ngay.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <MetricCard
-            icon={BadgeCheck}
-            label="Đã thanh toán"
-            value={formatVND(contract.paidAmount)}
-            sub={`${contract.paymentProgress}% giá trị hợp đồng`}
-            iconClass="bg-emerald-50"
-            valueClass="text-emerald-700"
-          />
-          <MetricCard
-            icon={Banknote}
-            label="Số dư còn lại"
-            value={formatVND(remaining)}
-            sub={`Hợp đồng: ${formatVND(contract.contractValue)}`}
-            iconClass="bg-blue-50"
-            valueClass="text-blue-700"
-          />
-          <MetricCard
-            icon={TrendingDown}
-            label="Tổng lãi phạt tích lũy"
-            value={totalLateFee > 0 ? formatVND(totalLateFee) : "—"}
-            sub={
-              totalLateFee > 0
-                ? `${contract.latePenaltyRate}%/năm · ${contract.daysOverdue} ngày`
-                : "Không có khoản quá hạn"
-            }
-            iconClass="bg-red-50"
-            valueClass={totalLateFee > 0 ? "text-red-600" : "text-muted-foreground"}
-          />
-        </div>
-
-        <Card className="border-border/60 shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="size-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">Tiến độ tổng thể</span>
-              </div>
-              <span className="text-sm text-muted-foreground">{contract.paymentProgress}%</span>
-            </div>
-            <Progress
-              value={contract.paymentProgress}
-              className={`h-2 ${isOverdue
-                ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
-                : contract.status === "upcoming"
-                  ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
-                  : "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
-                }`}
-            />
-            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-              {hasStages ? (
-                <>
-                  <span>
-                    Bắt đầu:{" "}
-                    {new Date(
-                      paymentInstallments[0]?.records[0]?.dueDate ?? ""
-                    ).toLocaleDateString("vi-VN", { month: "2-digit", year: "numeric" })}
-                  </span>
-                  <span>
-                    Dự kiến hoàn thành:{" "}
-                    {(() => {
-                      const lastStage = paymentInstallments[paymentInstallments.length - 1];
-                      const lastRecord = lastStage.records[0];
-                      return new Date(lastRecord?.dueDate ?? "").toLocaleDateString("vi-VN", {
-                        month: "2-digit",
-                        year: "numeric",
-                      });
-                    })()}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span>Đến hạn: {fmtDate(contract.dueDate)}</span>
-                  <span>{contract.paymentProgress}% hoàn thành</span>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {hasStages ? (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-foreground">Lộ trình thanh toán 5 năm</h2>
-              <p className="text-xs text-muted-foreground">
-                {paymentInstallments.filter((s) => s.stageStatus === "completed").length} /{" "}
-                {paymentInstallments.length} đợt hoàn thành
-              </p>
-            </div>
-            <div className="space-y-0">
-              {paymentInstallments.map((stage, idx) => (
-                <StageBlock
-                  key={stage.records[0]?.id ?? `${stage.id}-${idx}`}
-                  stage={stage}
-                  isLast={idx === paymentInstallments.length - 1}
-                  customerName={customer.name}
-                  projectName={contract.projectName}
-                  unit={contract.unit}
-                  customerId={customerId!}
-                  contractId={contractId!}
-                  onNavigate={navigate}
-                />
-              ))}
-            </div>
-          </div>
-        ) : (
+        {viewMode === "table" ? (
           <Card className="border-border/60 shadow-none">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base text-foreground">Lộ trình thanh toán</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-                <CalendarDays className="size-8 opacity-30" />
-                <p className="text-sm">
-                  Chi tiết lộ trình chưa được cập nhật cho hợp đồng này
-                </p>
-                <p className="text-xs">
-                  Tiến độ hiện tại: {contract.paymentProgress}% ·{" "}
-                  {formatVND(contract.paidAmount)} / {formatVND(contract.contractValue)}
-                </p>
-              </div>
+            <CardContent className="p-12 text-center text-muted-foreground text-sm flex flex-col items-center justify-center gap-2">
+              <Table2 className="size-8 opacity-30" />
+              <p className="font-semibold text-slate-700 mt-2">Giao diện bảng thanh toán (Đang xây dựng...)</p>
+              <p className="text-xs max-w-sm text-slate-400">Bố cục bảng chi tiết dòng tiền công nợ và các đợt thanh toán sẽ được hoàn thiện trong bước tiếp theo.</p>
             </CardContent>
           </Card>
+        ) : (
+          <>
+            {isOverdue && overdueRecords.length > 0 && (
+              <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-800">
+                <AlertTriangle className="size-4 text-red-600" />
+                <AlertTitle className="text-red-800">Cảnh báo: Có khoản thanh toán quá hạn</AlertTitle>
+                <AlertDescription className="text-red-700">
+                  Hợp đồng{" "}
+                  <strong>
+                    {contract.projectName} – Căn {contract.unit}
+                  </strong>{" "}
+                  đang có{" "}
+                  <strong>{overdueRecords.length} khoản thanh toán quá hạn</strong>. Tổng phí
+                  phạt trễ hạn ước tính: <strong>{formatVND(totalLateFee)}</strong> (lãi suất{" "}
+                  {contract.latePenaltyRate}%/năm). Vui lòng liên hệ khách hàng để xử lý ngay.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <MetricCard
+                icon={BadgeCheck}
+                label="Đã thanh toán"
+                value={formatVND(contract.paidAmount)}
+                sub={`${contract.paymentProgress}% giá trị hợp đồng`}
+                iconClass="bg-emerald-50"
+                valueClass="text-emerald-700"
+              />
+              <MetricCard
+                icon={Banknote}
+                label="Số dư còn lại"
+                value={formatVND(remaining)}
+                sub={`Hợp đồng: ${formatVND(contract.contractValue)}`}
+                iconClass="bg-blue-50"
+                valueClass="text-blue-700"
+              />
+              <MetricCard
+                icon={TrendingDown}
+                label="Tổng lãi phạt tích lũy"
+                value={totalLateFee > 0 ? formatVND(totalLateFee) : "—"}
+                sub={
+                  totalLateFee > 0
+                    ? `${contract.latePenaltyRate}%/năm · ${contract.daysOverdue} ngày`
+                    : "Không có khoản quá hạn"
+                }
+                iconClass="bg-red-50"
+                valueClass={totalLateFee > 0 ? "text-red-600" : "text-muted-foreground"}
+              />
+            </div>
+
+            <Card className="border-border/60 shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="size-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground">Tiến độ tổng thể</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{contract.paymentProgress}%</span>
+                </div>
+                <Progress
+                  value={contract.paymentProgress}
+                  className={`h-2 ${isOverdue
+                    ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
+                    : contract.status === "upcoming"
+                      ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
+                      : "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
+                    }`}
+                />
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  {hasStages ? (
+                    <>
+                      <span>
+                        Bắt đầu:{" "}
+                        {new Date(
+                          paymentInstallments[0]?.records[0]?.dueDate ?? ""
+                        ).toLocaleDateString("vi-VN", { month: "2-digit", year: "numeric" })}
+                      </span>
+                      <span>
+                        Dự kiến hoàn thành:{" "}
+                        {(() => {
+                          const lastStage = paymentInstallments[paymentInstallments.length - 1];
+                          const lastRecord = lastStage.records[0];
+                          return new Date(lastRecord?.dueDate ?? "").toLocaleDateString("vi-VN", {
+                            month: "2-digit",
+                            year: "numeric",
+                          });
+                        })()}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Đến hạn: {fmtDate(contract.dueDate)}</span>
+                      <span>{contract.paymentProgress}% hoàn thành</span>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {hasStages ? (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-foreground">Lộ trình thanh toán 5 năm</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {paymentInstallments.filter((s) => s.stageStatus === "completed").length} /{" "}
+                    {paymentInstallments.length} đợt hoàn thành
+                  </p>
+                </div>
+                <div className="space-y-0">
+                  {paymentInstallments.map((stage, idx) => (
+                    <StageBlock
+                      key={stage.records[0]?.id ?? `${stage.id}-${idx}`}
+                      stage={stage}
+                      isLast={idx === paymentInstallments.length - 1}
+                      customerName={customer.name}
+                      projectName={contract.projectName}
+                      unit={contract.unit}
+                      customerId={customerId!}
+                      contractId={contractId!}
+                      onNavigate={navigate}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Card className="border-border/60 shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-foreground">Lộ trình thanh toán</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                    <CalendarDays className="size-8 opacity-30" />
+                    <p className="text-sm">
+                      Chi tiết lộ trình chưa được cập nhật cho hợp đồng này
+                    </p>
+                    <p className="text-xs">
+                      Tiến độ hiện tại: {contract.paymentProgress}% ·{" "}
+                      {formatVND(contract.paidAmount)} / {formatVND(contract.contractValue)}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </main>
     </div>

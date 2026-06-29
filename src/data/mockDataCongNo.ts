@@ -380,7 +380,7 @@ export function getContractTotalLateFee(ct: Contract): number {
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 
-export const customers: Customer[] = [
+const baseCustomers: Customer[] = [
 
   // ══════════════════════════════════════════════════════════════════════════
   // 1. Nguyễn Văn An — 1 hợp đồng · Vinhomes Grand Park · 75% paid
@@ -2609,3 +2609,100 @@ export const customers: Customer[] = [
     ],
   },
 ];
+
+const demoProjects = [
+  ["Vinhomes Grand Park", "S2", "Sky Garden", "Lâm Trà My"],
+  ["The Sun Avenue", "B4", "Penhouse", "Nguyễn Hoàng Phúc"],
+  ["Akari City", "B2", "Duplex Garden", "AKH Realty"],
+  ["Masteri Thảo Điền", "MT3", "Sky Villa Residence", "Trần Minh Khoa"],
+  ["Lumiere Riverside", "LR1", "River View", "Đại lý Đông Nam"],
+  ["Eco Park City", "EPC", "Garden Suite", "Sàn liên kết An Phú"],
+] as const;
+
+const demoNames = ["Phạm Gia Hân", "Đỗ Minh Quân", "Võ Thanh Tùng", "Mai Khánh Linh", "Bùi Quốc Việt", "Ngô Thu Trang"];
+const demoStatuses: PaymentStatus[] = ["paid", "partial", "overdue", "upcoming", "overpaid", "extended"];
+const demoInvoiceStatuses: InvoiceStatus[] = ["issued", "pending", "cancelled", "issued", "pending", "issued"];
+const demoDueDates = ["2026-06-02", "2026-06-08", "2026-06-14", "2026-06-21", "2026-07-10", "2026-08-18"];
+
+function demoRecord(customerIndex: number, recordIndex: number, baseAmount: number): PaymentRecord {
+  const status = demoStatuses[(customerIndex + recordIndex) % demoStatuses.length];
+  const paidAmount = status === "paid" ? baseAmount : status === "overpaid" ? baseAmount + 0.08 : status === "partial" ? Number((baseAmount * 0.45).toFixed(3)) : 0;
+  const remainingAmount = Math.max(0, Number((baseAmount - Math.min(paidAmount, baseAmount)).toFixed(3)));
+  const dueDate = demoDueDates[(customerIndex + recordIndex) % demoDueDates.length];
+  const isOverdue = status === "overdue" || status === "extended";
+  return {
+    id: `demo-r${customerIndex + 1}-${recordIndex + 1}`,
+    installmentCode: `DOT${recordIndex + 1}`,
+    label: `Đợt ${recordIndex + 1} - Demo dashboard`,
+    dueDate,
+    paidDate: paidAmount > 0 ? dueDate : undefined,
+    baseAmount,
+    paidAmount,
+    remainingAmount,
+    overpaidAmount: status === "overpaid" ? 0.08 : undefined,
+    status,
+    debtStatus: isOverdue ? status === "extended" ? "extended" : "overdue" : "current",
+    daysAfterDue: isOverdue ? 12 + customerIndex * 8 + recordIndex * 5 : 0,
+    lateInterest: isOverdue ? Number((remainingAmount * 0.018).toFixed(3)) : 0,
+    invoice: {
+      invoiceNumber: `DEMO-${customerIndex + 1}${recordIndex + 1}-2026`,
+      invoiceDate: dueDate,
+      invoiceStatus: demoInvoiceStatuses[(customerIndex + recordIndex) % demoInvoiceStatuses.length],
+      fileName: `demo-invoice-${customerIndex + 1}-${recordIndex + 1}.pdf`,
+      fileSize: "120 KB",
+      uploadDate: dueDate,
+      issuedBy: "AKH Demo",
+      bankName: "Demo Bank",
+      bankAccount: "000000000",
+      transactionRef: `DEMO-TXN-${customerIndex + 1}${recordIndex + 1}`,
+      principalAmount: baseAmount,
+      nonInvoiceInterest: 0,
+      pendingInvoiceAmount: status === "upcoming" ? baseAmount : 0,
+    },
+  };
+}
+
+const dashboardDemoCustomers: Customer[] = demoNames.map((name, index) => {
+  const [projectName, tower, productType, salesperson] = demoProjects[index];
+  const records = [0.32, 0.48, 0.56, 0.72].map((amount, recordIndex) => demoRecord(index, recordIndex, amount + index * 0.04));
+  const contractValue = Number(records.reduce((sum, item) => sum + item.baseAmount, 0).toFixed(3));
+  const paidAmount = Number(records.reduce((sum, item) => sum + item.paidAmount, 0).toFixed(3));
+  return {
+    id: `demo-${index + 1}`,
+    customerCode: `DEMO${String(index + 1).padStart(3, "0")}`,
+    name,
+    initials: name.split(" ").slice(-2).map((word) => word[0]).join(""),
+    email: `demo${index + 1}@akh.test`,
+    phone: `0988 000 00${index + 1}`,
+    avatarColor: "bg-slate-100 text-slate-700",
+    contracts: [{
+      id: `demo-c${index + 1}`,
+      contractCode: `HĐ-DEMO-2026-${String(index + 1).padStart(3, "0")}`,
+      projectName,
+      tower,
+      unit: `${tower}.${String(index + 3).padStart(2, "0")}-${String(index + 11).padStart(2, "0")}`,
+      productType,
+      paymentMethod: "Demo dashboard",
+      salesperson,
+      contractValue,
+      paidAmount,
+      paymentProgress: Math.round((paidAmount / contractValue) * 100),
+      dueDate: demoDueDates[index],
+      status: demoStatuses[index],
+      debtStatus: demoStatuses[index] === "overdue" ? "overdue" : "current",
+      stages: [{
+        id: `demo-s${index + 1}`,
+        stageNumber: 1,
+        name: "Demo dashboard",
+        description: "Data ảo để test filter biểu đồ",
+        period: "T6/2026 - T8/2026",
+        totalAmount: contractValue,
+        paidAmount,
+        stageStatus: "in-progress",
+        records,
+      }],
+    }],
+  };
+});
+
+export const customers: Customer[] = [...baseCustomers, ...dashboardDemoCustomers];

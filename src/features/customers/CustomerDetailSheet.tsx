@@ -337,11 +337,11 @@ function CustomerTabContent({
     case "journey":
       return <CustomerJourneyTab />;
     case "pointHistory":
-      return <CustomerPlaceholderTab title="Lịch sử tích đổi điểm" />;
+      return <CustomerPointHistoryTab />;
     case "bookingHistory":
-      return <CustomerPlaceholderTab title="Lịch sử booking" />;
+      return <CustomerBookingHistoryTab />;
     case "ticket":
-      return <CustomerPlaceholderTab title="Ticket" />;
+      return <CustomerTicketTab />;
     default:
       return <CustomerExtraInfoTab customer={customer} />;
   }
@@ -470,6 +470,367 @@ function CustomerExtraInfoTab({ customer }: { customer: Customer }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerPointHistoryTab() {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [pointsFilter, setPointsFilter] = useState("all");
+
+  const pointsData = [
+    { date: "25/06/2026", type: "Tích điểm", amount: "+10,000", balance: "12,500", note: "Ký HĐMB căn B3.08-22 The Sun Avenue" },
+    { date: "10/06/2026", type: "Đổi quà", amount: "-2,000", balance: "2,500", note: "Đổi Voucher Buffet 5 sao Lotte Hotel" },
+    { date: "08/06/2026", type: "Tích điểm", amount: "+500", balance: "4,500", note: "Tham quan showroom và trải nghiệm căn hộ mẫu" },
+    { date: "15/04/2026", type: "Tích điểm", amount: "+4,000", balance: "4,000", note: "Ký HĐ đặt cọc giữ chỗ căn B3.08-22" }
+  ];
+
+  const filteredData = useMemo(() => {
+    return pointsData.filter((item) => {
+      if (search.trim() !== "") {
+        const query = search.toLowerCase();
+        if (!item.note.toLowerCase().includes(query) && !item.type.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      if (typeFilter !== "all" && item.type !== typeFilter) {
+        return false;
+      }
+      if (pointsFilter !== "all") {
+        const numVal = parseInt(item.amount.replace(/[^0-9]/g, ""), 10);
+        if (pointsFilter === "low" && numVal >= 1000) return false;
+        if (pointsFilter === "high" && numVal < 1000) return false;
+      }
+      return true;
+    });
+  }, [search, typeFilter, pointsFilter]);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm giao dịch điểm..."
+                className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div className="w-36">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Loại giao dịch" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả loại</SelectItem>
+                  <SelectItem value="Tích điểm">Tích điểm</SelectItem>
+                  <SelectItem value="Đổi quà">Đổi quà</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-36">
+              <Select value={pointsFilter} onValueChange={setPointsFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Mức điểm" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả mức</SelectItem>
+                  <SelectItem value="low">&lt; 1,000 điểm</SelectItem>
+                  <SelectItem value="high">&ge; 1,000 điểm</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {filteredData.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-xs">Không tìm thấy lịch sử giao dịch điểm phù hợp</div>
+        ) : (
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500">
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Ngày giao dịch</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Loại</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-right align-middle text-xs font-semibold text-slate-600">Số điểm</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-right align-middle text-xs font-semibold text-slate-600">Số dư</th>
+                <th className="h-10 border-b border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nội dung chi tiết</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600 font-medium">{row.date}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      row.type === "Tích điểm" 
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+                        : "bg-orange-50 text-orange-700 border border-orange-100"
+                    }`}>
+                      {row.type}
+                    </span>
+                  </td>
+                  <td className={`h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-right font-semibold ${
+                    row.amount.startsWith("+") ? "text-emerald-600" : "text-orange-600"
+                  }`}>{row.amount}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-right text-slate-800 font-medium">{row.balance}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-slate-700 font-medium">{row.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CustomerBookingHistoryTab() {
+  const [search, setSearch] = useState("");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const bookingData = [
+    { code: "BK-2026-088", project: "The Sun Avenue", unit: "B3.08-22", amount: "50.000.000 VNĐ", date: "12/06/2026", status: "Đã chuyển cọc" },
+    { code: "BK-2026-045", project: "Sunrise City", unit: "A1.15-02", amount: "50.000.000 VNĐ", date: "15/04/2026", status: "Đã hoàn cọc" }
+  ];
+
+  const filteredData = useMemo(() => {
+    return bookingData.filter((item) => {
+      if (search.trim() !== "") {
+        const query = search.toLowerCase();
+        if (!item.code.toLowerCase().includes(query) && !item.project.toLowerCase().includes(query) && !item.unit.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      if (projectFilter !== "all" && item.project !== projectFilter) {
+        return false;
+      }
+      if (statusFilter !== "all" && item.status !== statusFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [search, projectFilter, statusFilter]);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm booking..."
+                className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div className="w-40">
+              <Select value={projectFilter} onValueChange={setProjectFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Dự án" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả dự án</SelectItem>
+                  <SelectItem value="The Sun Avenue">The Sun Avenue</SelectItem>
+                  <SelectItem value="Sunrise City">Sunrise City</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-40">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="Đã chuyển cọc">Đã chuyển cọc</SelectItem>
+                  <SelectItem value="Đã hoàn cọc">Đã hoàn cọc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {filteredData.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-xs">Không tìm thấy lịch sử booking phù hợp</div>
+        ) : (
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500">
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Mã Booking</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Dự án</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Căn hộ</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-right align-middle text-xs font-semibold text-slate-600">Tiền giữ chỗ</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Ngày đăng ký</th>
+                <th className="h-10 border-b border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 font-bold text-indigo-600">{row.code}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-800 font-semibold">{row.project}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600">Căn {row.unit}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-right font-medium text-slate-800">{row.amount}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600">{row.date}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      row.status === "Đã chuyển cọc"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}>
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CustomerTicketTab() {
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+
+  const ticketData = [
+    { id: "TK-0922", title: "Yêu cầu thay đổi tiến độ đóng tiền đợt 3", category: "Thủ tục HĐ", priority: "Cao", status: "Đang xử lý", date: "24/06/2026" },
+    { id: "TK-0811", title: "Hỏi về thời hạn bàn giao căn hộ & phí bảo trì", category: "Giải đáp chính sách", priority: "Trung bình", status: "Đã đóng", date: "18/06/2026" }
+  ];
+
+  const filteredData = useMemo(() => {
+    return ticketData.filter((item) => {
+      if (search.trim() !== "") {
+        const query = search.toLowerCase();
+        if (!item.id.toLowerCase().includes(query) && !item.title.toLowerCase().includes(query)) {
+          return false;
+        }
+      }
+      if (categoryFilter !== "all" && item.category !== categoryFilter) {
+        return false;
+      }
+      if (statusFilter !== "all" && item.status !== statusFilter) {
+        return false;
+      }
+      if (priorityFilter !== "all" && item.priority !== priorityFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [search, categoryFilter, statusFilter, priorityFilter]);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {/* Toolbar */}
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm ticket..."
+                className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div className="w-36">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Chủ đề" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả chủ đề</SelectItem>
+                  <SelectItem value="Thủ tục HĐ">Thủ tục HĐ</SelectItem>
+                  <SelectItem value="Giải đáp chính sách">Giải đáp chính sách</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-32">
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Độ ưu tiên" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả độ ưu tiên</SelectItem>
+                  <SelectItem value="Cao">Cao</SelectItem>
+                  <SelectItem value="Trung bình">Trung bình</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-32">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent className="text-xs">
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="Đang xử lý">Đang xử lý</SelectItem>
+                  <SelectItem value="Đã đóng">Đã đóng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {filteredData.length === 0 ? (
+          <div className="text-center py-8 text-slate-400 text-xs">Không tìm thấy ticket yêu cầu phù hợp</div>
+        ) : (
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500">
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Mã Ticket</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Tiêu đề yêu cầu</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Chủ đề</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Độ ưu tiên</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Ngày tạo</th>
+                <th className="h-10 border-b border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 font-bold text-slate-500">{row.id}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-800 font-semibold">{row.title}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600">{row.category}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2">
+                    <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold ${
+                      row.priority === "Cao"
+                        ? "bg-red-50 text-red-700"
+                        : "bg-slate-100 text-slate-700"
+                    }`}>
+                      {row.priority}
+                    </span>
+                  </td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600">{row.date}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      row.status === "Đang xử lý"
+                        ? "bg-blue-50 text-blue-700 border-blue-100"
+                        : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}>
+                      {row.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

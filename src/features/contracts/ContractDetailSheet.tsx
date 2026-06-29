@@ -50,10 +50,10 @@ function getInitialTab(): ViewTab {
 
 // ─── Config lookup maps ───────────────────────────────────────────────────────
 const statusConfig: Record<string, string> = {
-  "Đang ký":   "bg-blue-100 text-blue-700 border-blue-200",
-  "Đã ký":     "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "Công chứng": "bg-indigo-100 text-indigo-700 border-indigo-200",
-  "Đã hủy":   "bg-red-100 text-red-700 border-red-200",
+  "Đang ký":   "border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm",
+  "Đã ký":     "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm",
+  "Công chứng": "border-indigo-300 bg-indigo-50 text-indigo-700 font-semibold shadow-sm",
+  "Đã hủy":   "border-red-300 bg-red-50 text-red-700 font-bold shadow-sm",
 };
 
 type PayStatus  = "on-time" | "late" | "overdue" | "pending";
@@ -66,16 +66,16 @@ const paymentLabel: Record<PayStatus, string> = {
   pending:   "Chưa đến hạn",
 };
 const paymentColor: Record<PayStatus, string> = {
-  "on-time": "text-emerald-600",
-  late:      "text-amber-600",
-  overdue:   "text-red-600",
-  pending:   "text-slate-400",
+  "on-time": "text-emerald-700 font-semibold",
+  late:      "text-amber-700 font-semibold",
+  overdue:   "text-red-700 font-bold",
+  pending:   "text-slate-500 font-medium",
 };
 const paymentRowBg: Record<PayStatus, string> = {
-  "on-time": "bg-emerald-50 border-emerald-100",
-  late:      "bg-amber-50 border-amber-100",
-  overdue:   "bg-red-50 border-red-200",
-  pending:   "bg-slate-50 border-slate-100",
+  "on-time": "bg-transparent border-l-4 border-l-emerald-500 border border-slate-200 transition-all hover:bg-slate-50/50",
+  late:      "bg-transparent border-l-4 border-l-amber-500 border border-slate-200 transition-all hover:bg-slate-50/50",
+  overdue:   "bg-transparent border-l-4 border-l-red-500 border border-slate-200 transition-all hover:bg-slate-50/50",
+  pending:   "bg-transparent border-l-4 border-l-slate-400 border border-slate-200 transition-all hover:bg-slate-50/50",
 };
 const instLabel: Record<InstStatus, string> = {
   pending: "Chờ đóng",

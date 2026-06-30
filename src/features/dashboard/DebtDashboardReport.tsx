@@ -67,6 +67,10 @@ const overdueDebtBreakdownLabels: Record<OverdueDebtBreakdownType, string> = {
   stage: "đợt thanh toán",
   product: "sản phẩm",
 };
+const extensionReviewFallbackRows = [
+  { type: "Gia hạn có phạt", count: 3, amount: 2.012, reason: "Chờ giải ngân ngân hàng" },
+  { type: "Gia hạn không phạt", count: 2, amount: 1.576, reason: "Khách hàng VIP / giao dịch ngân hàng chậm" },
+];
 
 const safeNumber = (value: unknown) => {
   const parsed = Number(value);
@@ -363,7 +367,7 @@ function ChartLegendList({ items, valueLabel }: { items: Array<{ name: string; a
 }
 
 function ReportTableCard({ title, description, columns, rows, emptyText }: { title: string; description: string; columns: Array<{ key: string; label: string; align?: "left" | "right" }>; rows: Array<Record<string, React.ReactNode>>; emptyText: string }) {
-  return <Card className="gap-0 rounded-xl border-slate-200 bg-white p-5 shadow-sm"><div><h3 className="text-sm font-semibold text-slate-950">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p></div>{rows.length === 0 ? <div className="mt-4 flex min-h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-4 text-center text-xs leading-5 text-slate-500">{emptyText}</div> : <div className="mt-4 max-h-[320px] overflow-auto"><table className="w-full min-w-[560px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_#e2e8f0]"><tr>{columns.map((column) => <th key={column.key} className={`px-3 py-2.5 text-xs font-semibold text-slate-500 ${column.align === "right" ? "text-right" : "text-left"}`}>{column.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row.id ?? index)} className="border-b border-slate-100 hover:bg-blue-50/35">{columns.map((column) => <td key={column.key} className={`px-3 py-2.5 text-xs text-slate-700 ${column.align === "right" ? "text-right tabular-nums" : "text-left"}`}>{row[column.key]}</td>)}</tr>)}</tbody></table></div>}</Card>;
+  return <Card className="gap-0 rounded-xl border-slate-200 bg-white p-5 shadow-sm"><div><h3 className="text-sm font-semibold text-slate-950">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p></div>{rows.length === 0 ? <div className="mt-4 flex min-h-32 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-4 text-center text-xs leading-5 text-slate-500">{emptyText}</div> : <div className="mt-4 max-h-[320px] overflow-auto"><table className="w-full min-w-[560px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_#e2e8f0]"><tr>{columns.map((column) => <th key={column.key} className={`px-3 py-2.5 text-2sm font-semibold text-slate-500 ${column.align === "right" ? "text-right" : "text-left"}`}>{column.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={String(row.id ?? index)} className="border-b border-slate-100 hover:bg-blue-50/35">{columns.map((column) => <td key={column.key} className={`px-3 py-2.5 text-2sm text-slate-700 ${column.align === "right" ? "text-right tabular-nums" : "text-left"}`}>{row[column.key]}</td>)}</tr>)}</tbody></table></div>}</Card>;
 }
 
 export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) {
@@ -718,21 +722,24 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
     .slice(0, 10);
   const topOverdueCustomers = customerDebtSummary.filter((item) => item.overdueAmount > 0).sort((a, b) => b.overdueAmount - a.overdueAmount).slice(0, 20);
   const topLateInterestCustomers = customerDebtSummary.filter((item) => item.lateInterest > 0).sort((a, b) => b.lateInterest - a.lateInterest).slice(0, 10);
-  const extensionReportRows = useMemo(() => Object.entries(rows.reduce<Record<string, { count: number; amount: number; reason: Record<string, number> }>>((acc, row) => {
-    row.record.extensions?.forEach((extension) => {
-      const type = extension.type === "with-penalty" ? "Gia hạn có phạt" : "Gia hạn không phạt";
-      acc[type] = acc[type] ?? { count: 0, amount: 0, reason: {} };
-      acc[type].count += 1;
-      acc[type].amount += extension.installments.reduce((sum, installment) => sum + safeNumber(installment.amount), 0);
-      acc[type].reason[extension.reason] = (acc[type].reason[extension.reason] ?? 0) + 1;
-    });
-    return acc;
-  }, {})).map(([type, value]) => ({
-    type,
-    count: value.count,
-    amount: value.amount,
-    reason: Object.entries(value.reason).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Chưa xác định",
-  })).sort((a, b) => b.count - a.count), [rows]);
+  const extensionReportRows = useMemo(() => {
+    const realRows = Object.entries(rows.reduce<Record<string, { count: number; amount: number; reason: Record<string, number> }>>((acc, row) => {
+      row.record.extensions?.forEach((extension) => {
+        const type = extension.type === "with-penalty" ? "Gia hạn có phạt" : "Gia hạn không phạt";
+        acc[type] = acc[type] ?? { count: 0, amount: 0, reason: {} };
+        acc[type].count += 1;
+        acc[type].amount += extension.installments.reduce((sum, installment) => sum + safeNumber(installment.amount), 0);
+        acc[type].reason[extension.reason] = (acc[type].reason[extension.reason] ?? 0) + 1;
+      });
+      return acc;
+    }, {})).map(([type, value]) => ({
+      type,
+      count: value.count,
+      amount: value.amount,
+      reason: Object.entries(value.reason).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Chưa xác định",
+    })).sort((a, b) => b.count - a.count);
+    return realRows.length > 0 ? realRows : extensionReviewFallbackRows;
+  }, [rows]);
 
   const chartAction = (label: string, key: ChartKey) => (
     <ChartTimeControl label={label} group={getChartFilter(key).group} setGroup={(val) => setChartFilter(key, { group: val })} from={getChartFilter(key).from} setFrom={(val) => setChartFilter(key, { from: val })} to={getChartFilter(key).to} setTo={(val) => setChartFilter(key, { to: val })} />

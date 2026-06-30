@@ -71,7 +71,7 @@ function SectionCard({ section }: { section: DetailSection }) {
         className="w-full flex items-center justify-between px-5 py-4 bg-slate-50/80 border-b border-slate-200 text-left transition-colors hover:bg-slate-100/60 focus:outline-none"
       >
         <div className="flex flex-col gap-0.5">
-          <span className="text-sm text-slate-800 font-bold uppercase tracking-wide">
+          <span className="text-sm text-slate-800 font-medium uppercase tracking-wide">
             {section.title}
           </span>
           <span className="text-[11px] text-slate-400">
@@ -92,10 +92,10 @@ function SectionCard({ section }: { section: DetailSection }) {
             ) : (
               leafs.map((field) => (
                 <div key={field.id} className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1">
                     {field.label}
                   </span>
-                  <span className="text-xs text-slate-900 font-bold">
+                  <span className="text-xs text-slate-900 font-medium">
                     {field.value || "—"}
                   </span>
                 </div>

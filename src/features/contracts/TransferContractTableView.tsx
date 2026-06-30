@@ -98,7 +98,7 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
                     <td
                       style={{
                         color: "#15803d",
-                        fontWeight: 700,
+                        fontWeight: 500,
                         textAlign: "center",
                         borderBottom: "1px solid #bbf7d0",
                         borderRight: "1px solid #bbf7d0",
@@ -112,7 +112,7 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
                       colSpan={2}
                       style={{
                         color: "#15803d",
-                        fontWeight: 700,
+                        fontWeight: 500,
                         borderBottom: "1px solid #bbf7d0",
                         padding: 0,
                         fontSize: "12px",
@@ -123,7 +123,7 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
                         onClick={() => toggleSection(section.id)}
                         className="w-full flex items-center justify-between text-left focus:outline-none hover:bg-emerald-100/30 transition-colors px-3.5 py-2.5"
                       >
-                        <span className="font-bold text-emerald-800 uppercase tracking-wide">
+                        <span className="font-medium text-emerald-800 uppercase tracking-wide">
                           {section.title}
                         </span>
                         <ChevronDown
@@ -145,7 +145,7 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
                         <td
                           style={{
                             color: "#64748b",
-                            fontWeight: 600,
+                            fontWeight: 500,
                             textAlign: "center",
                             borderBottom: isLastRow ? "none" : "1px solid #e0e0e0",
                             borderRight: "1px solid #e0e0e0",
@@ -159,7 +159,7 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
                           style={{
                             ...fieldCellStyle,
                             paddingLeft: `${14 + level * 16}px`,
-                            fontWeight: isParent ? 600 : 400,
+                            fontWeight: isParent ? 500 : 400,
                             color: isParent ? "#1a2035" : "#475467",
                             borderRight: "none",
                             borderBottom: isLastRow ? "none" : "1px solid #e0e0e0",

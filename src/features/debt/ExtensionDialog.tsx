@@ -70,7 +70,7 @@ function buildDefaultForm(
       installments: existing.installments.map((i) => ({
         id: i.id,
         dueDate: i.dueDate,
-        amount: String(i.amount),
+        amount: Math.round(i.amount * 1000000000).toLocaleString("vi-VN"),
       })),
     };
   }
@@ -83,7 +83,7 @@ function buildDefaultForm(
     reason: "",
     notes: "",
     installments: [
-      { id: `inst-${Date.now()}`, dueDate: "", amount: String(record.baseAmount) },
+      { id: `inst-${Date.now()}`, dueDate: "", amount: Math.round(record.baseAmount * 1000000000).toLocaleString("vi-VN") },
     ],
   };
 }
@@ -118,7 +118,10 @@ export function ExtensionDialog({
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const total = form.installments.reduce(
-    (s, i) => s + (parseFloat(i.amount) || 0),
+    (s, i) => {
+      const cleanVal = parseFloat(i.amount.replace(/\D/g, "")) || 0;
+      return s + cleanVal / 1000000000;
+    },
     0
   );
   const amountsMatch = Math.abs(total - record.baseAmount) < 0.0005;
@@ -128,9 +131,17 @@ export function ExtensionDialog({
   const updateInst = (id: string, field: "dueDate" | "amount", value: string) =>
     setForm((p) => ({
       ...p,
-      installments: p.installments.map((i) =>
-        i.id === id ? { ...i, [field]: value } : i
-      ),
+      installments: p.installments.map((i) => {
+        if (i.id === id) {
+          let updatedVal = value;
+          if (field === "amount") {
+            const clean = value.replace(/\D/g, "");
+            updatedVal = clean ? parseInt(clean, 10).toLocaleString("vi-VN") : "";
+          }
+          return { ...i, [field]: updatedVal };
+        }
+        return i;
+      }),
     }));
 
   const addInst = () =>
@@ -158,7 +169,8 @@ export function ExtensionDialog({
       errs.amounts = `Tổng đợt ${formatVND(total)} chưa khớp với số gốc ${formatVND(record.baseAmount)}`;
     form.installments.forEach((i, idx) => {
       if (!i.dueDate) errs[`date_${idx}`] = "Chưa chọn ngày";
-      if (!i.amount || parseFloat(i.amount) <= 0)
+      const cleanVal = parseFloat(i.amount.replace(/\D/g, "")) || 0;
+      if (cleanVal <= 0)
         errs[`amount_${idx}`] = "Số tiền không hợp lệ";
     });
     setErrors(errs);
@@ -177,7 +189,7 @@ export function ExtensionDialog({
             ? "Đợt gia hạn"
             : `Đợt gia hạn ${idx + 1}/${instCount}`,
         dueDate: i.dueDate,
-        amount: parseFloat(i.amount),
+        amount: (parseFloat(i.amount.replace(/\D/g, "")) || 0) / 1000000000,
         status: new Date(i.dueDate) < new Date() ? "overdue" : "upcoming",
       })
     );
@@ -434,7 +446,7 @@ export function ExtensionDialog({
                   <span className="text-[10px] text-muted-foreground font-medium">#</span>
                   <span className="text-[10px] text-muted-foreground font-medium">Đợt</span>
                   <span className="text-[10px] text-muted-foreground font-medium">Ngày đến hạn</span>
-                  <span className="text-[10px] text-muted-foreground font-medium">Số tiền (tỷ)</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">Số tiền (VND)</span>
                   <span />
                 </div>
 
@@ -460,10 +472,8 @@ export function ExtensionDialog({
                         onChange={(e) => updateInst(inst.id, "dueDate", e.target.value)}
                       />
                       <Input
-                        type="number"
-                        min={0}
-                        step={0.001}
-                        placeholder="0.000"
+                        type="text"
+                        placeholder="VD: 100.000.000"
                         className={`h-7 text-xs ${errors[`amount_${idx}`] ? "border-red-400" : ""}`}
                         value={inst.amount}
                         onChange={(e) => updateInst(inst.id, "amount", e.target.value)}

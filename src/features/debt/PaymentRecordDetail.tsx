@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import {
   type DebtAuditLog,
 } from "@/data/mockDataCongNo";
 import { DebtAdjustmentDialog } from "./DebtAdjustmentDialog";
+import { PaymentConfirmDialog } from "./PaymentConfirmDialog";
 import { AuditHistorySection } from "./AuditHistorySection";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -164,6 +165,8 @@ function InterestDetailDialog({
   projectName,
   contractCode,
   periods,
+  onExportPDF,
+  onSendEmail,
 }: {
   open: boolean;
   onClose: () => void;
@@ -171,6 +174,8 @@ function InterestDetailDialog({
   projectName: string;
   contractCode: string;
   periods: InterestPeriod[];
+  onExportPDF: () => void;
+  onSendEmail: () => void;
 }) {
   const totalInterest = periods.reduce((sum, p) => sum + p.interestAmount, 0);
   const principalRemaining = record.baseAmount - (periods[0]?.paymentInPeriod || 0);
@@ -197,6 +202,7 @@ function InterestDetailDialog({
               variant="outline"
               size="sm"
               className="h-7 text-xs gap-1.5 border-border/60 shrink-0"
+              onClick={onExportPDF}
             >
               <Download className="size-3" />
               Xuất PDF
@@ -315,7 +321,7 @@ function InterestDetailDialog({
                       <td colSpan={7} className="px-3 py-3 text-right text-xs text-foreground font-medium">
                         Tổng lãi trễ hạn tạm tính:
                       </td>
-                      <td className="px-3 py-3 text-right text-sm text-red-600 tabular-nums font-semibold">
+                      <td className="px-3 py-3 text-right text-sm text-red-600 tabular-nums font-medium">
                         {formatVND(totalInterest)}
                       </td>
                     </tr>
@@ -323,7 +329,7 @@ function InterestDetailDialog({
                       <td colSpan={7} className="px-3 py-2.5 text-right text-xs text-foreground font-medium">
                         Tổng cần thanh toán:
                       </td>
-                      <td className="px-3 py-2.5 text-right text-sm text-foreground tabular-nums font-semibold">
+                      <td className="px-3 py-2.5 text-right text-sm text-foreground tabular-nums font-medium">
                         {formatVND(principalRemaining + totalInterest)}
                       </td>
                     </tr>
@@ -372,11 +378,11 @@ function InterestDetailDialog({
             <Button variant="outline" onClick={onClose} className="flex-1">
               Đóng
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={onExportPDF}>
               <Download className="size-4" />
               Xuất PDF
             </Button>
-            <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+            <Button className="gap-2 bg-blue-600 hover:bg-blue-700" onClick={onSendEmail}>
               <Send className="size-4" />
               Gửi cho khách hàng
             </Button>
@@ -400,6 +406,7 @@ export function PaymentRecordDetail() {
 
   const [interestDialogOpen, setInterestDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
 
   let targetCustomerId = customerId;
   if (customerId && customerId.startsWith("C")) {
@@ -415,9 +422,31 @@ export function PaymentRecordDetail() {
     contract = customer.contracts[0];
   }
   const stage = contract?.stages?.find((s) => s.id === stageId);
-  const record = stage?.records.find((r) => r.id === recordId);
+  const staticRecord = stage?.records.find((r) => r.id === recordId);
 
-  if (!customer || !contract || !stage || !record) {
+  const [recordState, setRecordState] = useState<PaymentRecord | null>(null);
+  const [localPaymentHistory, setLocalPaymentHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (staticRecord) {
+      setRecordState(JSON.parse(JSON.stringify(staticRecord)));
+      const initialPaid = staticRecord.paidAmount ?? 0;
+      const initialHistory = initialPaid > 0 ? [
+        {
+          date: staticRecord.paidDate ? fmtDate(staticRecord.paidDate) : "11/06/2026",
+          description: `Thanh toán một phần ${staticRecord.label}`,
+          amount: initialPaid,
+          toPrincipal: initialPaid,
+          toInterestFee: 0,
+          transactionCode: "GD-11062026-001",
+          confirmedBy: "Nguyễn Minh Anh",
+        }
+      ] : [];
+      setLocalPaymentHistory(initialHistory);
+    }
+  }, [staticRecord]);
+
+  if (!customer || !contract || !stage || !staticRecord) {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center gap-4 text-muted-foreground"
@@ -436,6 +465,19 @@ export function PaymentRecordDetail() {
       </div>
     );
   }
+
+  if (!recordState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground bg-slate-50/80">
+        <div className="text-center space-y-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-xs">Đang tải thông tin công nợ...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const record = recordState;
 
   // Contract info
   const contractCode = `HDMB-${contract.projectName.substring(0, 3).toUpperCase()}-${contract.unit.replace(".", "")}-2026`;
@@ -474,17 +516,7 @@ export function PaymentRecordDetail() {
   };
 
   // Mock: payment history
-  const paymentHistory = principalPaid > 0 ? [
-    {
-      date: "11/06/2026",
-      description: `Thanh toán một phần ${record.label}`,
-      amount: principalPaid,
-      toPrincipal: principalPaid,
-      toInterestFee: 0,
-      transactionCode: "GD-11062026-001",
-      confirmedBy: salesperson,
-    }
-  ] : [];
+  const paymentHistory = localPaymentHistory;
 
   // Timeline history
   const daysAfterDue = record.daysAfterDue ?? record.daysOverdue ?? 0;
@@ -506,11 +538,250 @@ export function PaymentRecordDetail() {
 
   // Handle adjustment confirmation
   const handleAdjustmentConfirm = (auditLog: DebtAuditLog) => {
-    // In a real app, this would update the backend and refresh data
-    console.log("Adjustment confirmed:", auditLog);
-    alert(`Điều chỉnh đã được ghi nhận: ${auditLog.fieldName}\nTừ: ${auditLog.oldValue} → ${auditLog.newValue}`);
+    if (!recordState) return;
+
+    const updatedRecord = { ...recordState };
+
+    const parseValueToBillions = (valStr: string): number => {
+      const cleanStr = valStr.replace(/\D/g, "");
+      if (!cleanStr) return 0;
+      const num = parseFloat(cleanStr);
+      if (num >= 100000) {
+        return num / 1000000000;
+      }
+      return num;
+    };
+
+    if (auditLog.fieldName === "dueDate") {
+      updatedRecord.dueDate = auditLog.newValue;
+    } else if (auditLog.fieldName === "principalAmount" || auditLog.fieldName === "baseAmount") {
+      updatedRecord.baseAmount = parseValueToBillions(auditLog.newValue);
+      updatedRecord.remainingAmount = Math.max(0, updatedRecord.baseAmount - (updatedRecord.paidAmount ?? 0));
+    } else if (auditLog.fieldName === "paidAmount") {
+      updatedRecord.paidAmount = parseValueToBillions(auditLog.newValue);
+      updatedRecord.remainingAmount = Math.max(0, updatedRecord.baseAmount - updatedRecord.paidAmount);
+    } else if (auditLog.fieldName === "remainingAmount") {
+      updatedRecord.remainingAmount = parseValueToBillions(auditLog.newValue);
+    } else if (auditLog.fieldName === "waivedInterest") {
+      updatedRecord.waivedInterest = parseValueToBillions(auditLog.newValue);
+    } else if (auditLog.fieldName === "status") {
+      updatedRecord.status = auditLog.newValue as any;
+    }
+
+    if (!updatedRecord.auditLogs) {
+      updatedRecord.auditLogs = [];
+    }
+    updatedRecord.auditLogs = [auditLog, ...updatedRecord.auditLogs];
+
+    setRecordState(updatedRecord);
+
     setAdjustmentDialogOpen(false);
-    // Optionally: refresh page or update local state
+  };
+
+  const handlePaymentConfirm = (paidAmountNum: number, paidDate: string, invoice: InvoiceFile) => {
+    if (!recordState) return;
+
+    const updatedRecord = { ...recordState };
+    const prevPaid = updatedRecord.paidAmount ?? 0;
+    const newPaid = prevPaid + paidAmountNum;
+    updatedRecord.paidAmount = newPaid;
+    updatedRecord.remainingAmount = Math.max(0, updatedRecord.baseAmount - newPaid);
+    updatedRecord.paidDate = paidDate;
+
+    if (updatedRecord.remainingAmount <= 0) {
+      updatedRecord.status = "paid";
+    } else {
+      updatedRecord.status = "partial";
+    }
+
+    if (!updatedRecord.invoices) {
+      updatedRecord.invoices = [];
+    }
+    updatedRecord.invoices = [...updatedRecord.invoices, invoice];
+
+    const newTx = {
+      date: fmtDate(paidDate),
+      description: `Thanh toán cho đợt ${updatedRecord.label}`,
+      amount: paidAmountNum,
+      toPrincipal: paidAmountNum,
+      toInterestFee: 0,
+      transactionCode: invoice.transactionRef || `GD-${Date.now()}`,
+      confirmedBy: "Nguyễn Minh Anh",
+    };
+    const updatedHistory = [...localPaymentHistory, newTx];
+
+    setRecordState(updatedRecord);
+    setLocalPaymentHistory(updatedHistory);
+
+    setPaymentConfirmOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    
+    const html = `
+      <html>
+        <head>
+          <title>PHIẾU THÔNG BÁO TÍNH LÃI TRỄ HẠN - ${record.label}</title>
+          <style>
+            body { font-family: 'Arial', sans-serif; padding: 40px; color: #334155; line-height: 1.6; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; }
+            .title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+            .subtitle { font-size: 14px; color: #64748b; }
+            .section { margin-bottom: 25px; }
+            .section-title { font-size: 14px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 10px; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 10px; font-size: 13px; }
+            .grid-item { margin-bottom: 5px; }
+            .grid-label { color: #64748b; font-weight: 500; }
+            .grid-value { font-weight: 600; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+            th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+            th { background-color: #f8fafc; font-weight: bold; color: #475569; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .footer { margin-top: 50px; display: grid; grid-template-cols: 1fr 1fr; text-align: center; font-size: 13px; }
+            .sig-box { height: 100px; }
+            .total-row { font-weight: bold; background-color: #f8fafc; }
+            .highlight { color: #dc2626; }
+            .formula-box { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin-top: 10px; font-size: 12px; }
+            .formula-title { font-weight: bold; margin-bottom: 5px; color: #475569; }
+            .formula-expr { font-family: monospace; font-size: 13px; font-weight: bold; color: #0f172a; margin: 6px 0; }
+            .formula-example { background-color: #ffffff; border: 1px dashed #cbd5e1; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 11px; margin-top: 6px; }
+            .formula-note { font-size: 10px; color: #64748b; font-style: italic; margin-top: 6px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">PHIẾU THÔNG BÁO TÍNH LÃI TRỄ HẠN</div>
+            <div class="subtitle">Mã Hợp Đồng: ${contractCode} | Dự án: ${contract.projectName}</div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Thông tin khách hàng</div>
+            <div class="grid">
+              <div class="grid-item"><span class="grid-label">Khách hàng:</span> <span class="grid-value">${customer.name}</span></div>
+              <div class="grid-item"><span class="grid-label">Số điện thoại:</span> <span class="grid-value">${customer.phone || "—"}</span></div>
+              <div class="grid-item"><span class="grid-label">Mã số thuế:</span> <span class="grid-value">${customer.taxCode || "—"}</span></div>
+              <div class="grid-item"><span class="grid-label">Căn hộ:</span> <span class="grid-value">${contract.unit} (Tầng ${contract.floor}, Block ${contract.block})</span></div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Thông tin đợt thanh toán quá hạn</div>
+            <div class="grid">
+              <div class="grid-item"><span class="grid-label">Đợt thanh toán:</span> <span class="grid-value">${record.label}</span></div>
+              <div class="grid-item"><span class="grid-label">Ngày đến hạn:</span> <span class="grid-value">${fmtDate(record.dueDate)}</span></div>
+              <div class="grid-item"><span class="grid-label">Số gốc quá hạn:</span> <span class="grid-value">${formatVND(principalRemaining)}</span></div>
+              <div class="grid-item"><span class="grid-label">Số ngày trễ hạn:</span> <span class="grid-value highlight">${record.daysOverdue} ngày</span></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Công thức tính lãi trễ hạn</div>
+            <div class="formula-box">
+              <div class="formula-title">Công thức tính lãi trễ hạn:</div>
+              <div class="formula-expr">Lãi trễ hạn = Gốc còn nợ × Lãi suất/ngày × Số ngày quá hạn</div>
+              <div class="formula-example">
+                <strong>Ví dụ:</strong><br/>
+                1.000.000.000 VNĐ × 0,05% × 10 ngày = 5.000.000 VNĐ
+              </div>
+              <div class="formula-note">Một khoản gốc không được tính lãi hai lần trong cùng một khoảng thời gian.</div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Chi tiết tính lãi trễ hạn</div>
+            <table>
+              <thead>
+                <tr>
+                  <th class="text-center">STT</th>
+                  <th>Khoảng thời gian</th>
+                  <th class="text-center">Số ngày</th>
+                  <th class="text-right">Gốc tính lãi</th>
+                  <th class="text-center">Lãi suất/ngày</th>
+                  <th class="text-right">Lãi phát sinh</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${interestPeriods.map(p => `
+                  <tr>
+                    <td class="text-center">${p.stt}</td>
+                    <td>${p.startDate} - ${p.endDate}</td>
+                    <td class="text-center">${p.days} ngày</td>
+                    <td class="text-right">${formatVND(p.principalForInterest)}</td>
+                    <td class="text-center">${p.interestRate.toFixed(2)}%</td>
+                    <td class="text-right highlight">${formatVND(p.interestAmount)}</td>
+                  </tr>
+                `).join("")}
+                <tr class="total-row">
+                  <td colspan="5" class="text-right">Tổng lãi trễ hạn tạm tính:</td>
+                  <td class="text-right highlight">${formatVND(totalInterest)}</td>
+                </tr>
+                <tr class="total-row">
+                  <td colspan="5" class="text-right">Tổng số tiền cần thanh toán (Gốc + Lãi):</td>
+                  <td class="text-right">${formatVND(totalDue)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="footer">
+            <div>
+              <p><strong>Đại diện Chủ đầu tư</strong></p>
+              <p class="subtitle">(Ký, ghi rõ họ tên)</p>
+              <div class="sig-box"></div>
+              <p>Nguyễn Minh Anh</p>
+            </div>
+            <div>
+              <p><strong>Khách hàng xác nhận</strong></p>
+              <p class="subtitle">(Ký, ghi rõ họ tên)</p>
+              <div class="sig-box"></div>
+              <p>${customer.name}</p>
+            </div>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const handleSendEmailNotification = () => {
+    // Open the PDF first
+    handleExportPDF();
+    
+    // Format email mailto link
+    const emailSubject = encodeURIComponent(`[Thông báo] Chi tiết tính lãi trễ hạn đợt thanh toán ${record.label} - Hợp đồng ${contractCode}`);
+    const emailBody = encodeURIComponent(
+`Kính gửi Quý khách ${customer.name},
+
+Chủ đầu tư xin gửi thông báo về chi tiết tính lãi trễ hạn đối với đợt thanh toán ${record.label} thuộc Hợp đồng mua bán căn hộ số ${contractCode}.
+
+- Số gốc chậm thanh toán: ${formatVND(principalRemaining)}
+- Số ngày quá hạn: ${record.daysOverdue} ngày
+- Số tiền lãi trễ hạn tạm tính: ${formatVND(totalInterest)}
+- Tổng số tiền cần thanh toán: ${formatVND(totalDue)}
+
+Quý khách vui lòng xem chi tiết bảng tính lãi và công thức trong tài liệu đính kèm (hoặc file PDF vừa được mở).
+
+Trân trọng,
+Nguyễn Minh Anh
+Bộ phận Quản lý Công nợ`
+    );
+    const emailAddress = customer.email || "khachhang@gmail.com";
+    
+    // Open mail client
+    window.location.href = `mailto:${emailAddress}?subject=${emailSubject}&body=${emailBody}`;
+    
+    // Alert user
+    alert(`Đã mở trình soạn email để gửi thông báo cho khách hàng ${customer.name} (${emailAddress}) và mở file PDF chi tiết tính lãi trễ hạn kèm theo.`);
   };
 
   return (
@@ -522,6 +793,8 @@ export function PaymentRecordDetail() {
         projectName={contract.projectName}
         contractCode={contractCode}
         periods={interestPeriods}
+        onExportPDF={handleExportPDF}
+        onSendEmail={handleSendEmailNotification}
       />
 
       <DebtAdjustmentDialog
@@ -530,6 +803,14 @@ export function PaymentRecordDetail() {
         record={record}
         contractName={contract.projectName}
         onConfirm={handleAdjustmentConfirm}
+      />
+
+      <PaymentConfirmDialog
+        open={paymentConfirmOpen}
+        onClose={() => setPaymentConfirmOpen(false)}
+        record={record}
+        contractName={contract.projectName}
+        onConfirm={handlePaymentConfirm}
       />
 
       <div className="min-h-full bg-slate-50/80">
@@ -558,12 +839,12 @@ export function PaymentRecordDetail() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2">
+             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExportPDF}>
                 <Download className="size-4" />
                 Xuất PDF
               </Button>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleSendEmailNotification}>
                 <Send className="size-4" />
                 Gửi thông báo
               </Button>
@@ -576,7 +857,7 @@ export function PaymentRecordDetail() {
                 <Edit3 className="size-4" />
                 Điều chỉnh công nợ
               </Button>
-              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={() => setPaymentConfirmOpen(true)}>
                 <BadgeCheck className="size-4" />
                 Ghi nhận thanh toán
               </Button>
@@ -881,7 +1162,7 @@ export function PaymentRecordDetail() {
                         <td colSpan={7} className="px-3 py-2.5 text-right text-xs text-foreground font-medium">
                           Tổng cần thanh toán:
                         </td>
-                        <td className="px-3 py-2.5 text-right text-sm text-foreground tabular-nums font-semibold">
+                        <td className="px-3 py-2.5 text-right text-sm text-foreground tabular-nums font-medium">
                           {formatVND(totalDue)}
                         </td>
                       </tr>

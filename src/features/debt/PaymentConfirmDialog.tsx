@@ -50,7 +50,8 @@ export function PaymentConfirmDialog({
   }, [open]);
 
   // Calculate allocation result
-  const paidAmountNum = parseFloat(paidAmount) || 0;
+  const rawCleanAmount = parseFloat(paidAmount.replace(/\D/g, "")) || 0;
+  const paidAmountNum = rawCleanAmount / 1000000000;
   const allocation = allocatePayment(paidAmountNum, record.remainingAmount);
 
   const isExactPayment = allocation.status === "paid";
@@ -145,16 +146,17 @@ export function PaymentConfirmDialog({
               <div className="relative">
                 <Input
                   id="paid-amount"
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  placeholder="Nhập số tiền (tỷ VNĐ)"
+                  type="text"
+                  placeholder="VD: 100.000.000"
                   value={paidAmount}
-                  onChange={(e) => setPaidAmount(e.target.value)}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    setPaidAmount(clean ? parseInt(clean, 10).toLocaleString("vi-VN") : "");
+                  }}
                   className="pr-16"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  tỷ VNĐ
+                  VND
                 </span>
               </div>
             </div>

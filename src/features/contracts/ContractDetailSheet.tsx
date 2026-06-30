@@ -53,7 +53,7 @@ const statusConfig: Record<string, string> = {
   "Đang ký":   "border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm",
   "Đã ký":     "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm",
   "Công chứng": "border-indigo-300 bg-indigo-50 text-indigo-700 font-semibold shadow-sm",
-  "Đã hủy":   "border-red-300 bg-red-50 text-red-700 font-bold shadow-sm",
+  "Đã hủy":   "border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm",
 };
 
 type PayStatus  = "on-time" | "late" | "overdue" | "pending";
@@ -68,7 +68,7 @@ const paymentLabel: Record<PayStatus, string> = {
 const paymentColor: Record<PayStatus, string> = {
   "on-time": "text-emerald-700 font-semibold",
   late:      "text-amber-700 font-semibold",
-  overdue:   "text-red-700 font-bold",
+  overdue:   "text-red-700 font-semibold",
   pending:   "text-slate-500 font-medium",
 };
 const paymentRowBg: Record<PayStatus, string> = {
@@ -352,7 +352,7 @@ function ContractDetailContent({
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 pt-4 pb-3 z-10 shrink-0">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <p className="text-xs text-indigo-600 mb-0.5" style={{ fontWeight: 600 }}>{contract.id}</p>
+            <p className="text-xs text-indigo-600 mb-0.5" style={{ fontWeight: 500 }}>{contract.id}</p>
             <h3 className="text-slate-900 leading-tight">{contract.customer}</h3>
             <p className="text-xs text-slate-500 mt-0.5">
               {contract.date} · {contract.property}
@@ -385,7 +385,7 @@ function ContractDetailContent({
           <div className="flex-1">
             <Progress value={contract.pct} className="h-1.5" />
           </div>
-          <span className="text-xs text-slate-600 shrink-0" style={{ fontWeight: 600 }}>
+          <span className="text-xs text-slate-600 shrink-0" style={{ fontWeight: 500 }}>
             {contract.pct}%
           </span>
           <span className="text-xs text-slate-400 shrink-0">
@@ -436,13 +436,13 @@ function ContractDetailContent({
                   <CreditCard className="w-4 h-4 text-slate-500" />
                   <span>Giai đoạn thanh toán ({contract.payments.length} đợt)</span>
                   {overdueCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full border border-red-200" style={{ fontWeight: 600 }}>
+                    <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full border border-red-200" style={{ fontWeight: 500 }}>
                       <AlertCircle className="w-3 h-3" />
                       {overdueCount} quá hạn
                     </span>
                   )}
                   {extensionCount > 0 && (
-                    <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded-full border border-amber-200" style={{ fontWeight: 600 }}>
+                    <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded-full border border-amber-200" style={{ fontWeight: 500 }}>
                       <CalendarClock className="w-3 h-3" />
                       {extensionCount} gia hạn
                     </span>

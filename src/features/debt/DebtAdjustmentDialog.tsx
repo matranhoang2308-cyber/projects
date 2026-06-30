@@ -149,10 +149,23 @@ export function DebtAdjustmentDialog({
     }
   };
 
+  const isAmountField = [
+    "principal-due",
+    "paid-amount",
+    "remaining-principal",
+    "reduce-waive-interest",
+  ].includes(adjustmentType);
+
   const handleConfirm = () => {
     if (!adjustmentType || !newValue || !reason || !approvedBy) return;
 
     const currentValue = getCurrentValue();
+    let finalNewValue = newValue;
+    if (isAmountField) {
+      const rawCleanVal = parseFloat(newValue.replace(/\D/g, "")) || 0;
+      const valBillions = rawCleanVal / 1000000000;
+      finalNewValue = formatVND(valBillions);
+    }
 
     const auditLog: DebtAuditLog = {
       id: `audit-${Date.now()}`,
@@ -160,7 +173,7 @@ export function DebtAdjustmentDialog({
       targetId: record.id,
       fieldName: getFieldName(),
       oldValue: currentValue,
-      newValue: newValue,
+      newValue: finalNewValue,
       reason: reason,
       requestedBy: requestedBy || "System",
       approvedBy: approvedBy,
@@ -274,12 +287,27 @@ export function DebtAdjustmentDialog({
                   <Label htmlFor="new-value">
                     Giá trị mới <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="new-value"
-                    placeholder="Nhập giá trị mới"
-                    value={newValue}
-                    onChange={(e) => setNewValue(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="new-value"
+                      placeholder={isAmountField ? "VD: 100.000.000" : "Nhập giá trị mới"}
+                      value={newValue}
+                      onChange={(e) => {
+                        if (isAmountField) {
+                          const clean = e.target.value.replace(/\D/g, "");
+                          setNewValue(clean ? parseInt(clean, 10).toLocaleString("vi-VN") : "");
+                        } else {
+                          setNewValue(e.target.value);
+                        }
+                      }}
+                      className={isAmountField ? "pr-12" : ""}
+                    />
+                    {isAmountField && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                        VND
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

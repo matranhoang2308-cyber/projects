@@ -691,7 +691,7 @@ const transferPersonRows = (person: TransferPerson) => [
 ];
 
 function TransferHistoryTable({ logs }: { logs: TransferLog[] }) {
-  return <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-xs"><tbody>
+  return <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-2sm"><tbody>
     {logs.flatMap((log) => {
       const summaryRows = [["Lần chuyển nhượng", String(log.sequence)], ["Ngày chuyển nhượng", log.form.signedDate || log.createdAt], ["Chủ sở hữu cũ", log.oldOwner.name], ["Chủ sở hữu mới", log.newOwner.name], ["Đồng sở hữu cũ", log.oldCoOwner.name], ["Đồng sở hữu mới", log.newCoOwner.name], ["File hợp đồng", log.form.fileName]];
       const sectionRow = (title: string, key: string) => <tr key={key} className="bg-stone-100"><td className="w-16 border-b border-r border-stone-200 px-3 py-2 text-center text-stone-700" style={{ fontWeight: 700 }}>A</td><td className="border-b border-stone-200 px-3 py-2 text-stone-800" style={{ fontWeight: 700 }}>{title}</td><td className="w-28 border-b border-stone-200 px-3 py-2 text-right"><TransferBadge sequence={log.sequence} /></td></tr>;
@@ -728,7 +728,7 @@ function PaymentProgressTable({ record }: { record: HdmbRecord }) {
         <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/debt/customer/5/contract/c5-1")}>Xem thanh toán</Button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-xs">
+        <table className="w-full min-w-[980px] border-collapse text-2sm">
           <thead className="bg-slate-50 text-slate-500">
             <tr>
               <th className="w-16 border-b border-r border-slate-200 px-3 py-2.5 text-center">STT</th>
@@ -965,8 +965,8 @@ function DetailDrawer({
                 <span className="text-xs text-slate-500">Chi tiết hợp đồng</span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-slate-900" style={{ fontWeight: 700 }}>Mã hợp đồng:</span>
-                <span className="text-sm text-blue-600" style={{ fontWeight: 700 }}>{record.values.c157 || unitCode}</span>
+                <span className="text-sm text-slate-900" style={{ fontWeight: 500 }}>Mã hợp đồng:</span>
+                <span className="text-sm text-blue-600" style={{ fontWeight: 500 }}>{record.values.c157 || unitCode}</span>
                 <span className={`rounded-md px-2 py-1 text-[11px] ${checkResult ? (checkResult.status === "passed" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700") : "bg-indigo-50 text-indigo-700"}`}>{checkResult ? checkStatusLabel[checkResult.status] : "Đang kiểm tra"}</span>
                 <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
                   {record.status || "Đã cọc"}
@@ -1059,40 +1059,40 @@ function DetailDrawer({
             {checkResult && (
               <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-                  <h3 className="text-xs text-slate-900" style={{ fontWeight: 700 }}>Thông tin kiểm tra dữ liệu</h3>
+                  <h3 className="text-xs text-slate-900" style={{ fontWeight: 500 }}>Thông tin kiểm tra dữ liệu</h3>
                   <span className="text-lg leading-none text-slate-400">−</span>
                 </div>
                 <div className="grid grid-cols-1 gap-x-12 gap-y-5 px-4 py-5 md:grid-cols-3">
                   <div>
                     <p className="text-xs text-slate-400">Người kiểm tra</p>
-                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 650 }}>{checkResult.checkedBy}</p>
+                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{checkResult.checkedBy}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Ngày kiểm tra</p>
-                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 650 }}>{checkResult.checkedAt}</p>
+                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{checkResult.checkedAt}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Trạng thái kiểm tra</p>
-                    <p className={`mt-2 text-sm ${checkResult.status === "passed" ? "text-emerald-700" : "text-red-700"}`} style={{ fontWeight: 650 }}>{checkStatusLabel[checkResult.status]}</p>
+                    <p className={`mt-2 text-sm ${checkResult.status === "passed" ? "text-emerald-700" : "text-red-700"}`} style={{ fontWeight: 500 }}>{checkStatusLabel[checkResult.status]}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Lý do</p>
-                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 650 }}>{checkResult.reason}</p>
+                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{checkResult.reason}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Mã KH</p>
-                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 650 }}>{record.values.c2 || "—"}</p>
+                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{record.values.c2 || "—"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Loại KH - Nhóm KH</p>
-                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 650 }}>{record.values.c108 || "—"}</p>
+                    <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{record.values.c108 || "—"}</p>
                   </div>
                 </div>
               </section>
             )}
 
             <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-slate-700" style={{ fontWeight: 650 }}>{detailView === "block" ? "Xem dạng block" : "Xem dạng table"}</p>
+              <p className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{detailView === "block" ? "Xem dạng block" : "Xem dạng table"}</p>
               <div className="flex items-center gap-1.5 text-xs text-slate-400">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 {contractDetailFields.length} trường từ sheet IMPORT DL KÝ HDMB

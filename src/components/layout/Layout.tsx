@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useLocation } from "react-router";
 import {
   LayoutDashboard,
   FileText,
-  FilePlus2,
   BookOpen,
   Users,
   ChevronLeft,
@@ -36,7 +35,6 @@ const navItems = [
     group: "Hợp đồng",
     items: [
       { label: "Danh sách hợp đồng", icon: FileText, path: "/contracts" },
-      { label: "Tạo hợp đồng mới", icon: FilePlus2, path: "/contracts/new" },
     ],
   },
   {
@@ -64,6 +62,8 @@ export function Layout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const isDebtDetails = /\/customer\/[^/]+\/contract\/[^/]+/.test(location.pathname);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -154,12 +154,14 @@ export function Layout() {
         Bỏ qua điều hướng
       </a>
       {/* Desktop Sidebar */}
-      <aside className={cn(
-        "hidden md:flex flex-col bg-white border-r border-slate-200 transition-[width] duration-300 shrink-0",
-        collapsed ? "w-16" : "w-60"
-      )}>
-        <SidebarContent />
-      </aside>
+      {!isDebtDetails && (
+        <aside className={cn(
+          "hidden md:flex flex-col bg-white border-r border-slate-200 transition-[width] duration-300 shrink-0",
+          collapsed ? "w-16" : "w-60"
+        )}>
+          <SidebarContent />
+        </aside>
+      )}
 
       {/* Mobile Overlay */}
       {mobileOpen && (
@@ -183,22 +185,26 @@ export function Layout() {
       <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Topbar */}
         <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex items-center gap-4 shrink-0">
-          <button
-            type="button"
-            aria-label="Mở menu"
-            className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:hidden"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="w-5 h-5 text-slate-600" />
-          </button>
-          <button
-            type="button"
-            aria-label={collapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
-            className="hidden h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:flex"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <ChevronLeft className={cn("w-4 h-4 text-slate-600 transition-transform", collapsed && "rotate-180")} />
-          </button>
+          {!isDebtDetails && (
+            <button
+              type="button"
+              aria-label="Mở menu"
+              className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="w-5 h-5 text-slate-600" />
+            </button>
+          )}
+          {!isDebtDetails && (
+            <button
+              type="button"
+              aria-label={collapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+              className="hidden h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 md:flex"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <ChevronLeft className={cn("w-4 h-4 text-slate-600 transition-transform", collapsed && "rotate-180")} />
+            </button>
+          )}
 
           <div className="flex-1 flex items-center gap-2 max-w-md">
             <div className="relative flex-1">

@@ -353,10 +353,18 @@ function saveOverrides(recordId: string, form: FormState) {
   localStorage.setItem("crm-contract-owner-overrides", JSON.stringify(currentOverrides));
 }
 
-export function ContractCreatePage() {
+export function ContractCreatePage({
+  onClose,
+  onSaved,
+  editId: propEditId,
+}: {
+  onClose?: () => void;
+  onSaved?: () => void;
+  editId?: string;
+} = {}) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("edit");
+  const editId = propEditId || searchParams.get("edit");
 
   const record = useMemo(() => {
     if (!editId) return null;
@@ -403,7 +411,7 @@ export function ContractCreatePage() {
 
   return <div className="min-h-full bg-slate-50">
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4">
+      <div className="flex w-full items-center gap-4">
         <div>
           <h1 id="create-contract-title" className="text-xl text-slate-950" style={{ fontWeight: 750 }}>
             {editId ? "Chỉnh sửa hợp đồng" : "Tạo hợp đồng"}
@@ -412,12 +420,12 @@ export function ContractCreatePage() {
             {editId ? `Chỉnh sửa thông tin hợp đồng ${editId}` : "Hoàn thiện thông tin theo 5 bước, dữ liệu được giữ lại khi chuyển bước."}
           </p>
         </div>
-        <Button variant="ghost" size="icon" aria-label="Đóng trang tạo hợp đồng" className="ml-auto h-10 w-10 text-slate-500" onClick={() => navigate("/contracts")}><X className="h-5 w-5" /></Button>
+        <Button variant="ghost" size="icon" aria-label="Đóng trang tạo hợp đồng" className="ml-auto h-10 w-10 text-slate-500" onClick={() => onClose ? onClose() : navigate("/contracts")}><X className="h-5 w-5" /></Button>
       </div>
     </header>
 
     <div className="border-b border-slate-200 bg-white px-6 py-4">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 overflow-x-auto">
+      <div className="flex w-full items-center gap-3 overflow-x-auto">
         {steps.map((label, index) => {
           const no = index + 1; const done = step > no; const active = step === no;
           return <div key={label} className="flex flex-1 items-center gap-3 last:flex-none">
@@ -430,7 +438,7 @@ export function ContractCreatePage() {
       </div>
     </div>
 
-    <section aria-labelledby="create-contract-title" className="mx-auto max-w-6xl space-y-5 px-6 py-6 pb-8">
+    <section aria-labelledby="create-contract-title" className="w-full space-y-5 px-6 py-6 pb-8">
       {step === 1 && <>
         <Section title="1.1. Loại khách hàng"><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><Field label="Loại khách hàng" required><Select value={data.customerType} onValueChange={(v: CustomerType) => set("customerType", v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="individual">Cá nhân</SelectItem><SelectItem value="business">Doanh nghiệp</SelectItem></SelectContent></Select></Field><Field label="Số lượng đồng sở hữu" required><Select value={data.coOwnerCount} onValueChange={(v) => set("coOwnerCount", v)}><SelectTrigger><SelectValue placeholder="Chọn số lượng đồng sở hữu" /></SelectTrigger><SelectContent><SelectItem value="0">Không có</SelectItem><SelectItem value="1">1 đồng sở hữu</SelectItem><SelectItem value="2">2 đồng sở hữu</SelectItem><SelectItem value="3">3 đồng sở hữu</SelectItem></SelectContent></Select></Field></div></Section>
         {data.customerType === "individual" ? <Section title="1.2. Thông tin chủ sở hữu"><PersonForm person={data.owner} onChange={(owner) => set("owner", owner)} /></Section> : <Section title="1.3. Thông tin doanh nghiệp"><div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"><CustomerCodeField value={data.businessCustomerCode} onChange={(v) => set("businessCustomerCode", v)} label="Mã khách hàng doanh nghiệp" /><Field label="Pháp nhân/Tên công ty mua"><TextBox value={data.businessName} onChange={(v) => set("businessName", v)} /></Field><Field label="Giấy phép ĐKKD"><TextBox value={data.businessLicense} onChange={(v) => set("businessLicense", v)} /></Field><Field label="Mã số thuế"><TextBox value={data.taxCode} onChange={(v) => set("taxCode", v)} /></Field><Field label="Ngày cấp GP ĐKKD"><TextBox type="date" value={data.businessLicenseDate} onChange={(v) => set("businessLicenseDate", v)} /></Field><Field label="Cơ quan cấp"><TextBox value={data.businessLicensePlace} onChange={(v) => set("businessLicensePlace", v)} /></Field><Field label="Địa chỉ trụ sở cũ"><TextBox value={data.businessOldAddress} onChange={(v) => set("businessOldAddress", v)} /></Field><Field label="Địa chỉ trụ sở mới"><TextBox value={data.businessNewAddress} onChange={(v) => set("businessNewAddress", v)} /></Field><Field label="Người đại diện pháp luật"><TextBox value={data.legalRepName} onChange={(v) => set("legalRepName", v)} /></Field><Field label="Nghề nghiệp / chức vụ"><TextBox value={data.legalRepTitle} onChange={(v) => set("legalRepTitle", v)} /></Field><Field label="Số CCCD/HC đại diện"><TextBox value={data.legalRepIdNo} onChange={(v) => set("legalRepIdNo", v)} /></Field><Field label="Ngày cấp CCCD"><TextBox type="date" value={data.legalRepIdDate} onChange={(v) => set("legalRepIdDate", v)} /></Field><Field label="Cơ quan cấp CCCD"><TextBox value={data.legalRepIdPlace} onChange={(v) => set("legalRepIdPlace", v)} /></Field><Field label="Ngày tháng năm sinh"><TextBox type="date" value={data.legalRepDob} onChange={(v) => set("legalRepDob", v)} /></Field><Field label="Giới tính"><TextBox value={data.legalRepGender} onChange={(v) => set("legalRepGender", v)} /></Field><Field label="Số điện thoại"><TextBox value={data.legalRepPhone} onChange={(v) => set("legalRepPhone", v)} /></Field><Field label="Email"><TextBox value={data.legalRepEmail} onChange={(v) => set("legalRepEmail", v)} /></Field></div></Section>}
@@ -492,10 +500,10 @@ export function ContractCreatePage() {
     </section>
 
     <footer className="sticky bottom-0 z-30 border-t border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+      <div className="flex w-full items-center justify-between gap-3">
         <p className="text-xs text-slate-500">Bước {step}/5 · {steps[step - 1]}</p>
         <div className="flex gap-3">
-          <Button variant="ghost" onClick={() => step === 1 ? navigate("/contracts") : setStep((s) => s - 1)}>
+          <Button variant="ghost" onClick={() => step === 1 ? (onClose ? onClose() : navigate("/contracts")) : setStep((s) => s - 1)}>
             {step === 1 ? "Hủy" : "Quay lại"}
           </Button>
           {step < 5 ? (
@@ -509,7 +517,8 @@ export function ContractCreatePage() {
                 if (editId) {
                   saveOverrides(editId, data);
                 }
-                navigate("/contracts");
+                if (onSaved) onSaved();
+                else navigate("/contracts");
               }}
             >
               {editId ? "Lưu thay đổi" : "Hoàn thành"}

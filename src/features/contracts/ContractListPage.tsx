@@ -12,6 +12,8 @@ import {
   Clock,
   FileText,
   LayoutGrid,
+  LayoutList,
+  Table2,
   MoreHorizontal,
   Plus,
   Rows3,
@@ -23,6 +25,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ContractCreatePage } from "./ContractCreatePage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -975,9 +979,33 @@ function DetailDrawer({
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" size="icon" className="h-9 w-9 text-emerald-700" onClick={exportExcel} aria-label="Xuất Excel" title="Xuất Excel"><FileSpreadsheet className="h-4 w-4" /></Button>
-              <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-slate-50" role="group" aria-label="Chuyển dạng xem">
-                <button type="button" onClick={() => setDetailView("block")} aria-label="Xem dạng block" title="Xem dạng block" className={`flex h-9 w-10 items-center justify-center border-r border-slate-200 transition ${detailView === "block" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-700"}`}><LayoutGrid className="h-4 w-4" /></button>
-                <button type="button" onClick={() => setDetailView("table")} aria-label="Xem dạng table" title="Xem dạng table" className={`flex h-9 w-10 items-center justify-center transition ${detailView === "table" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-700"}`}><Rows3 className="h-4 w-4" /></button>
+              <div className="flex items-center border border-slate-200 bg-slate-50 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setDetailView("block")}
+                  className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                    detailView === "block"
+                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                  aria-label="Xem dạng block"
+                  title="Xem dạng block"
+                >
+                  <LayoutList className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailView("table")}
+                  className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                    detailView === "table"
+                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                  aria-label="Xem dạng table"
+                  title="Xem dạng table"
+                >
+                  <Table2 className="h-4 w-4" />
+                </button>
               </div>
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setTransferDialogOpen(true)}>Chuyển nhượng HĐ</Button>
               <Button size="sm" className="h-8 bg-blue-600 text-xs hover:bg-blue-700" onClick={openCheckDialog}>Xác nhận kiểm tra</Button>
@@ -1573,6 +1601,8 @@ export function ContractListPage() {
   const [statusOverrides, setStatusOverrides] = useState<Record<string, ContractStatus>>(() => readLocalState("crm-contract-status-overrides", {}));
   const [importedFileName, setImportedFileName] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [createContractOpen, setCreateContractOpen] = useState(false);
+  const [editContractId, setEditContractId] = useState<string | null>(null);
 
   useEffect(() => {
     const query = searchParams.get("search") ?? "";
@@ -1861,7 +1891,7 @@ export function ContractListPage() {
             <Upload className="h-4 w-4 text-slate-500" />
             Import Excel
           </Button>
-          <Button size="sm" className="h-10 flex-1 gap-2 whitespace-nowrap bg-slate-950 px-3 hover:bg-slate-800 sm:flex-none sm:px-4" onClick={() => navigate("/contracts/new")}>
+          <Button size="sm" className="h-10 flex-1 gap-2 whitespace-nowrap bg-slate-950 px-3 hover:bg-slate-800 sm:flex-none sm:px-4" onClick={() => { setEditContractId(null); setCreateContractOpen(true); }}>
             <Plus className="h-4 w-4" />
             Tạo hợp đồng
           </Button>
@@ -2141,7 +2171,8 @@ export function ContractListPage() {
                           className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
                           onClick={(event) => {
                             event.stopPropagation();
-                            navigate(`/contracts/new?edit=${record.id}`);
+                            setEditContractId(record.id);
+                            setCreateContractOpen(true);
                           }}
                         >
                           <Pencil className="h-3.5 w-3.5 text-slate-400" />
@@ -2225,6 +2256,32 @@ export function ContractListPage() {
           setStatusOverrides((prev) => ({ ...prev, [recordId]: nextStatus }));
         }}
       />
+
+      <Dialog open={createContractOpen} onOpenChange={(open) => { if (!open) { setCreateContractOpen(false); setEditContractId(null); } }}>
+        <DialogContent className="!h-[calc(100vh-48px)] !w-[calc(100vw-48px)] !max-w-none !max-h-[calc(100vh-48px)] gap-0 overflow-hidden rounded-xl border-none bg-slate-50 p-0">
+          <div className="relative h-full overflow-y-auto">
+            <ContractCreatePage
+              editId={editContractId || undefined}
+              onClose={() => {
+                setCreateContractOpen(false);
+                setEditContractId(null);
+              }}
+              onSaved={() => {
+                setCreateContractOpen(false);
+                setEditContractId(null);
+                const overrides = localStorage.getItem("crm-contract-owner-overrides");
+                if (overrides) {
+                  try {
+                    setRecordOverrides(JSON.parse(overrides));
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

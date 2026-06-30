@@ -15,7 +15,6 @@ type ChartKey =
   | "cashFlow"
   | "debtTrend"
   | "waterfall"
-  | "agingBar"
   | "agingDonut"
   | "salesDebt"
   | "paymentStageDebt"
@@ -36,6 +35,8 @@ type ChartKey =
   | "analysisPlan";
 type ChartFilter = { group: TrendGroup; from: string; to: string };
 type AnalysisDebtBreakdownType = "product" | "customer" | "salesUnit";
+type SalesDebtGroupType = "sale" | "agency" | "partner";
+type OverdueDebtBreakdownType = "stage" | "product";
 
 const number = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
 const axisStyle = { fontSize: 11, fill: "#64748b" };
@@ -49,6 +50,7 @@ const trendOptions: Array<{ value: TrendGroup; label: string }> = [
   { value: "custom", label: "Khoảng thời gian" },
 ];
 const chartColors = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#475569"];
+const heatmapColor = "#2563eb";
 const riskConfig = [
   { key: "A", label: "A - Đúng hạn", color: "#16a34a", className: "border-t-4 border-t-emerald-500" },
   { key: "B", label: "B - Trễ <15 ngày", color: "#f59e0b", className: "border-t-4 border-t-amber-500" },
@@ -56,12 +58,34 @@ const riskConfig = [
   { key: "D", label: "D - Trễ >30 ngày", color: "#dc2626", className: "border-t-4 border-t-red-600" },
   { key: "E", label: "E - Nguy cơ cao", color: "#7c3aed", className: "border-t-4 border-t-violet-600" },
 ] as const;
+const salesDebtGroupLabels: Record<SalesDebtGroupType, string> = {
+  sale: "Sale",
+  agency: "Đại lý",
+  partner: "Sàn liên kết",
+};
+const overdueDebtBreakdownLabels: Record<OverdueDebtBreakdownType, string> = {
+  stage: "đợt thanh toán",
+  product: "sản phẩm",
+};
 
 const safeNumber = (value: unknown) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
-const money = (value: number) => `${safeNumber(value).toLocaleString("vi-VN", { maximumFractionDigits: 3 })} tỷ`;
+const money = (value: number) => {
+  const num = safeNumber(value);
+  if (Math.abs(num) < 1 && num !== 0) {
+    return `${(num * 1000).toLocaleString("vi-VN", { maximumFractionDigits: 0 })} triệu`;
+  }
+  return `${num.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} tỷ`;
+};
+const hexToRgba = (hex: string, alpha: number) => {
+  const value = hex.replace("#", "");
+  const red = parseInt(value.slice(0, 2), 16);
+  const green = parseInt(value.slice(2, 4), 16);
+  const blue = parseInt(value.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
 
 function inputDate(date: Date) {
   const offset = date.getTimezoneOffset();
@@ -178,6 +202,13 @@ function filterByChartTime(rows: DebtRow[], group: TrendGroup, from: string, to:
     const date = recordDate(record);
     return !date || ((!fromDate || date >= fromDate) && (!toDate || date <= toDate));
   });
+}
+
+function salesDebtGroup(contract: Contract): SalesDebtGroupType {
+  const name = (contract.salesperson ?? "").toLowerCase();
+  if (name.includes("sàn liên kết")) return "partner";
+  if (name.includes("đại lý") || name.includes("realty") || name.includes("land") || name.includes("cen") || name.includes("đất xanh")) return "agency";
+  return "sale";
 }
 
 function buildAgingBuckets(rows: DebtRow[], totalRemaining: number) {
@@ -339,11 +370,12 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
   const range = defaultRange();
   const defaultChartFilter = { group: "month" as TrendGroup, from: range.from, to: range.to };
   const [analysisDebtBreakdownType, setAnalysisDebtBreakdownType] = useState<AnalysisDebtBreakdownType>("product");
+  const [salesDebtGroupType, setSalesDebtGroupType] = useState<SalesDebtGroupType>("sale");
+  const [overdueDebtBreakdownType, setOverdueDebtBreakdownType] = useState<OverdueDebtBreakdownType>("stage");
   const [chartFilters, setChartFilters] = useState<Record<ChartKey, ChartFilter>>({
     cashFlow: defaultChartFilter,
     debtTrend: defaultChartFilter,
     waterfall: defaultChartFilter,
-    agingBar: defaultChartFilter,
     agingDonut: defaultChartFilter,
     salesDebt: defaultChartFilter,
     paymentStageDebt: defaultChartFilter,
@@ -489,10 +521,6 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
     ];
   }, [waterfallRows]);
 
-  const agingBarFilter = getChartFilter("agingBar");
-  const agingBarRows = useMemo(() => filterByChartTime(rows, agingBarFilter.group, agingBarFilter.from, agingBarFilter.to), [agingBarFilter, rows]);
-  const agingData = useMemo(() => buildAgingBuckets(agingBarRows, totalRemaining), [agingBarRows, totalRemaining]);
-
   const agingDonutFilter = getChartFilter("agingDonut");
   const agingDonutRows = useMemo(() => filterByChartTime(rows, agingDonutFilter.group, agingDonutFilter.from, agingDonutFilter.to), [agingDonutFilter, rows]);
   const agingDonutData = useMemo(() => buildAgingBuckets(agingDonutRows, totalRemaining).map((item, index) => ({ ...item, fill: chartColors[index] })), [agingDonutRows, totalRemaining]);
@@ -500,7 +528,8 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
 
   const salesDebtFilter = getChartFilter("salesDebt");
   const salesDebtRows = useMemo(() => filterByChartTime(rows, salesDebtFilter.group, salesDebtFilter.from, salesDebtFilter.to), [salesDebtFilter, rows]);
-  const salesDebtData = useMemo(() => groupDebtBy(salesDebtRows, ({ contract }) => contract.salesperson ?? "Chưa phân công"), [salesDebtRows]);
+  const selectedSalesDebtRows = useMemo(() => salesDebtRows.filter(({ contract }) => salesDebtGroup(contract) === salesDebtGroupType), [salesDebtGroupType, salesDebtRows]);
+  const salesDebtData = useMemo(() => groupDebtBy(selectedSalesDebtRows, ({ contract }) => contract.salesperson ?? "Chưa phân công"), [selectedSalesDebtRows]);
 
   const paymentStageDebtFilter = getChartFilter("paymentStageDebt");
   const paymentStageDebtRows = useMemo(() => filterByChartTime(rows, paymentStageDebtFilter.group, paymentStageDebtFilter.from, paymentStageDebtFilter.to), [paymentStageDebtFilter, rows]);
@@ -568,22 +597,17 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
   const overdueDebtBreakdownData = useMemo(() => {
     const grouped = overdueDebtBreakdownRows.reduce<Record<string, number>>((acc, row) => {
       const amount = safeNumber(row.record.remainingAmount);
-      const date = parseRecordDate(row.record.dueDate);
       if (amount <= 0 || (row.record.status !== "overdue" && row.record.debtStatus !== "overdue")) return acc;
-      const labels = [
-        date ? `Tháng: ${groupLabel(date, "month")}` : "Tháng: Chưa có ngày",
-        `Đợt: ${paymentStageLabel(row.record)}`,
-        `Sản phẩm: ${row.contract.unit || row.contract.productType || "Chưa xác định"}`,
-      ];
-      labels.forEach((label) => {
-        acc[label] = (acc[label] ?? 0) + amount;
-      });
+      const label = overdueDebtBreakdownType === "stage"
+        ? paymentStageLabel(row.record)
+        : row.contract.unit || row.contract.productType || "Chưa xác định";
+      acc[label] = (acc[label] ?? 0) + amount;
       return acc;
     }, {});
     return Object.entries(grouped)
       .map(([name, amount], index) => ({ name, amount, fill: chartColors[index % chartColors.length] }))
       .sort((a, b) => b.amount - a.amount);
-  }, [overdueDebtBreakdownRows]);
+  }, [overdueDebtBreakdownRows, overdueDebtBreakdownType]);
 
   const cpayStatusFilter = getChartFilter("cpayStatus");
   const cpayStatusRows = useMemo(() => filterByChartTime(rows, cpayStatusFilter.group, cpayStatusFilter.from, cpayStatusFilter.to), [cpayStatusFilter, rows]);
@@ -800,7 +824,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
           <ChartCard title="Xu hướng thu công nợ theo thời gian" description="Tỷ lệ thu tiền so với phải thu theo từng mốc thời gian." action={chartAction("Xu hướng thu công nợ", "debtTrend")}>
             <ResponsiveContainer width="100%" height="100%"><LineChart data={debtTrendData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="date" tick={axisStyle} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} /><YAxis width={40} tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} /><Tooltip cursor={{ stroke: "#cbd5e1", strokeDasharray: "3 3" }} formatter={(value) => [`${value}%`, "Tỷ lệ thu"]} /><Line type="monotone" dataKey="rate" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 3, fill: "#ffffff", strokeWidth: 2 }} activeDot={{ r: 5 }} isAnimationActive={false} /></LineChart></ResponsiveContainer>
           </ChartCard>
-          <ChartCard title="Dự báo thu tiền 30-60-90 ngày" description="Số tiền còn phải thu dự kiến theo các mốc 30, 60 và 90 ngày tới." action={<span className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600">30-60-90 ngày</span>}>
+          <ChartCard title="Dự báo thu tiền 30-60-90 ngày" description="Số tiền còn phải thu dự kiến theo các mốc 30, 60 và 90 ngày tới.">
             {collectionForecastData.every((item) => item.amount === 0) ? <EmptyChart>Không có dữ liệu dự báo thu tiền.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_180px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={collectionForecastData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} minTickGap={12} /><YAxis width={46} tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Dự báo thu"]} /><Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false}>{collectionForecastData.map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={collectionForecastData} valueLabel="amount" /></div>}
           </ChartCard>
         </div>
@@ -808,23 +832,37 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
 
       <CardSection title="Biểu đồ Công nợ" description="Phân tích cơ cấu công nợ theo phải thu, đã thu, tuổi nợ, đơn vị bán hàng, đợt thanh toán và nhóm rủi ro.">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <ChartCard title="Waterfall công nợ" description="So sánh phải thu, đã thu và còn thiếu." action={chartAction("Waterfall công nợ", "waterfall")}>
+          <ChartCard title="Theo dõi công nợ" description="So sánh phải thu, đã thu và còn thiếu." action={chartAction("Waterfall công nợ", "waterfall")}>
             <ResponsiveContainer width="100%" height="100%"><BarChart data={waterfallData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} minTickGap={12} /><YAxis width={46} tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value, name) => name === "offset" ? ["", ""] : [money(Number(value)), "Giá trị"]} /><Bar dataKey="offset" stackId="waterfall" fill="transparent" maxBarSize={48} isAnimationActive={false} /><Bar dataKey="value" stackId="waterfall" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false}>{waterfallData.map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer>
-          </ChartCard>
-          <ChartCard title="Aging công nợ" description="Phân bổ công nợ còn thiếu theo số ngày quá hạn." action={chartAction("Aging công nợ", "agingBar")}>
-            <ResponsiveContainer width="100%" height="100%"><BarChart data={agingData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} minTickGap={12} /><YAxis width={46} tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Còn thiếu"]} /><Bar dataKey="amount" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} /></BarChart></ResponsiveContainer>
           </ChartCard>
           <ChartCard title="Tuổi nợ" description="Tỷ trọng công nợ còn thiếu theo nhóm ngày quá hạn." action={chartAction("Tuổi nợ", "agingDonut")}>
             {agingTotal === 0 ? <EmptyChart>Không có dữ liệu tuổi nợ theo bộ lọc hiện tại.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Tooltip formatter={(value, _name, item) => { const pct = agingTotal ? Number(value) / agingTotal * 100 : 0; return [`${money(Number(value))} (${pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%)`, item.payload.name]; }} /><Pie data={agingDonutData} dataKey="amount" nameKey="name" cx="50%" cy="48%" innerRadius={62} outerRadius={98} paddingAngle={2} stroke="#ffffff" strokeWidth={3} isAnimationActive={false}>{agingDonutData.map((item) => <Cell key={item.name} fill={item.fill} />)}</Pie><text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" fill="#0f172a" fontSize="20" fontWeight="700">{money(agingTotal)}</text><text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="11">còn nợ</text></PieChart></ResponsiveContainer><ChartLegendList items={agingDonutData} valueLabel="amount" /></div>}
           </ChartCard>
-          <ChartCard title="Công nợ theo Sale / Đại lý / Sàn liên kết" description="Tổng còn nợ được nhóm theo đơn vị bán hàng đang phụ trách." action={chartAction("Công nợ theo đơn vị bán hàng", "salesDebt")}>
-            {salesDebtData.length === 0 ? <EmptyChart>Không có dữ liệu đơn vị bán hàng.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={salesDebtData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={96} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Còn nợ"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{salesDebtData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={salesDebtData} valueLabel="amount" /></div>}
+          <ChartCard title="Công nợ theo Sale / Đại lý / Sàn liên kết" description={`Tổng còn nợ được nhóm theo ${salesDebtGroupLabels[salesDebtGroupType]}.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Công nợ theo đơn vị bán hàng" group={getChartFilter("salesDebt").group} setGroup={(val) => setChartFilter("salesDebt", { group: val })} from={getChartFilter("salesDebt").from} setFrom={(val) => setChartFilter("salesDebt", { from: val })} to={getChartFilter("salesDebt").to} setTo={(val) => setChartFilter("salesDebt", { to: val })} /><select aria-label="Nhóm đơn vị bán hàng" className={chartSelectClass} value={salesDebtGroupType} onChange={(event) => setSalesDebtGroupType(event.target.value as SalesDebtGroupType)}><option value="sale">Sale</option><option value="agency">Đại lý</option><option value="partner">Sàn liên kết</option></select></div>}>
+            {salesDebtData.length === 0 ? <EmptyChart>{`Không có dữ liệu ${salesDebtGroupLabels[salesDebtGroupType]}.`}</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={salesDebtData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={96} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Còn nợ"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{salesDebtData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={salesDebtData} valueLabel="amount" /></div>}
           </ChartCard>
           <ChartCard title="Công nợ theo đợt thanh toán" description="Tổng còn nợ theo mã đợt thanh toán trong các hợp đồng." action={chartAction("Công nợ theo đợt thanh toán", "paymentStageDebt")}>
             {paymentStageDebtData.length === 0 ? <EmptyChart>Không có dữ liệu đợt thanh toán.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={paymentStageDebtData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={72} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Còn nợ"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{paymentStageDebtData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={paymentStageDebtData} valueLabel="amount" /></div>}
           </ChartCard>
           <ChartCard title="Phân loại rủi ro" description="Heatmap số lượng và giá trị còn nợ theo nhóm rủi ro A-E." action={chartAction("Phân loại rủi ro", "riskClassification")}>
-            <div className="grid h-full grid-cols-1 gap-2 sm:grid-cols-5">{riskData.map((item) => <div key={item.key} className={`flex min-h-40 flex-col justify-between rounded-lg border border-slate-200 bg-slate-50 p-3 ${item.className}`}><div><p className="text-xs font-semibold leading-5 text-slate-900">{item.label}</p><p className="mt-1 text-[11px] leading-4 text-slate-500">{number(item.count)} đợt</p></div><div><p className="text-base font-semibold tabular-nums text-slate-950">{money(item.amount)}</p><p className="mt-1 text-[11px] text-slate-500">còn nợ</p></div></div>)}</div>
+            <div className="h-full overflow-auto rounded-lg border border-slate-200 bg-white">
+              <div className="grid min-w-[620px] grid-cols-[128px_repeat(5,minmax(90px,1fr))]">
+                <div className="border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase text-slate-500">Chỉ số</div>
+                {riskData.map((item) => <div key={item.key} className="border-b border-r border-slate-200 bg-slate-50 px-3 py-2 last:border-r-0"><p className="text-xs font-semibold text-slate-900">{item.key}</p><p className="mt-0.5 truncate text-[11px] text-slate-500">{item.label.replace(`${item.key} - `, "")}</p></div>)}
+                <div className="border-b border-r border-slate-200 px-3 py-4 text-xs font-semibold text-slate-700">Số đợt</div>
+                {riskData.map((item) => {
+                  const maxCount = Math.max(1, ...riskData.map((risk) => risk.count));
+                  const alpha = 0.12 + (item.count / maxCount) * 0.7;
+                  return <div key={`${item.key}-count`} className="flex min-h-20 flex-col justify-center border-b border-r border-slate-200 px-3 last:border-r-0" style={{ backgroundColor: hexToRgba(heatmapColor, alpha) }}><span className="text-lg font-semibold tabular-nums text-slate-950">{number(item.count)}</span><span className="mt-1 text-[11px] text-slate-600">đợt thanh toán</span></div>;
+                })}
+                <div className="border-r border-slate-200 px-3 py-4 text-xs font-semibold text-slate-700">Còn nợ</div>
+                {riskData.map((item) => {
+                  const maxAmount = Math.max(1, ...riskData.map((risk) => risk.amount));
+                  const alpha = 0.12 + (item.amount / maxAmount) * 0.7;
+                  return <div key={`${item.key}-amount`} className="flex min-h-20 flex-col justify-center border-r border-slate-200 px-3 last:border-r-0" style={{ backgroundColor: hexToRgba(heatmapColor, alpha) }}><span className="text-sm font-semibold tabular-nums text-slate-950">{money(item.amount)}</span><span className="mt-1 text-[11px] text-slate-600">giá trị còn nợ</span></div>;
+                })}
+              </div>
+            </div>
           </ChartCard>
           <ChartCard title="Đã thu vs Còn nợ" description="Tỷ trọng số tiền đã thu và số tiền còn phải thu." action={chartAction("Đã thu vs Còn nợ", "paidVsDebt")}>
             {paidVsDebtTotal === 0 ? <EmptyChart>Không có dữ liệu đã thu/còn nợ.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Tooltip formatter={(value, _name, item) => { const pct = paidVsDebtTotal ? Number(value) / paidVsDebtTotal * 100 : 0; return [`${money(Number(value))} (${pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%)`, item.payload.name]; }} /><Pie data={paidVsDebtData} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={62} outerRadius={98} paddingAngle={2} stroke="#ffffff" strokeWidth={3} isAnimationActive={false}>{paidVsDebtData.map((item) => <Cell key={item.name} fill={item.fill} />)}</Pie><text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" fill="#0f172a" fontSize="22" fontWeight="700">{`${phaseCollectionRate}%`}</text><text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="11">tỷ lệ thu</text></PieChart></ResponsiveContainer><ChartLegendList items={paidVsDebtData.map((item) => ({ name: item.name, amount: item.value, fill: item.fill }))} valueLabel="amount" /></div>}
@@ -840,8 +878,8 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
           <ChartCard title="Lãi phạt theo tháng" description="Tổng lãi phạt/lãi trễ hạn phát sinh theo tháng đến hạn." action={chartAction("Lãi phạt theo tháng", "lateInterest")}>
             {lateInterestByMonth.every((item) => item.amount === 0) ? <EmptyChart>Không có dữ liệu lãi phạt theo tháng.</EmptyChart> : <ResponsiveContainer width="100%" height="100%"><BarChart data={lateInterestByMonth} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} minTickGap={12} /><YAxis width={46} tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} tỷ`} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Lãi phạt"]} /><Bar dataKey="amount" fill="#dc2626" radius={[6, 6, 0, 0]} maxBarSize={42} isAnimationActive={false} /></BarChart></ResponsiveContainer>}
           </ChartCard>
-          <ChartCard title="Nợ quá hạn theo tháng / đợt / sản phẩm" description="Tổng nợ quá hạn được nhóm theo tháng đến hạn, đợt thanh toán và sản phẩm." action={chartAction("Nợ quá hạn", "overdueDebtBreakdown")}>
-            {overdueDebtBreakdownData.length === 0 ? <EmptyChart>Không có dữ liệu nợ quá hạn theo bộ lọc hiện tại.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={overdueDebtBreakdownData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={112} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Nợ quá hạn"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{overdueDebtBreakdownData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={overdueDebtBreakdownData} valueLabel="amount" /></div>}
+          <ChartCard title="Nợ quá hạn theo tháng / đợt / sản phẩm" description={`Tổng nợ quá hạn được nhóm theo ${overdueDebtBreakdownLabels[overdueDebtBreakdownType]}.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Nợ quá hạn" group={getChartFilter("overdueDebtBreakdown").group} setGroup={(val) => setChartFilter("overdueDebtBreakdown", { group: val })} from={getChartFilter("overdueDebtBreakdown").from} setFrom={(val) => setChartFilter("overdueDebtBreakdown", { from: val })} to={getChartFilter("overdueDebtBreakdown").to} setTo={(val) => setChartFilter("overdueDebtBreakdown", { to: val })} /><select aria-label="Loại nợ quá hạn" className={chartSelectClass} value={overdueDebtBreakdownType} onChange={(event) => setOverdueDebtBreakdownType(event.target.value as OverdueDebtBreakdownType)}><option value="stage">Theo Đợt</option><option value="product">Theo Sản phẩm</option></select></div>}>
+            {overdueDebtBreakdownData.length === 0 ? <EmptyChart>{`Không có dữ liệu nợ quá hạn theo ${overdueDebtBreakdownLabels[overdueDebtBreakdownType]}.`}</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={overdueDebtBreakdownData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={112} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Nợ quá hạn"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{overdueDebtBreakdownData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={overdueDebtBreakdownData} valueLabel="amount" /></div>}
           </ChartCard>
         </div>
       </CardSection>

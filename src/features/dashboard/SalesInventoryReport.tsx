@@ -36,8 +36,10 @@ const toneStyles: Record<Tone, { icon: string; iconBg: string; accent: string }>
 
 const number = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
 function money(value: number) {
-  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} nghìn tỷ`;
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`;
+  const absVal = Math.abs(value);
+  if (absVal >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} nghìn tỷ`;
+  if (absVal >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 3 })} tỷ`;
+  if (absVal >= 1_000_000) return `${(value / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 0 })} triệu`;
   return `${number(value)} ₫`;
 }
 
@@ -55,11 +57,12 @@ function EmptyReport() {
 }
 
 const axisStyle = { fontSize: 11, fill: "#64748b" };
-type UnsoldGroup = "zone" | "productType";
+type UnsoldGroup = "tower" | "productType";
 const unsoldGroupOptions: Array<{ value: UnsoldGroup; label: string }> = [
-  { value: "zone", label: "Theo block tháp" },
-  { value: "productType", label: "Theo loại sản phẩm" },
+  { value: "tower", label: "Theo Tháp" },
+  { value: "productType", label: "Theo sản phẩm" },
 ];
+const productTypeOrder = ["Sky Garden", "Penhouse", "Sky Villa Residence", "Duplex Garden"];
 const chartSelectClass = "crm-native-select h-9 min-w-[164px] rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
 const trendGroupOptions: Array<{ value: TrendGroup; label: string }> = [
   { value: "day", label: "Theo ngày" },
@@ -145,7 +148,7 @@ function EmptyChart({ title }: { title: string }) {
 }
 
 function ProductChartsSection({ filters }: { filters: DashboardFilters }) {
-  const [unsoldGroup, setUnsoldGroup] = useState<UnsoldGroup>("zone");
+  const [unsoldGroup, setUnsoldGroup] = useState<UnsoldGroup>("tower");
   const unsoldState = useTimedChartData(filters, getProductCharts);
   const valueState = useTimedChartData(filters, getProductCharts);
   const statusState = useTimedChartData(filters, getProductCharts);
@@ -158,10 +161,19 @@ function ProductChartsSection({ filters }: { filters: DashboardFilters }) {
   const valueData = valueState.data!;
   const statusData = statusState.data!;
   const heatData = heatState.data!;
-  const maxHeatValue = Math.max(1, ...heatData.zoneStatusMatrix.flatMap((item) => [item.sold, item.available]));
-  const unsoldChart = unsoldGroup === "zone"
-    ? { title: "Sản phẩm chưa bán theo block tháp", description: "Số lượng sản phẩm còn lại trong từng block tháp", data: unsoldData.availableByZone.map((item) => ({ label: item.zone, count: item.count })) }
-    : { title: "Sản phẩm chưa bán theo loại sản phẩm", description: "Số lượng sản phẩm còn lại theo từng loại sản phẩm", data: unsoldData.availableByProductType.map((item) => ({ label: item.productType, count: item.count })) };
+  const heatChartData = heatData.zoneStatusMatrix;
+  const maxHeatValue = Math.max(1, ...heatChartData.flatMap((item) => [item.sold, item.available]));
+  const unsoldChart = {
+    title: "Số lượng sản phẩm chưa bán",
+    description: unsoldGroup === "tower" ? "Số lượng sản phẩm chưa bán theo Tháp" : "Số lượng sản phẩm chưa bán theo sản phẩm",
+    data: unsoldGroup === "tower"
+      ? unsoldData.availableByZone.map((item) => ({ label: item.zone, count: item.count }))
+      : [...unsoldData.availableByProductType]
+        .sort((a, b) => productTypeOrder.indexOf(a.productType) - productTypeOrder.indexOf(b.productType))
+        .map((item) => ({ label: item.productType, count: item.count })),
+  };
+  const heatChartTitle = "Tháp × tình trạng bán";
+  const heatChartDescription = "Mật độ sản phẩm theo Tháp và trạng thái bán";
   const availableTotal = unsoldChart.data.reduce((sum, item) => sum + item.count, 0);
   const productValueTotal = valueData.valueByProductType.reduce((sum, item) => sum + item.value, 0);
   const statusTotal = statusData.salesStatus.reduce((sum, item) => sum + item.value, 0);
@@ -171,7 +183,7 @@ function ProductChartsSection({ filters }: { filters: DashboardFilters }) {
     <ChartCard title={unsoldChart.title} description={unsoldChart.description} headerAction={<div className="flex flex-wrap items-center justify-end gap-3"><select aria-label="Nhóm dữ liệu" className={chartSelectClass} value={unsoldGroup} onChange={(event) => setUnsoldGroup(event.target.value as UnsoldGroup)}>{unsoldGroupOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChartTimeControl chartName="Sản phẩm chưa bán" state={unsoldState} /></div>} legend={<LegendItem color="#2563eb" label="Sản phẩm chưa bán" />}>{availableTotal === 0 ? <div className="flex h-full items-center justify-center text-center text-xs text-slate-500">Không có sản phẩm chưa bán theo nhóm dữ liệu này.</div> : <ResponsiveContainer width="100%" height="100%"><BarChart data={unsoldChart.data} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={false} interval={0} /><YAxis allowDecimals={false} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [number(Number(value)), "Chưa bán"]} /><Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={52} isAnimationActive={false} /></BarChart></ResponsiveContainer>}</ChartCard>
     {productValueTotal === 0 ? <EmptyChart title="Không có giá trị sản phẩm" /> : <ChartCard title="Giá trị theo loại sản phẩm" description="Tổng giá trị giỏ hàng, phân nhóm theo loại sản phẩm" headerAction={<ChartTimeControl chartName="Giá trị theo loại sản phẩm" state={valueState} />} legend={<LegendItem color="#059669" label="Giá trị sản phẩm" />}><ResponsiveContainer width="100%" height="100%"><BarChart data={valueData.valueByProductType} layout="vertical" margin={{ top: 8, right: 18, left: 12, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1_000_000_000)} tỷ`} /><YAxis dataKey="productType" type="category" width={68} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Giá trị"]} /><Bar dataKey="value" fill="#059669" radius={[0, 6, 6, 0]} maxBarSize={34} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartCard>}
     {statusTotal === 0 ? <EmptyChart title="Không có dữ liệu tình trạng bán" /> : <ChartCard title="Cơ cấu đã bán / chưa bán" description="Tỷ trọng sản phẩm theo trạng thái bán hiện tại" headerAction={<ChartTimeControl chartName="Cơ cấu tình trạng bán" state={statusState} />} legend={<>{statusData.salesStatus.map((item) => <LegendItem key={item.name} color={item.fill} label={`${item.name}: ${number(item.value)}`} />)}</>}><ResponsiveContainer width="100%" height="100%"><Treemap data={statusData.salesStatus} dataKey="value" nameKey="name" stroke="#ffffff" aspectRatio={1.75} content={(props) => { const { x = 0, y = 0, width = 0, height = 0, name, value, fill } = props; return <g><rect x={x} y={y} width={width} height={height} rx={8} fill={fill} stroke="#fff" strokeWidth={4} /><text x={x + 14} y={y + 26} fill="#fff" fontSize={13} fontWeight={600}>{name}</text><text x={x + 14} y={y + 47} fill="rgba(255,255,255,.86)" fontSize={12}>{number(Number(value))} sản phẩm</text></g>; }} /></ResponsiveContainer></ChartCard>}
-    {heatTotal === 0 ? <EmptyChart title="Không có dữ liệu block tháp" /> : <ChartCard title="Block tháp × tình trạng bán" description="Mật độ sản phẩm theo block tháp và trạng thái bán" headerAction={<ChartTimeControl chartName="Block tháp và tình trạng bán" state={heatState} />} legend={<><LegendItem color="#dbeafe" label="Thấp" /><LegendItem color="#2563eb" label="Cao" /></>}><div className="grid h-full grid-cols-[minmax(92px,1.2fr)_repeat(2,minmax(76px,1fr))] content-center gap-2" role="table" aria-label="Mật độ sản phẩm theo block tháp và tình trạng bán"><span /><span className="pb-1 text-center text-[11px] font-semibold text-slate-500" role="columnheader">Đã bán</span><span className="pb-1 text-center text-[11px] font-semibold text-slate-500" role="columnheader">Chưa bán</span>{heatData.zoneStatusMatrix.map((item) => <div className="contents" key={item.zone}><span className="flex items-center text-xs font-medium text-slate-600" role="rowheader">{item.zone}</span>{([item.sold, item.available] as number[]).map((value, index) => { const alpha = 0.12 + value / maxHeatValue * 0.88; return <div key={index} role="cell" aria-label={`${item.zone}, ${index === 0 ? "Đã bán" : "Chưa bán"}: ${value}`} className="flex h-12 items-center justify-center rounded-lg text-xs font-semibold tabular-nums" style={{ backgroundColor: `rgba(37,99,235,${alpha})`, color: alpha > 0.55 ? "white" : "#1e3a8a" }}>{number(value)}</div>; })}</div>)}</div></ChartCard>}
+    {heatTotal === 0 ? <EmptyChart title="Không có dữ liệu tình trạng bán" /> : <ChartCard title={heatChartTitle} description={heatChartDescription} headerAction={<ChartTimeControl chartName={heatChartTitle} state={heatState} />} legend={<><LegendItem color="#dbeafe" label="Thấp" /><LegendItem color="#2563eb" label="Cao" /></>}><div className="grid h-full grid-cols-[minmax(92px,1.2fr)_repeat(2,minmax(76px,1fr))] content-center gap-2" role="table" aria-label={heatChartDescription}><span /><span className="pb-1 text-center text-[11px] font-semibold text-slate-500" role="columnheader">Đã bán</span><span className="pb-1 text-center text-[11px] font-semibold text-slate-500" role="columnheader">Chưa bán</span>{heatChartData.map((item) => <div className="contents" key={item.zone}><span className="flex items-center text-xs font-medium text-slate-600" role="rowheader">{item.zone}</span>{([item.sold, item.available] as number[]).map((value, index) => { const alpha = 0.12 + value / maxHeatValue * 0.88; return <div key={index} role="cell" aria-label={`${item.zone}, ${index === 0 ? "Đã bán" : "Chưa bán"}: ${value}`} className="flex h-12 items-center justify-center rounded-lg text-xs font-semibold tabular-nums" style={{ backgroundColor: `rgba(37,99,235,${alpha})`, color: alpha > 0.55 ? "white" : "#1e3a8a" }}>{number(value)}</div>; })}</div>)}</div></ChartCard>}
   </div></section>;
 }
 
@@ -225,6 +237,17 @@ function SalesTrendSection({ filters }: { filters: DashboardFilters }) {
   </div></section>;
 }
 
+function TransactionScatterTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload?: { agency?: string; transactionCount?: number; transactionValue?: number } }> }) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0]?.payload;
+  if (!item) return null;
+  return <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg">
+    {item.agency && <p className="mb-1 font-semibold text-slate-900">{item.agency}</p>}
+    <p className="text-slate-600">Số giao dịch: <span className="font-semibold text-slate-900">{number(Number(item.transactionCount ?? 0))}</span></p>
+    <p className="mt-1 text-slate-600">Tổng giá trị giao dịch: <span className="font-semibold text-slate-900">{money(Number(item.transactionValue ?? 0))}</span></p>
+  </div>;
+}
+
 function AgencyPerformanceSection({ filters }: { filters: DashboardFilters }) {
   const valueState = useTimedChartData(filters, getAgencyPerformance);
   const countState = useTimedChartData(filters, getAgencyPerformance);
@@ -247,7 +270,7 @@ function AgencyPerformanceSection({ filters }: { filters: DashboardFilters }) {
   return <section className={states.some((state) => state.loading) ? "pointer-events-none opacity-60" : ""} aria-labelledby="agency-performance-title" aria-busy={states.some((state) => state.loading)}><div className="mb-4 flex items-start gap-3"><span className="mt-1 h-8 w-1 rounded-full bg-blue-600" /><div><h2 id="agency-performance-title" className="text-base font-semibold tracking-[-0.01em] text-slate-950">Hiệu suất đơn vị phân phối</h2><p className="mt-1 text-xs text-slate-500">So sánh quy mô giao dịch, giá trị và hiệu quả chuyển đổi theo đơn vị phân phối</p></div></div><div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
     {transactionValue === 0 ? <EmptyChart title="Không có giá trị giao dịch theo đơn vị" /> : <ChartCard title="Giá trị giao dịch theo đơn vị phân phối" description="Tổng giá trị giao dịch ghi nhận theo từng đơn vị phân phối" headerAction={<ChartTimeControl chartName="Giá trị giao dịch" state={valueState} />} legend={<LegendItem color="#16a34a" label={`Tổng giá trị: ${money(transactionValue)}`} />}><ResponsiveContainer width="100%" height="100%"><BarChart data={valueData.agencies} layout="vertical" margin={{ top: 8, right: 16, left: 24, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1_000_000_000)} tỷ`} /><YAxis dataKey="agency" type="category" width={104} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Giá trị giao dịch"]} /><Bar dataKey="transactionValue" fill="#16a34a" radius={[0, 6, 6, 0]} maxBarSize={30} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartCard>}
     {transactionCount === 0 ? <EmptyChart title="Không có giao dịch theo đơn vị" /> : <ChartCard title="Số giao dịch theo đơn vị phân phối" description="Khối lượng giao dịch phát sinh theo từng đơn vị phân phối" headerAction={<ChartTimeControl chartName="Số giao dịch" state={countState} />} legend={<LegendItem color="#2563eb" label={`Tổng giao dịch: ${number(transactionCount)}`} />}><ResponsiveContainer width="100%" height="100%"><BarChart data={countData.agencies} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="agency" tick={axisStyle} tickLine={false} axisLine={false} interval={0} /><YAxis allowDecimals={false} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [number(Number(value)), "Giao dịch"]} /><Bar dataKey="transactionCount" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={48} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartCard>}
-    {scatterCount === 0 ? <EmptyChart title="Không có dữ liệu tương quan giao dịch" /> : <ChartCard title="Số lượng giao dịch × giá trị" description="Tương quan giữa khối lượng và tổng giá trị giao dịch của từng đơn vị" headerAction={<ChartTimeControl chartName="Tương quan giao dịch" state={scatterState} />} legend={<LegendItem color="#7c3aed" label="Mỗi điểm là một đơn vị phân phối" />}><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{ top: 12, right: 18, left: 8, bottom: 8 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" /><XAxis type="number" dataKey="transactionCount" name="Số giao dịch" tick={axisStyle} tickLine={false} axisLine={false} /><YAxis type="number" dataKey="transactionValue" name="Giá trị" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1_000_000_000)} tỷ`} width={48} /><ZAxis type="number" dataKey="transactionValue" range={[90, 260]} /><Tooltip cursor={{ stroke: "#cbd5e1", strokeDasharray: "3 3" }} formatter={(value, name) => [name === "Giá trị" ? money(Number(value)) : number(Number(value)), name]} /><Scatter data={scatterData.agencies} fill="#7c3aed" isAnimationActive={false} /></ScatterChart></ResponsiveContainer></ChartCard>}
+    {scatterCount === 0 ? <EmptyChart title="Không có dữ liệu tương quan giao dịch" /> : <ChartCard title="Số lượng giao dịch × giá trị" description="Tương quan giữa khối lượng và tổng giá trị giao dịch của từng đơn vị" headerAction={<ChartTimeControl chartName="Tương quan giao dịch" state={scatterState} />} legend={<LegendItem color="#7c3aed" label="Mỗi điểm là một đơn vị phân phối" />}><ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{ top: 12, right: 18, left: 8, bottom: 8 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" /><XAxis type="number" dataKey="transactionCount" name="Số giao dịch" tick={axisStyle} tickLine={false} axisLine={false} /><YAxis type="number" dataKey="transactionValue" name="Giá trị" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1_000_000_000)} tỷ`} width={48} /><ZAxis type="number" dataKey="transactionValue" range={[90, 260]} /><Tooltip cursor={{ stroke: "#cbd5e1", strokeDasharray: "3 3" }} content={<TransactionScatterTooltip />} /><Scatter data={scatterData.agencies} fill="#7c3aed" isAnimationActive={false} /></ScatterChart></ResponsiveContainer></ChartCard>}
     {funnelStart === 0 ? <EmptyChart title="Không có dữ liệu phễu bán hàng" /> : <ChartCard title="Phễu bán hàng" description="Mức chuyển đổi từ giỏ hàng đến hợp đồng" headerAction={<ChartTimeControl chartName="Phễu bán hàng" state={funnelState} />} legend={<LegendItem color="#0891b2" label={`Tỷ lệ chuyển đổi: ${conversion.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`} />}><ResponsiveContainer width="100%" height="100%"><FunnelChart><Tooltip formatter={(value) => [number(Number(value)), "Số lượng"]} /><Funnel dataKey="count" data={funnelData.funnel} isAnimationActive={false}><LabelList position="right" fill="#475569" stroke="none" dataKey="stage" /></Funnel></FunnelChart></ResponsiveContainer></ChartCard>}
   </div></section>;
 }

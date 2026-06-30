@@ -50,18 +50,8 @@ type AdjustmentType =
   | "reverse-payment"
   | "confirm-deposit-forfeiture";
 
-const adjustmentTypeLabels: Record<AdjustmentType, string> = {
-  "due-date": "Điều chỉnh ngày đến hạn",
-  "principal-due": "Điều chỉnh số tiền gốc phải thu",
-  "paid-amount": "Điều chỉnh số tiền đã thanh toán",
-  "remaining-principal": "Điều chỉnh số tiền gốc còn lại",
-  "reallocate-payment": "Phân bổ lại thanh toán",
+const adjustmentTypeLabels: Partial<Record<AdjustmentType, string>> = {
   "reduce-waive-interest": "Giảm/miễn lãi trễ hạn",
-  "adjust-extension-fee": "Điều chỉnh phí gia hạn",
-  "change-debt-status": "Thay đổi trạng thái công nợ",
-  "change-extension-status": "Thay đổi trạng thái gia hạn",
-  "reverse-payment": "Đảo ngược thanh toán",
-  "confirm-deposit-forfeiture": "Xác nhận mất cọc",
 };
 
 export function DebtAdjustmentDialog({
@@ -71,7 +61,7 @@ export function DebtAdjustmentDialog({
   contractName,
   onConfirm,
 }: DebtAdjustmentDialogProps) {
-  const [adjustmentType, setAdjustmentType] = useState<AdjustmentType | "">("");
+  const [adjustmentType, setAdjustmentType] = useState<AdjustmentType | "">("reduce-waive-interest");
   const [newValue, setNewValue] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [requestedBy, setRequestedBy] = useState<string>("");
@@ -81,7 +71,7 @@ export function DebtAdjustmentDialog({
   // Reset when dialog opens
   useEffect(() => {
     if (open) {
-      setAdjustmentType("");
+      setAdjustmentType("reduce-waive-interest");
       setNewValue("");
       setReason("");
       setRequestedBy("");

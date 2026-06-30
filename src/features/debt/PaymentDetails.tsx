@@ -81,6 +81,36 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const getAuditLogsFromStorage = (recordId: string, initialLogs: any[] = []): any[] => {
+  try {
+    const saved = localStorage.getItem(`crm-audit-logs-${recordId}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const combined = [...initialLogs];
+      parsed.forEach((log: any) => {
+        if (!combined.some((c) => c.id === log.id)) {
+          combined.push(log);
+        }
+      });
+      return combined;
+    }
+  } catch (e) {
+    console.error("Failed to load audit logs", e);
+  }
+  return initialLogs;
+};
+
+const saveAuditLogToStorage = (recordId: string, log: any) => {
+  try {
+    const saved = localStorage.getItem(`crm-audit-logs-${recordId}`);
+    const list = saved ? JSON.parse(saved) : [];
+    list.push(log);
+    localStorage.setItem(`crm-audit-logs-${recordId}`, JSON.stringify(list));
+  } catch (e) {
+    console.error("Failed to save audit log", e);
+  }
+};
+
 const statusConfig: Record<PaymentStatus, { label: string; className: string }> = {
   "not-due": {
     label: "Chưa đến hạn",
@@ -504,7 +534,8 @@ function StageBlock({
     () => {
       const m = new Map<string, import("../data/mockData").DebtAuditLog[]>();
       stage.records.forEach((r) => {
-        if (r.auditLogs && r.auditLogs.length > 0) m.set(r.id, r.auditLogs);
+        const initial = r.auditLogs || [];
+        m.set(r.id, getAuditLogsFromStorage(r.id, initial));
       });
       return m;
     }
@@ -567,6 +598,7 @@ function StageBlock({
   const handleDebtAdjustConfirm = (auditLog: import("../data/mockData").DebtAuditLog) => {
     if (!debtAdjustTarget) return;
     const recordId = debtAdjustTarget.id;
+    saveAuditLogToStorage(recordId, auditLog);
     setLocalAuditLogs((prev) => {
       const existing = prev.get(recordId) ?? [];
       return new Map(prev).set(recordId, [...existing, auditLog]);
@@ -1513,6 +1545,377 @@ function MetricCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+import { useMemo } from "react";
+
+function renderStatusBadge(status: PaymentStatus) {
+  switch (status) {
+    case "paid":
+    case "overpaid":
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">Đã thanh toán</span>;
+    case "overdue":
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/50">Quá hạn</span>;
+    case "upcoming":
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">Sắp tới hạn</span>;
+    case "partial":
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200/50">Một phần</span>;
+    default:
+      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200/50">Chưa tới hạn</span>;
+  }
+}
+
+function PaymentTable({
+  paymentInstallments,
+  customer,
+  contract,
+  customerId,
+  contractId,
+  onNavigate,
+}: {
+  paymentInstallments: PaymentStage[];
+  customer: any;
+  contract: any;
+  customerId: string;
+  contractId: string;
+  onNavigate: (path: string) => void;
+}) {
+  const [activeInvoice, setActiveInvoice] = useState<{
+    invoice: InvoiceFile;
+    record: PaymentRecord;
+  } | null>(null);
+
+  const [localExtensions, setLocalExtensions] = useState<Map<string, PaymentExtension[]>>(() => {
+    const m = new Map<string, PaymentExtension[]>();
+    paymentInstallments.forEach((stage) => {
+      stage.records.forEach((r) => {
+        if (r.extensions && r.extensions.length > 0) m.set(r.id, r.extensions);
+      });
+    });
+    return m;
+  });
+
+  const [extDialog, setExtDialog] = useState<{
+    record: PaymentRecord;
+    editingIdx?: number;
+  } | null>(null);
+
+  const [confirmPayTarget, setConfirmPayTarget] = useState<{
+    recordId: string;
+    installment: ExtensionInstallment;
+  } | null>(null);
+
+  const [paymentConfirmTarget, setPaymentConfirmTarget] = useState<PaymentRecord | null>(null);
+  const [debtAdjustTarget, setDebtAdjustTarget] = useState<PaymentRecord | null>(null);
+  const [auditHistoryRecord, setAuditHistoryRecord] = useState<PaymentRecord | null>(null);
+
+  const [localAuditLogs, setLocalAuditLogs] = useState<Map<string, any[]>>(() => {
+    const m = new Map<string, any[]>();
+    paymentInstallments.forEach((stage) => {
+      stage.records.forEach((r) => {
+        const initial = r.auditLogs || [];
+        m.set(r.id, getAuditLogsFromStorage(r.id, initial));
+      });
+    });
+    return m;
+  });
+
+  const getExtList = (recordId: string): PaymentExtension[] =>
+    localExtensions.get(recordId) ?? [];
+
+  const handleSaveExtension = (
+    recordId: string,
+    ext: PaymentExtension,
+    editingIdx?: number
+  ) => {
+    setLocalExtensions((prev) => {
+      const list = [...(prev.get(recordId) ?? [])];
+      if (editingIdx !== undefined) {
+        list[editingIdx] = ext;
+      } else {
+        list.push(ext);
+      }
+      return new Map(prev).set(recordId, list);
+    });
+    setExtDialog(null);
+  };
+
+  const handleConfirmInstallmentPayment = (
+    recordId: string,
+    instId: string,
+    paidDate: string,
+    invoice: InvoiceFile
+  ) => {
+    setLocalExtensions((prev) => {
+      const list = prev.get(recordId);
+      if (!list || list.length === 0) return prev;
+      const activeIdx = list.length - 1;
+      const updatedActive: PaymentExtension = {
+        ...list[activeIdx],
+        installments: list[activeIdx].installments.map((i) =>
+          i.id === instId
+            ? { ...i, status: "paid" as PaymentStatus, paidDate, invoice }
+            : i
+        ),
+      };
+      const newList = [...list];
+      newList[activeIdx] = updatedActive;
+      return new Map(prev).set(recordId, newList);
+    });
+    setConfirmPayTarget(null);
+  };
+
+  const handleDebtAdjustConfirm = (auditLog: any) => {
+    if (!debtAdjustTarget) return;
+    const recordId = debtAdjustTarget.id;
+    saveAuditLogToStorage(recordId, auditLog);
+    setLocalAuditLogs((prev) => {
+      const existing = prev.get(recordId) ?? [];
+      return new Map(prev).set(recordId, [...existing, auditLog]);
+    });
+    setDebtAdjustTarget(null);
+  };
+
+  const handleOriginalPaymentConfirm = (
+    paidAmount: number,
+    paidDate: string,
+    invoice: InvoiceFile
+  ) => {
+    console.log("Payment confirmed:", { paidAmount, paidDate, invoice });
+    alert(`Đã ghi nhận thanh toán ${formatVND(paidAmount)} vào ngày ${paidDate}. Hóa đơn: ${invoice.invoiceNumber}`);
+    setPaymentConfirmTarget(null);
+  };
+
+  const allRows = useMemo(() => {
+    return paymentInstallments.flatMap((stage) =>
+      stage.records.map((record) => ({ stage, record }))
+    );
+  }, [paymentInstallments]);
+
+  const depositDate = paymentInstallments[0]?.records[0]?.paidDate || paymentInstallments[0]?.records[0]?.dueDate || "";
+  const signingDate = paymentInstallments[0]?.records?.[1]?.paidDate || paymentInstallments[0]?.records?.[1]?.dueDate || "";
+
+  return (
+    <Card className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-950">Lộ trình thanh toán (Dạng bảng)</h3>
+          <p className="mt-1 text-xs text-slate-500 font-medium">Chi tiết lộ trình dòng tiền công nợ và các đợt thanh toán của căn hộ.</p>
+        </div>
+        <p className="text-xs text-slate-500 font-semibold bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/50">
+          {paymentInstallments.filter((s) => s.stageStatus === "completed").length} /{" "}
+          {paymentInstallments.length} đợt hoàn thành
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[2000px] border-collapse text-sm whitespace-nowrap">
+          <thead className="bg-slate-50/75 border-b border-slate-200/60 text-slate-500">
+            <tr>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase w-12">STT</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold tracking-wider uppercase min-w-[220px]">Đợt thanh toán</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày cọc</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Số tiền cọc</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Tiền cọc lòng chuyển sang cọc</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Tiền bổ sung cọc mới</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày ký HĐ</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase w-16">% TT</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Số tiền</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày đến hạn</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Dư báo quá hạn</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày dự kiến TT</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày thực tế TT</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Tổng đã thu</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Dư thiếu đợt trước</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Bổ sung</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold tracking-wider uppercase">Còn lại</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày gia hạn</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Ngày thanh toán gia hạn</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Tỷ lệ khách hàng thanh toán</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase">Trạng thái TT</th>
+              <th className="px-4 py-3 text-center text-[11px] font-semibold tracking-wider uppercase w-16">Hành động</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-700">
+            {allRows.map(({ stage, record }, index) => {
+              const pctTT = Math.round((record.baseAmount / contract.contractValue) * 100);
+              const overdueDays = record.status === "overdue" ? (record.daysOverdue || record.daysAfterDue || 0) : 0;
+              const hasExtensions = getExtList(record.id).length > 0;
+              const activeExt = hasExtensions ? getExtList(record.id)[getExtList(record.id).length - 1] : null;
+              
+              const isFullyPaid = record.status === "paid" || record.status === "overpaid";
+              const percentPaid = isFullyPaid ? "100%" : record.status === "partial" ? "50%" : "—";
+
+              return (
+                <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-4 py-3 text-center text-xs font-semibold text-slate-400">{index + 1}</td>
+                  <td className="px-4 py-3 text-xs font-semibold text-slate-800">{record.label}</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-500">{depositDate ? fmtDate(depositDate) : "—"}</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-600 tabular-nums">{formatVND(0.05)}</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-600 tabular-nums">{formatVND(0.05)}</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-400">0 ₫</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-500">{signingDate ? fmtDate(signingDate) : "—"}</td>
+                  <td className="px-4 py-3 text-center text-xs font-semibold text-slate-700">{pctTT}%</td>
+                  <td className="px-4 py-3 text-right text-xs font-semibold text-slate-900 tabular-nums">{formatVND(record.baseAmount)}</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-600">{fmtDate(record.dueDate)}</td>
+                  <td className="px-4 py-3 text-center text-xs font-medium text-red-600">{overdueDays > 0 ? `${overdueDays} ngày` : "0 ngày"}</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-600">{fmtDate(record.dueDate)}</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-600">{record.paidDate ? fmtDate(record.paidDate) : "—"}</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-600 tabular-nums">{formatVND(record.paidAmount)}</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-400">0 ₫</td>
+                  <td className="px-4 py-3 text-right text-xs text-slate-400">0 ₫</td>
+                  <td className="px-4 py-3 text-right text-xs font-semibold text-slate-900 tabular-nums">{formatVND(record.remainingAmount)}</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-500">{activeExt ? fmtDate(activeExt.newDueDate) : "—"}</td>
+                  <td className="px-4 py-3 text-center text-xs text-slate-500">{activeExt && activeExt.installments.some(i => i.status === "paid") ? fmtDate(activeExt.installments.find(i => i.status === "paid")?.paidDate || "") : "—"}</td>
+                  <td className="px-4 py-3 text-center text-xs font-medium text-slate-700">{percentPaid}</td>
+                  <td className="px-4 py-3 text-center">{renderStatusBadge(record.status)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {!isFullyPaid && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
+                          onClick={() => setPaymentConfirmTarget(record)}
+                          title="Xác nhận thanh toán"
+                        >
+                          <BadgeCheck className="size-4" />
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-md text-slate-400 hover:text-slate-600 shrink-0"
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="text-xs w-52">
+                          <DropdownMenuItem
+                            className="text-xs gap-2"
+                            onSelect={() => setDebtAdjustTarget(normalizePaymentRecord(record))}
+                          >
+                            <Pencil className="size-3.5 text-muted-foreground" />
+                            Điều chỉnh công nợ
+                          </DropdownMenuItem>
+                          
+                          {(record.status === "overdue" || record.status === "upcoming") && (
+                            <DropdownMenuItem
+                              className="text-xs gap-2"
+                              onSelect={() => setExtDialog({ record, editingIdx: undefined })}
+                            >
+                              <Plus className="size-3.5 text-muted-foreground" />
+                              {getExtList(record.id).length === 0
+                                ? "Gia hạn thanh toán"
+                                : `Gia hạn lần ${getExtList(record.id).length + 1}`}
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuItem
+                            className="text-xs gap-2"
+                            onSelect={() => setAuditHistoryRecord(record)}
+                          >
+                            <History className="size-3.5 text-muted-foreground" />
+                            Xem lịch sử công nợ
+                            {(localAuditLogs.get(record.id)?.length ?? 0) === 0 && (
+                              <span className="ml-auto text-[10px] text-muted-foreground">Chưa có</span>
+                            )}
+                          </DropdownMenuItem>
+                          {(record.status === "overdue" ||
+                            record.status === "grace-period" ||
+                            record.status === "partial" ||
+                            record.adjustedLateInterest != null) && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-xs gap-2"
+                                  onSelect={() =>
+                                    onNavigate(
+                                      `/customer/${customerId}/contract/${contractId}/stage/${stage.id}/payment/${record.id}`
+                                    )
+                                  }
+                                >
+                                  <FileText className="size-3.5 text-muted-foreground" />
+                                  Xem chi tiết tính lãi
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {debtAdjustTarget && (
+        <DebtAdjustmentDialog
+          open={!!debtAdjustTarget}
+          contractName={contract.contractCode || contract.id}
+          record={debtAdjustTarget}
+          onConfirm={handleDebtAdjustConfirm}
+          onClose={() => setDebtAdjustTarget(null)}
+        />
+      )}
+
+      {auditHistoryRecord && (
+        <Dialog open={!!auditHistoryRecord} onOpenChange={(open) => !open && setAuditHistoryRecord(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-semibold">Lịch sử điều chỉnh công nợ</DialogTitle>
+              <DialogDescription className="text-xs">
+                {auditHistoryRecord.label}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <AuditHistorySection logs={localAuditLogs.get(auditHistoryRecord.id) ?? []} />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {paymentConfirmTarget && (
+        <PaymentConfirmDialog
+          open={!!paymentConfirmTarget}
+          contractName={contract.contractCode || contract.id}
+          record={paymentConfirmTarget}
+          onConfirm={handleOriginalPaymentConfirm}
+          onClose={() => setPaymentConfirmTarget(null)}
+        />
+      )}
+
+      {extDialog && (
+        <ExtensionDialog
+          open={!!extDialog}
+          record={extDialog.record}
+          existing={extDialog.editingIdx !== undefined ? getExtList(extDialog.record.id)[extDialog.editingIdx] : undefined}
+          onSave={(ext) => handleSaveExtension(extDialog.record.id, ext, extDialog.editingIdx)}
+          onClose={() => setExtDialog(null)}
+        />
+      )}
+
+      {confirmPayTarget && (
+        <ExtensionPaymentConfirmDialog
+          open={!!confirmPayTarget}
+          installment={confirmPayTarget.installment}
+          contractName={contract.contractCode || contract.id}
+          onConfirm={(paidDate, invoice) =>
+            handleConfirmInstallmentPayment(
+              confirmPayTarget.recordId,
+              confirmPayTarget.installment.id,
+              paidDate,
+              invoice
+            )
+          }
+          onClose={() => setConfirmPayTarget(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
 export function PaymentDetails() {
   const { customerId, contractId } = useParams<{
     customerId: string;
@@ -1563,13 +1966,104 @@ export function PaymentDetails() {
     ? contract.stages.flatMap((s) => s.records.filter((r) => r.status === "overdue"))
     : [];
 
+  const exportExcel = () => {
+    const escapeCell = (value: string) => `"${value.toString().replace(/"/g, '""')}"`;
+    
+    const allRows = paymentInstallments.flatMap((stage) =>
+      stage.records.map((record) => ({ stage, record }))
+    );
+    
+    const depositDate = paymentInstallments[0]?.records[0]?.paidDate || paymentInstallments[0]?.records[0]?.dueDate || "";
+    const signingDate = paymentInstallments[0]?.records?.[1]?.paidDate || paymentInstallments[0]?.records?.[1]?.dueDate || "";
+
+    const headers = [
+      "STT",
+      "Đợt thanh toán",
+      "Ngày cọc",
+      "Số tiền cọc",
+      "Tiền cọc lòng chuyển sang cọc",
+      "Tiền bổ sung cọc mới",
+      "Ngày ký HĐ",
+      "% TT",
+      "Số tiền",
+      "Ngày đến hạn",
+      "Dư báo quá hạn",
+      "Ngày dự kiến TT",
+      "Ngày thực tế TT",
+      "Tổng đã thu",
+      "Dư thiếu đợt trước",
+      "Bổ sung",
+      "Còn lại",
+      "Ngày gia hạn",
+      "Ngày thanh toán gia hạn",
+      "Tỷ lệ khách hàng thanh toán",
+      "Trạng thái TT"
+    ];
+
+    const dataRows = allRows.map(({ stage, record }, index) => {
+      const pctTT = Math.round((record.baseAmount / contract.contractValue) * 100);
+      const overdueDays = record.status === "overdue" ? (record.daysOverdue || record.daysAfterDue || 0) : 0;
+      const hasExtensions = (record.extensions && record.extensions.length > 0);
+      const activeExt = hasExtensions ? record.extensions![record.extensions!.length - 1] : null;
+      
+      const isFullyPaid = record.status === "paid" || record.status === "overpaid";
+      const percentPaid = isFullyPaid ? "100%" : record.status === "partial" ? "50%" : "—";
+      
+      const statusLabel = record.status === "paid" || record.status === "overpaid" 
+        ? "Đã thanh toán" 
+        : record.status === "overdue" 
+          ? "Quá hạn" 
+          : record.status === "upcoming" 
+            ? "Sắp tới hạn" 
+            : record.status === "partial" 
+              ? "Một phần" 
+              : "Chưa tới hạn";
+
+      return [
+        (index + 1).toString(),
+        record.label,
+        depositDate ? fmtDate(depositDate) : "—",
+        formatVND(0.05),
+        formatVND(0.05),
+        "0 ₫",
+        signingDate ? fmtDate(signingDate) : "—",
+        `${pctTT}%`,
+        formatVND(record.baseAmount),
+        fmtDate(record.dueDate),
+        overdueDays > 0 ? `${overdueDays} ngày` : "0 ngày",
+        fmtDate(record.dueDate),
+        record.paidDate ? fmtDate(record.paidDate) : "—",
+        formatVND(record.paidAmount),
+        "0 ₫",
+        "0 ₫",
+        formatVND(record.remainingAmount),
+        activeExt ? fmtDate(activeExt.newDueDate) : "—",
+        (activeExt && activeExt.installments.some(i => i.status === "paid")) ? fmtDate(activeExt.installments.find(i => i.status === "paid")?.paidDate || "") : "—",
+        percentPaid,
+        statusLabel
+      ];
+    });
+
+    const csvContent = [headers, ...dataRows]
+      .map((row) => row.map(escapeCell).join(","))
+      .join("\n");
+      
+    const csv = `\uFEFF${csvContent}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `chi-tiet-cong-no-${contract.contractCode || contract.id}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       className="min-h-screen bg-slate-50"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      <header className="border-b border-border/60 bg-white sticky top-0 z-10 py-3.5 px-6 shadow-sm">
-        <div className="max-w-screen-lg mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <header className="border-b border-border/60 bg-white sticky top-0 z-10 py-3.5 px-4 md:px-6 shadow-sm">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <Button
               variant="ghost"
@@ -1597,7 +2091,7 @@ export function PaymentDetails() {
 
           <div className="flex items-center gap-3 self-end md:self-center shrink-0">
             {/* Export Document Button (Spreadsheet Icon) */}
-            <Button variant="outline" size="icon" className="size-9 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" title="Xuất file công nợ">
+            <Button variant="outline" size="icon" className="size-9 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200" onClick={exportExcel} title="Xuất file công nợ">
               <FileText className="size-4" />
             </Button>
 
@@ -1630,159 +2124,150 @@ export function PaymentDetails() {
         </div>
       </header>
 
-      <main className="max-w-screen-lg mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+        {isOverdue && overdueRecords.length > 0 && (
+          <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-800">
+            <AlertTriangle className="size-4 text-red-600" />
+            <AlertTitle className="text-red-800">Cảnh báo: Có khoản thanh toán quá hạn</AlertTitle>
+            <AlertDescription className="text-red-700">
+              Hợp đồng{" "}
+              <strong>
+                {contract.projectName} – Căn {contract.unit}
+              </strong>{" "}
+              đang có{" "}
+              <strong>{overdueRecords.length} khoản thanh toán quá hạn</strong>. Tổng phí
+              phạt trễ hạn ước tính: <strong>{formatVND(totalLateFee)}</strong> (lãi suất{" "}
+              {contract.latePenaltyRate}%/năm). Vui lòng liên hệ khách hàng để xử lý ngay.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <MetricCard
+            icon={BadgeCheck}
+            label="Đã thanh toán"
+            value={formatVND(contract.paidAmount)}
+            sub={`${contract.paymentProgress}% giá trị hợp đồng`}
+            iconClass="bg-emerald-50"
+            valueClass="text-emerald-700"
+          />
+          <MetricCard
+            icon={Banknote}
+            label="Số dư còn lại"
+            value={formatVND(remaining)}
+            sub={`Hợp đồng: ${formatVND(contract.contractValue)}`}
+            iconClass="bg-blue-50"
+            valueClass="text-blue-700"
+          />
+          <MetricCard
+            icon={TrendingDown}
+            label="Tổng lãi phạt tích lũy"
+            value={totalLateFee > 0 ? formatVND(totalLateFee) : "—"}
+            sub={
+              totalLateFee > 0
+                ? `${contract.latePenaltyRate}%/năm · ${contract.daysOverdue} ngày`
+                : "Không có khoản quá hạn"
+            }
+            iconClass="bg-red-50"
+            valueClass={totalLateFee > 0 ? "text-red-600" : "text-muted-foreground"}
+          />
+        </div>
+
+        <Card className="border-border/60 shadow-none">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">Tiến độ tổng thể</span>
+              </div>
+              <span className="text-sm text-muted-foreground">{contract.paymentProgress}%</span>
+            </div>
+            <Progress
+              value={contract.paymentProgress}
+              className={`h-2 ${isOverdue
+                ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
+                : contract.status === "upcoming"
+                  ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
+                  : "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
+                }`}
+            />
+            <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+              {paymentInstallments.length > 0 ? (
+                <>
+                  <span>
+                    Bắt đầu: {fmtDate(paymentInstallments[0]?.records[0]?.dueDate ?? "")}
+                  </span>
+                  <span>
+                    Dự kiến hoàn thành:{" "}
+                    {fmtDate(
+                      paymentInstallments[paymentInstallments.length - 1]?.records[
+                        paymentInstallments[paymentInstallments.length - 1]?.records.length - 1
+                      ]?.dueDate ?? ""
+                    )}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>Đến hạn: {fmtDate(contract.dueDate)}</span>
+                  <span>{contract.paymentProgress}% hoàn thành</span>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {viewMode === "table" ? (
+          <PaymentTable
+            paymentInstallments={paymentInstallments}
+            customer={customer}
+            contract={contract}
+            customerId={customerId!}
+            contractId={contractId!}
+            onNavigate={navigate}
+          />
+        ) : hasStages ? (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-foreground font-semibold">Lộ trình thanh toán 5 năm</h2>
+              <p className="text-xs text-muted-foreground">
+                {paymentInstallments.filter((s) => s.stageStatus === "completed").length} /{" "}
+                {paymentInstallments.length} đợt hoàn thành
+              </p>
+            </div>
+            <div className="space-y-0">
+              {paymentInstallments.map((stage, idx) => (
+                <StageBlock
+                  key={stage.records[0]?.id ?? `${stage.id}-${idx}`}
+                  stage={stage}
+                  isLast={idx === paymentInstallments.length - 1}
+                  customerName={customer.name}
+                  projectName={contract.projectName}
+                  unit={contract.unit}
+                  customerId={customerId!}
+                  contractId={contractId!}
+                  onNavigate={navigate}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
           <Card className="border-border/60 shadow-none">
-            <CardContent className="p-12 text-center text-muted-foreground text-sm flex flex-col items-center justify-center gap-2">
-              <Table2 className="size-8 opacity-30" />
-              <p className="font-semibold text-slate-700 mt-2">Giao diện bảng thanh toán (Đang xây dựng...)</p>
-              <p className="text-xs max-w-sm text-slate-400">Bố cục bảng chi tiết dòng tiền công nợ và các đợt thanh toán sẽ được hoàn thiện trong bước tiếp theo.</p>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-foreground">Lộ trình thanh toán</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                <CalendarDays className="size-8 opacity-30" />
+                <p className="text-sm">
+                  Chi tiết lộ trình chưa được cập nhật cho hợp đồng này
+                </p>
+                <p className="text-xs">
+                  Tiến độ hiện tại: {contract.paymentProgress}% ·{" "}
+                  {formatVND(contract.paidAmount)} / {formatVND(contract.contractValue)}
+                </p>
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <>
-            {isOverdue && overdueRecords.length > 0 && (
-              <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-800">
-                <AlertTriangle className="size-4 text-red-600" />
-                <AlertTitle className="text-red-800">Cảnh báo: Có khoản thanh toán quá hạn</AlertTitle>
-                <AlertDescription className="text-red-700">
-                  Hợp đồng{" "}
-                  <strong>
-                    {contract.projectName} – Căn {contract.unit}
-                  </strong>{" "}
-                  đang có{" "}
-                  <strong>{overdueRecords.length} khoản thanh toán quá hạn</strong>. Tổng phí
-                  phạt trễ hạn ước tính: <strong>{formatVND(totalLateFee)}</strong> (lãi suất{" "}
-                  {contract.latePenaltyRate}%/năm). Vui lòng liên hệ khách hàng để xử lý ngay.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <MetricCard
-                icon={BadgeCheck}
-                label="Đã thanh toán"
-                value={formatVND(contract.paidAmount)}
-                sub={`${contract.paymentProgress}% giá trị hợp đồng`}
-                iconClass="bg-emerald-50"
-                valueClass="text-emerald-700"
-              />
-              <MetricCard
-                icon={Banknote}
-                label="Số dư còn lại"
-                value={formatVND(remaining)}
-                sub={`Hợp đồng: ${formatVND(contract.contractValue)}`}
-                iconClass="bg-blue-50"
-                valueClass="text-blue-700"
-              />
-              <MetricCard
-                icon={TrendingDown}
-                label="Tổng lãi phạt tích lũy"
-                value={totalLateFee > 0 ? formatVND(totalLateFee) : "—"}
-                sub={
-                  totalLateFee > 0
-                    ? `${contract.latePenaltyRate}%/năm · ${contract.daysOverdue} ngày`
-                    : "Không có khoản quá hạn"
-                }
-                iconClass="bg-red-50"
-                valueClass={totalLateFee > 0 ? "text-red-600" : "text-muted-foreground"}
-              />
-            </div>
-
-            <Card className="border-border/60 shadow-none">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="size-4 text-muted-foreground" />
-                    <span className="text-sm text-foreground">Tiến độ tổng thể</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{contract.paymentProgress}%</span>
-                </div>
-                <Progress
-                  value={contract.paymentProgress}
-                  className={`h-2 ${isOverdue
-                    ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
-                    : contract.status === "upcoming"
-                      ? "bg-blue-100 [&>[data-slot=progress-indicator]]:bg-blue-500"
-                      : "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500"
-                    }`}
-                />
-                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                  {hasStages ? (
-                    <>
-                      <span>
-                        Bắt đầu:{" "}
-                        {new Date(
-                          paymentInstallments[0]?.records[0]?.dueDate ?? ""
-                        ).toLocaleDateString("vi-VN", { month: "2-digit", year: "numeric" })}
-                      </span>
-                      <span>
-                        Dự kiến hoàn thành:{" "}
-                        {(() => {
-                          const lastStage = paymentInstallments[paymentInstallments.length - 1];
-                          const lastRecord = lastStage.records[0];
-                          return new Date(lastRecord?.dueDate ?? "").toLocaleDateString("vi-VN", {
-                            month: "2-digit",
-                            year: "numeric",
-                          });
-                        })()}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Đến hạn: {fmtDate(contract.dueDate)}</span>
-                      <span>{contract.paymentProgress}% hoàn thành</span>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {hasStages ? (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-foreground">Lộ trình thanh toán 5 năm</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {paymentInstallments.filter((s) => s.stageStatus === "completed").length} /{" "}
-                    {paymentInstallments.length} đợt hoàn thành
-                  </p>
-                </div>
-                <div className="space-y-0">
-                  {paymentInstallments.map((stage, idx) => (
-                    <StageBlock
-                      key={stage.records[0]?.id ?? `${stage.id}-${idx}`}
-                      stage={stage}
-                      isLast={idx === paymentInstallments.length - 1}
-                      customerName={customer.name}
-                      projectName={contract.projectName}
-                      unit={contract.unit}
-                      customerId={customerId!}
-                      contractId={contractId!}
-                      onNavigate={navigate}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <Card className="border-border/60 shadow-none">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base text-foreground">Lộ trình thanh toán</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-                    <CalendarDays className="size-8 opacity-30" />
-                    <p className="text-sm">
-                      Chi tiết lộ trình chưa được cập nhật cho hợp đồng này
-                    </p>
-                    <p className="text-xs">
-                      Tiến độ hiện tại: {contract.paymentProgress}% ·{" "}
-                      {formatVND(contract.paidAmount)} / {formatVND(contract.contractValue)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
         )}
       </main>
     </div>

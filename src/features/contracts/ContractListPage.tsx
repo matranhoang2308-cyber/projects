@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ContractCreatePage } from "./ContractCreatePage";
 import { Button } from "@/components/ui/button";
@@ -1222,20 +1223,7 @@ export function ContractScoreCard({
   iconClass: string;
 }) {
   return (
-    <Card className="h-[116px] min-w-0 overflow-hidden rounded-[12px] border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
-      <CardContent className="flex h-full items-center gap-4 p-4">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
-          <Icon className="h-5 w-5 text-slate-600" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs leading-4 text-slate-500">{label}</p>
-          <p className="mt-1 break-words text-sm leading-tight tracking-[-0.02em] text-slate-950 tabular-nums" style={{ fontWeight: 700 }}>
-            {value}
-          </p>
-          <p className="mt-2 text-[11px] leading-4 text-slate-500">{helper}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <CoreMetricCard icon={Icon} label={label} value={value} sub={helper} iconClass={iconClass} />
   );
 }
 
@@ -1951,7 +1939,7 @@ export function ContractListPage() {
           </div>
         </div>
 
-        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 py-3">
+        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 pb-3 pt-0">
           <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
             <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

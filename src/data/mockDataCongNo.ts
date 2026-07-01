@@ -254,7 +254,9 @@ export function allocatePayment(paidAmount: number, principalDue: number) {
  */
 export function normalizePaymentRecord(record: Partial<PaymentRecord>): PaymentRecord {
   const baseAmount = record.baseAmount ?? 0;
-  const paidAmount = record.paidAmount ?? (record.status === "paid" && record.paidDate ? baseAmount : 0);
+  const rawStatus = record.status!;
+  const status = rawStatus === "not-due" ? "upcoming" : rawStatus;
+  const paidAmount = record.paidAmount ?? (status === "paid" && record.paidDate ? baseAmount : 0);
   const remainingAmount = record.remainingAmount ?? baseAmount - paidAmount;
 
   // Calculate days after due
@@ -300,7 +302,7 @@ export function normalizePaymentRecord(record: Partial<PaymentRecord>): PaymentR
     paidAmount,
     remainingAmount,
     overpaidAmount: record.overpaidAmount,
-    status: record.status!,
+    status,
     debtStatus,
     gracePeriodDays,
     daysAfterDue,

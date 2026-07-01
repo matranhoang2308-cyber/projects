@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import type { ElementType } from "react";
 import {
@@ -481,6 +481,10 @@ function StageBlock({
   customerId,
   contractId,
   onNavigate,
+  recordOverrides,
+  setRecordOverrides,
+  globalExtensions,
+  setGlobalExtensions,
 }: {
   stage: PaymentStage;
   isLast: boolean;
@@ -490,22 +494,19 @@ function StageBlock({
   customerId: string;
   contractId: string;
   onNavigate: (path: string) => void;
+  recordOverrides: Map<string, Partial<PaymentRecord>>;
+  setRecordOverrides: React.Dispatch<React.SetStateAction<Map<string, Partial<PaymentRecord>>>>;
+  globalExtensions: Map<string, PaymentExtension[]>;
+  setGlobalExtensions: React.Dispatch<React.SetStateAction<Map<string, PaymentExtension[]>>>;
 }) {
   const [activeInvoice, setActiveInvoice] = useState<{
     invoice: InvoiceFile;
     record: PaymentRecord;
   } | null>(null);
 
-  // Extensions stored as array per record (index 0 = oldest, last = active)
-  const [localExtensions, setLocalExtensions] = useState<Map<string, PaymentExtension[]>>(
-    () => {
-      const m = new Map<string, PaymentExtension[]>();
-      stage.records.forEach((r) => {
-        if (r.extensions && r.extensions.length > 0) m.set(r.id, r.extensions);
-      });
-      return m;
-    }
-  );
+  // Use globalExtensions from props instead of localExtensions
+  const localExtensions = globalExtensions;
+  const setLocalExtensions = setGlobalExtensions;
 
   // editingIdx=undefined means adding new; editingIdx=number means editing existing
   const [extDialog, setExtDialog] = useState<{
@@ -612,12 +613,21 @@ function StageBlock({
     paidDate: string,
     invoice: InvoiceFile
   ) => {
-    // In a real app, this would update the backend and refresh data
-    // For now, just log and close dialog
-    console.log("Payment confirmed:", { paidAmount, paidDate, invoice });
-    alert(`Đã ghi nhận thanh toán ${formatVND(paidAmount)} vào ngày ${paidDate}. Hóa đơn: ${invoice.invoiceNumber}`);
+    if (!paymentConfirmTarget) return;
+    const recId = paymentConfirmTarget.id;
+    setRecordOverrides((prev) => {
+      const next = new Map(prev);
+      const prevOverride = prev.get(recId) ?? {};
+      const newPaidAmount = (prevOverride.paidAmount ?? paymentConfirmTarget.paidAmount ?? 0) + paidAmount;
+      next.set(recId, {
+        paidAmount: newPaidAmount,
+        paidDate,
+        invoice,
+        status: newPaidAmount >= paymentConfirmTarget.baseAmount ? "paid" : "partial",
+      });
+      return next;
+    });
     setPaymentConfirmTarget(null);
-    // Optionally: refresh page or update local state
   };
 
   // ── Render installment rows for one extension ──────────────────────────────
@@ -686,41 +696,12 @@ function StageBlock({
                   +{formatVND(instLateFee)} phạt
                 </span>
               )}
-              {inst.status === "paid" && inst.invoice && (
-                <div className="flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 shrink-0">
-                  <FileText className="size-2.5 text-red-500" />
-                  <span className="text-[10px] text-red-600">PDF</span>
-                </div>
-              )}
               <Badge
                 className={`text-[10px] px-1.5 h-4 shrink-0 ${statusConfig[inst.status].className}`}
               >
                 {statusConfig[inst.status].label}
               </Badge>
-              {isActive && inst.status === "paid" && inst.invoice ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[11px] px-2 gap-1 border-border/60 shrink-0"
-                  onClick={() =>
-                    setActiveInvoice({
-                      invoice: inst.invoice!,
-                      record: {
-                        id: inst.id,
-                        label: inst.label,
-                        dueDate: inst.dueDate,
-                        paidDate: inst.paidDate,
-                        baseAmount: inst.amount,
-                        status: "paid",
-                        invoice: inst.invoice,
-                      },
-                    })
-                  }
-                >
-                  <FileText className="size-2.5" />
-                  Xem HĐ
-                </Button>
-              ) : isActive && inst.status !== "paid" ? (
+              {isActive && inst.status !== "paid" ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -812,7 +793,7 @@ function StageBlock({
             </div>
 
             {inst.status === "paid" && inst.invoice && (
-              <div className="ml-7 rounded-lg border border-emerald-200 bg-emerald-50/30 px-3 py-2.5">
+              <div className="ml-7 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
                 <div className="flex items-center gap-3">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-red-100 border border-red-200 shrink-0">
                     <FileText className="size-3.5 text-red-600" />
@@ -1150,8 +1131,56 @@ function StageBlock({
                 const extList = getExtList(record.id);
                 const activeExt = extList.length > 0 ? extList[extList.length - 1] : undefined;
                 const historyExts = extList.slice(0, -1);
+                const hasSubInstallments = extList.some(ext => ext.installments && ext.installments.length > 0);
+                
+                const effectiveStatus = (() => {
+                  if (hasSubInstallments && activeExt) {
+                    const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+                    if (allSubPaid) return "paid" as PaymentStatus;
+                  }
+                  return record.status;
+                })();
+                
+                const effectivePaidAmount = (() => {
+                  if (hasSubInstallments && activeExt) {
+                    return activeExt.installments
+                      .filter(i => i.status === "paid")
+                      .reduce((sum, i) => sum + i.amount, 0);
+                  }
+                  return record.paidAmount;
+                })();
+                
+                const effectiveRemainingAmount = (() => {
+                  if (hasSubInstallments && activeExt) {
+                    return Math.max(0, record.baseAmount - effectivePaidAmount);
+                  }
+                  return record.remainingAmount;
+                })();
+
+                const effectivePaidDate = (() => {
+                  if (hasSubInstallments && activeExt) {
+                    const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+                    if (allSubPaid) {
+                      const dates = activeExt.installments.map(i => i.paidDate).filter(Boolean);
+                      if (dates.length > 0) return dates[dates.length - 1];
+                    }
+                  }
+                  return record.paidDate;
+                })();
+
+                const effectiveInvoice = (() => {
+                  if (hasSubInstallments && activeExt) {
+                    const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+                    if (allSubPaid) {
+                      const lastInvoice = activeExt.installments[activeExt.installments.length - 1]?.invoice;
+                      if (lastInvoice) return lastInvoice;
+                    }
+                  }
+                  return record.invoice;
+                })();
+
                 const canAddExtension =
-                  record.status === "overdue" || record.status === "upcoming";
+                  effectiveStatus === "overdue" || effectiveStatus === "upcoming";
                 const isHistOpen = historyOpen.has(record.id);
 
                 return (
@@ -1159,9 +1188,9 @@ function StageBlock({
                     key={record.id}
                     value={record.id}
                     className={`border-l-4 transition-all duration-200 bg-transparent ${
-                      record.status === "overdue"
+                      effectiveStatus === "overdue"
                         ? "border-l-red-500 data-[state=open]:bg-red-50/10"
-                        : record.status === "paid"
+                        : effectiveStatus === "paid"
                           ? "border-l-emerald-500 data-[state=open]:bg-emerald-50/5"
                           : "border-l-blue-500 data-[state=open]:bg-blue-50/5"
                     } ${idx === 0 ? "border-t-0" : ""}`}
@@ -1169,9 +1198,9 @@ function StageBlock({
                     <AccordionTrigger className="group px-4 py-3 hover:no-underline hover:bg-slate-50/60 text-xs">
                       <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
                         <div className="group-data-[state=open]:hidden flex items-center gap-2">
-                          {record.status === "paid" ? (
+                          {effectiveStatus === "paid" ? (
                             <BadgeCheck className="size-4 text-emerald-500 shrink-0" />
-                          ) : record.status === "overdue" ? (
+                          ) : effectiveStatus === "overdue" ? (
                             <div className="flex items-center justify-center rounded-full bg-red-500 shrink-0 size-4">
                               <AlertTriangle className="size-2.5 text-white stroke-[3px]" />
                             </div>
@@ -1179,7 +1208,7 @@ function StageBlock({
                             <Circle className="size-4 text-blue-400 shrink-0" />
                           )}
                           <span
-                            className={`text-sm truncate ${record.status === "overdue" ? "text-red-700" : "text-foreground"
+                            className={`text-sm truncate ${effectiveStatus === "overdue" ? "text-red-700" : "text-foreground"
                               }`}
                           >
                             {record.label}
@@ -1189,7 +1218,7 @@ function StageBlock({
                           Trạng thái
                         </span>
 
-                        {record.status === "paid" && record.invoice && (
+                        {effectiveStatus === "paid" && effectiveInvoice && (
                           <div className="flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 shrink-0">
                             <FileText className="size-2.5 text-red-500" />
                             <span className="text-[10px] text-red-600">PDF</span>
@@ -1221,10 +1250,10 @@ function StageBlock({
                         )}
 
                         <Badge
-                          className={`ml-auto shrink-0 text-[10px] px-1.5 py-0 ${statusConfig[record.status].className
+                          className={`ml-auto shrink-0 text-[10px] px-1.5 py-0 ${statusConfig[effectiveStatus].className
                             }`}
                         >
-                          {statusConfig[record.status].label}
+                          {statusConfig[effectiveStatus].label}
                         </Badge>
                       </div>
                     </AccordionTrigger>
@@ -1233,12 +1262,12 @@ function StageBlock({
                       <div className="pl-7 space-y-3">
                         {/* Quick actions */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {record.status !== "paid" && record.status !== "deposit-forfeited" && (
+                          {effectiveStatus !== "paid" && effectiveStatus !== "deposit-forfeited" && !hasSubInstallments && (
                             <Button
                               variant="outline"
                               size="sm"
                               className="h-7 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                              onClick={() => setPaymentConfirmTarget(normalizePaymentRecord(record))}
+                              onClick={() => setPaymentConfirmTarget(normalizePaymentRecord({ ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice }))}
                             >
                               <BadgeCheck className="size-3" />
                               Xác nhận thanh toán
@@ -1260,16 +1289,29 @@ function StageBlock({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="text-xs w-52">
+                              {effectiveStatus !== "upcoming" && effectiveStatus !== "paid" && effectiveStatus !== "overpaid" && (
+                                <DropdownMenuItem
+                                  className="text-xs gap-2"
+                                  onSelect={() => setDebtAdjustTarget(normalizePaymentRecord({ ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice }))}
+                                >
+                                  <Pencil className="size-3.5 text-muted-foreground" />
+                                  Điều chỉnh công nợ
+                                </DropdownMenuItem>
+                              )}
+                              {effectiveStatus !== "paid" && effectiveStatus !== "overpaid" && (effectiveStatus === "overdue" || effectiveStatus === "upcoming") && (
+                                <DropdownMenuItem
+                                  className="text-xs gap-2"
+                                  onSelect={() => setExtDialog({ record: { ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice }, editingIdx: undefined })}
+                                >
+                                  <Plus className="size-3.5 text-muted-foreground" />
+                                  {getExtList(record.id).length === 0
+                                    ? "Gia hạn thanh toán"
+                                    : `Gia hạn lần ${getExtList(record.id).length + 1}`}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 className="text-xs gap-2"
-                                onSelect={() => setDebtAdjustTarget(normalizePaymentRecord(record))}
-                              >
-                                <Pencil className="size-3.5 text-muted-foreground" />
-                                Điều chỉnh công nợ
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-xs gap-2"
-                                onSelect={() => setAuditHistoryRecord(record)}
+                                onSelect={() => setAuditHistoryRecord({ ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice })}
                               >
                                 <History className="size-3.5 text-muted-foreground" />
                                 Xem lịch sử công nợ
@@ -1277,9 +1319,9 @@ function StageBlock({
                                   <span className="ml-auto text-[10px] text-muted-foreground">Chưa có</span>
                                 )}
                               </DropdownMenuItem>
-                              {(record.status === "overdue" ||
-                                record.status === "grace-period" ||
-                                record.status === "partial" ||
+                              {(effectiveStatus === "overdue" ||
+                                effectiveStatus === "grace-period" ||
+                                effectiveStatus === "partial" ||
                                 record.adjustedLateInterest != null) && (
                                   <>
                                     <DropdownMenuSeparator />
@@ -1301,6 +1343,12 @@ function StageBlock({
                         </div>
 
                         {/* Payment details grid */}
+                        {record.rolloverApplied !== undefined && (
+                          <div className="rounded bg-blue-50 border border-blue-200 px-3 py-2 flex items-center justify-between text-xs mb-3">
+                            <span className="font-medium text-blue-700">Giảm trừ từ đợt trước:</span>
+                            <span className="font-semibold text-blue-800">-{formatVND(record.rolloverApplied)}</span>
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 border-t border-border/40 pt-3">
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
@@ -1314,8 +1362,8 @@ function StageBlock({
                             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                               Ngày thanh toán
                             </p>
-                            <p className={`text-sm font-medium mt-0.5 ${record.paidDate ? "text-emerald-600" : "text-slate-400"}`}>
-                              {record.paidDate ? fmtDate(record.paidDate) : "—"}
+                            <p className={`text-sm font-medium mt-0.5 ${effectivePaidDate ? "text-emerald-600" : "text-slate-400"}`}>
+                              {effectivePaidDate ? fmtDate(effectivePaidDate) : "—"}
                             </p>
                           </div>
                           <div>
@@ -1331,15 +1379,15 @@ function StageBlock({
                               Tổng đã thu
                             </p>
                             <p className="text-sm font-medium text-emerald-600 mt-0.5">
-                              {formatVND(record.paidAmount)}
+                              {formatVND(effectivePaidAmount)}
                             </p>
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                               Còn lại
                             </p>
-                            <p className={`text-sm font-medium mt-0.5 ${record.remainingAmount > 0 ? "text-orange-600" : "text-slate-500"}`}>
-                              {formatVND(record.remainingAmount)}
+                            <p className={`text-sm font-medium mt-0.5 ${effectiveRemainingAmount > 0 ? "text-orange-600" : "text-slate-500"}`}>
+                              {formatVND(effectiveRemainingAmount)}
                             </p>
                           </div>
                           <div>
@@ -1348,7 +1396,7 @@ function StageBlock({
                             </p>
                             <p className="text-sm font-medium text-slate-800 mt-0.5">
                               {record.baseAmount > 0
-                                ? `${Math.round((record.paidAmount / record.baseAmount) * 100)}%`
+                                ? `${Math.round((effectivePaidAmount / record.baseAmount) * 100)}%`
                                 : "0%"}
                             </p>
                           </div>
@@ -1364,31 +1412,31 @@ function StageBlock({
                             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                               Lãi chậm nộp
                             </p>
-                            <p className={`text-sm font-medium mt-0.5 ${(record.lateFee ?? 0) > 0 ? "text-red-600" : "text-slate-500"}`}>
-                              {formatVND(record.lateFee ?? 0)}
+                            <p className={`text-sm font-medium mt-0.5 ${(effectiveStatus === "paid" ? 0 : (record.lateFee ?? 0)) > 0 ? "text-red-600" : "text-slate-500"}`}>
+                              {formatVND(effectiveStatus === "paid" ? 0 : (record.lateFee ?? 0))}
                             </p>
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                               Số ngày chậm nộp
                             </p>
-                            <p className={`text-sm font-medium mt-0.5 ${(record.daysOverdue ?? 0) > 0 ? "text-red-600" : "text-slate-500"}`}>
-                              {record.daysOverdue ?? 0} ngày
+                            <p className={`text-sm font-medium mt-0.5 ${(effectiveStatus === "paid" ? 0 : (record.daysOverdue ?? 0)) > 0 ? "text-red-600" : "text-slate-500"}`}>
+                              {effectiveStatus === "paid" ? 0 : (record.daysOverdue ?? 0)} ngày
                             </p>
                           </div>
                           <div>
                             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                               Tổng phải thu
                             </p>
-                            <p className={`text-sm font-medium mt-0.5 ${record.status === "overdue" ? "text-red-700" : "text-slate-500"}`}>
-                              {formatVND(record.status === "paid" ? 0 : record.remainingAmount + (record.lateFee ?? 0))}
+                            <p className={`text-sm font-medium mt-0.5 ${effectiveStatus === "overdue" ? "text-red-700" : "text-slate-500"}`}>
+                              {formatVND(effectiveStatus === "paid" ? 0 : effectiveRemainingAmount + (record.lateFee ?? 0))}
                             </p>
                           </div>
                         </div>
 
-                        {record.status === "overdue" &&
+                        {effectiveStatus === "overdue" &&
                           record.lateFee != null &&
-                          extList.length === 0 && (
+                          !hasSubInstallments && (
                             <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2">
                               <p className="text-xs text-red-700">
                                 <span className="font-medium">Tổng phải thanh toán:</span>{" "}
@@ -1398,7 +1446,7 @@ function StageBlock({
                             </div>
                           )}
 
-                        {record.status === "paid" && record.invoice && (
+                        {effectiveStatus === "paid" && effectiveInvoice && (
                           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
                               Hoá đơn đính kèm
@@ -1409,14 +1457,14 @@ function StageBlock({
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs text-foreground truncate">
-                                  {record.invoice.fileName}
+                                  {effectiveInvoice.fileName}
                                 </p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  PDF · {record.invoice.fileSize} · Phát hành{" "}
-                                  {fmtDate(record.invoice.uploadDate)}
+                                  PDF · {effectiveInvoice.fileSize} · Phát hành{" "}
+                                  {fmtDate(effectiveInvoice.uploadDate)}
                                 </p>
                                 <p className="text-[11px] text-muted-foreground">
-                                  #{record.invoice.invoiceNumber}
+                                  #{effectiveInvoice.invoiceNumber}
                                 </p>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
@@ -1425,7 +1473,7 @@ function StageBlock({
                                   size="sm"
                                   className="h-7 text-xs gap-1.5 border-border/60"
                                   onClick={() =>
-                                    setActiveInvoice({ invoice: record.invoice!, record })
+                                    setActiveInvoice({ invoice: effectiveInvoice, record })
                                   }
                                 >
                                   <FileText className="size-3" />
@@ -1545,8 +1593,6 @@ function MetricCard({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-import { useMemo } from "react";
-
 function renderStatusBadge(status: PaymentStatus) {
   switch (status) {
     case "paid":
@@ -1570,6 +1616,10 @@ function PaymentTable({
   customerId,
   contractId,
   onNavigate,
+  recordOverrides,
+  setRecordOverrides,
+  globalExtensions,
+  setGlobalExtensions,
 }: {
   paymentInstallments: PaymentStage[];
   customer: any;
@@ -1577,21 +1627,19 @@ function PaymentTable({
   customerId: string;
   contractId: string;
   onNavigate: (path: string) => void;
+  recordOverrides: Map<string, Partial<PaymentRecord>>;
+  setRecordOverrides: React.Dispatch<React.SetStateAction<Map<string, Partial<PaymentRecord>>>>;
+  globalExtensions: Map<string, PaymentExtension[]>;
+  setGlobalExtensions: React.Dispatch<React.SetStateAction<Map<string, PaymentExtension[]>>>;
 }) {
   const [activeInvoice, setActiveInvoice] = useState<{
     invoice: InvoiceFile;
     record: PaymentRecord;
   } | null>(null);
 
-  const [localExtensions, setLocalExtensions] = useState<Map<string, PaymentExtension[]>>(() => {
-    const m = new Map<string, PaymentExtension[]>();
-    paymentInstallments.forEach((stage) => {
-      stage.records.forEach((r) => {
-        if (r.extensions && r.extensions.length > 0) m.set(r.id, r.extensions);
-      });
-    });
-    return m;
-  });
+  // Use globalExtensions from props instead of localExtensions
+  const localExtensions = globalExtensions;
+  const setLocalExtensions = setGlobalExtensions;
 
   const [extDialog, setExtDialog] = useState<{
     record: PaymentRecord;
@@ -1679,8 +1727,20 @@ function PaymentTable({
     paidDate: string,
     invoice: InvoiceFile
   ) => {
-    console.log("Payment confirmed:", { paidAmount, paidDate, invoice });
-    alert(`Đã ghi nhận thanh toán ${formatVND(paidAmount)} vào ngày ${paidDate}. Hóa đơn: ${invoice.invoiceNumber}`);
+    if (!paymentConfirmTarget) return;
+    const recId = paymentConfirmTarget.id;
+    setRecordOverrides((prev) => {
+      const next = new Map(prev);
+      const prevOverride = prev.get(recId) ?? {};
+      const newPaidAmount = (prevOverride.paidAmount ?? paymentConfirmTarget.paidAmount ?? 0) + paidAmount;
+      next.set(recId, {
+        paidAmount: newPaidAmount,
+        paidDate,
+        invoice,
+        status: newPaidAmount >= paymentConfirmTarget.baseAmount ? "paid" : "partial",
+      });
+      return next;
+    });
     setPaymentConfirmTarget(null);
   };
 
@@ -1735,13 +1795,62 @@ function PaymentTable({
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {allRows.map(({ stage, record }, index) => {
+              const extList = getExtList(record.id);
+              const hasExtensions = extList.length > 0;
+              const activeExt = hasExtensions ? extList[extList.length - 1] : null;
+
+              const hasSubInstallments = extList.some(ext => ext.installments && ext.installments.length > 0);
+              const effectiveStatus = (() => {
+                if (hasSubInstallments && activeExt) {
+                  const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+                  if (allSubPaid) return "paid" as PaymentStatus;
+                }
+                return record.status;
+              })();
+
+              const effectivePaidAmount = (() => {
+                if (hasSubInstallments && activeExt) {
+                  return activeExt.installments
+                    .filter(i => i.status === "paid")
+                    .reduce((sum, i) => sum + i.amount, 0);
+                }
+                return record.paidAmount;
+              })();
+
+              const effectiveRemainingAmount = (() => {
+                if (hasSubInstallments && activeExt) {
+                  return Math.max(0, record.baseAmount - effectivePaidAmount);
+                }
+                return record.remainingAmount;
+              })();
+
+              const effectivePaidDate = (() => {
+                if (hasSubInstallments && activeExt) {
+                  const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+                  if (allSubPaid) {
+                    const dates = activeExt.installments.map(i => i.paidDate).filter(Boolean);
+                    if (dates.length > 0) return dates[dates.length - 1];
+                  }
+                }
+                return record.paidDate;
+              })();
+
+              const effectiveInvoice = (() => {
+                if (hasSubInstallments && activeExt) {
+                  const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+                  if (allSubPaid) {
+                    const lastInvoice = activeExt.installments[activeExt.installments.length - 1]?.invoice;
+                    if (lastInvoice) return lastInvoice;
+                  }
+                }
+                return record.invoice;
+              })();
+
               const pctTT = Math.round((record.baseAmount / contract.contractValue) * 100);
-              const overdueDays = record.status === "overdue" ? (record.daysOverdue || record.daysAfterDue || 0) : 0;
-              const hasExtensions = getExtList(record.id).length > 0;
-              const activeExt = hasExtensions ? getExtList(record.id)[getExtList(record.id).length - 1] : null;
-              
-              const isFullyPaid = record.status === "paid" || record.status === "overpaid";
-              const percentPaid = isFullyPaid ? "100%" : record.status === "partial" ? "50%" : "—";
+              const overdueDays = effectiveStatus === "overdue" ? (record.daysOverdue || record.daysAfterDue || 0) : 0;
+
+              const isFullyPaid = effectiveStatus === "paid" || effectiveStatus === "overpaid";
+              const percentPaid = isFullyPaid ? "100%" : effectiveStatus === "partial" ? "50%" : "—";
 
               return (
                 <tr key={record.id} className="hover:bg-slate-50/50 transition-colors">
@@ -1757,23 +1866,25 @@ function PaymentTable({
                   <td className="px-3 py-2.5 text-center text-slate-600">{fmtDate(record.dueDate)}</td>
                   <td className="px-3 py-2.5 text-center font-medium text-red-600">{overdueDays > 0 ? `${overdueDays} ngày` : "0 ngày"}</td>
                   <td className="px-3 py-2.5 text-center text-slate-600">{fmtDate(record.dueDate)}</td>
-                  <td className="px-3 py-2.5 text-center text-slate-600">{record.paidDate ? fmtDate(record.paidDate) : "—"}</td>
-                  <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{formatVND(record.paidAmount)}</td>
+                  <td className="px-3 py-2.5 text-center text-slate-600">{effectivePaidDate ? fmtDate(effectivePaidDate) : "—"}</td>
+                  <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">{formatVND(effectivePaidAmount)}</td>
                   <td className="px-3 py-2.5 text-right text-slate-400">0 ₫</td>
-                  <td className="px-3 py-2.5 text-right text-slate-400">0 ₫</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-slate-900 tabular-nums">{formatVND(record.remainingAmount)}</td>
+                  <td className="px-3 py-2.5 text-right text-blue-600 font-medium">
+                    {record.rolloverApplied ? `-${formatVND(record.rolloverApplied)}` : "0 ₫"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-900 tabular-nums">{formatVND(effectiveRemainingAmount)}</td>
                   <td className="px-3 py-2.5 text-center text-slate-500">{activeExt ? fmtDate(activeExt.newDueDate) : "—"}</td>
                   <td className="px-3 py-2.5 text-center text-slate-500">{activeExt && activeExt.installments.some(i => i.status === "paid") ? fmtDate(activeExt.installments.find(i => i.status === "paid")?.paidDate || "") : "—"}</td>
                   <td className="px-3 py-2.5 text-center font-medium text-slate-700">{percentPaid}</td>
-                  <td className="px-3 py-2.5 text-center">{renderStatusBadge(record.status)}</td>
+                  <td className="px-3 py-2.5 text-center">{renderStatusBadge(effectiveStatus)}</td>
                   <td className="px-3 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      {!isFullyPaid && (
+                      {!isFullyPaid && !hasSubInstallments && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
-                          onClick={() => setPaymentConfirmTarget(record)}
+                          onClick={() => setPaymentConfirmTarget(normalizePaymentRecord({ ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice }))}
                           title="Xác nhận thanh toán"
                         >
                           <BadgeCheck className="size-4" />
@@ -1790,18 +1901,20 @@ function PaymentTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-xs w-52">
-                          <DropdownMenuItem
-                            className="text-xs gap-2"
-                            onSelect={() => setDebtAdjustTarget(normalizePaymentRecord(record))}
-                          >
-                            <Pencil className="size-3.5 text-muted-foreground" />
-                            Điều chỉnh công nợ
-                          </DropdownMenuItem>
-                          
-                          {(record.status === "overdue" || record.status === "upcoming") && (
+                          {effectiveStatus !== "upcoming" && effectiveStatus !== "paid" && effectiveStatus !== "overpaid" && (
                             <DropdownMenuItem
                               className="text-xs gap-2"
-                              onSelect={() => setExtDialog({ record, editingIdx: undefined })}
+                              onSelect={() => setDebtAdjustTarget(normalizePaymentRecord({ ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice }))}
+                            >
+                              <Pencil className="size-3.5 text-muted-foreground" />
+                              Điều chỉnh công nợ
+                            </DropdownMenuItem>
+                          )}
+
+                          {effectiveStatus !== "paid" && effectiveStatus !== "overpaid" && (effectiveStatus === "overdue" || effectiveStatus === "upcoming") && (
+                            <DropdownMenuItem
+                              className="text-xs gap-2"
+                              onSelect={() => setExtDialog({ record: { ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice }, editingIdx: undefined })}
                             >
                               <Plus className="size-3.5 text-muted-foreground" />
                               {getExtList(record.id).length === 0
@@ -1812,7 +1925,7 @@ function PaymentTable({
 
                           <DropdownMenuItem
                             className="text-xs gap-2"
-                            onSelect={() => setAuditHistoryRecord(record)}
+                            onSelect={() => setAuditHistoryRecord({ ...record, status: effectiveStatus, paidAmount: effectivePaidAmount, remainingAmount: effectiveRemainingAmount, paidDate: effectivePaidDate, invoice: effectiveInvoice })}
                           >
                             <History className="size-3.5 text-muted-foreground" />
                             Xem lịch sử công nợ
@@ -1954,10 +2067,126 @@ export function PaymentDetails() {
     );
   }
 
+  const [recordOverrides, setRecordOverrides] = useState<Map<string, Partial<PaymentRecord>>>(new Map());
+  
   const hasStages = contract.stages && contract.stages.length > 0;
-  const paymentInstallments = hasStages
-    ? buildPaymentInstallmentStages(contract.stages!)
-    : [];
+  const rawPaymentInstallments = useMemo(() => {
+    return hasStages ? buildPaymentInstallmentStages(contract.stages!) : [];
+  }, [contract.stages, hasStages]);
+
+  const [globalExtensions, setGlobalExtensions] = useState<Map<string, PaymentExtension[]>>(() => {
+    const m = new Map<string, PaymentExtension[]>();
+    rawPaymentInstallments.forEach((stage) => {
+      stage.records.forEach((r) => {
+        if (r.extensions && r.extensions.length > 0) m.set(r.id, r.extensions);
+      });
+    });
+    return m;
+  });
+
+  const paymentInstallments = useMemo(() => {
+    let excessRollover = 0;
+    
+    return rawPaymentInstallments.map((stage) => {
+      const updatedRecords = stage.records.map((record) => {
+        const extList = globalExtensions.get(record.id) ?? [];
+        const hasSubInstallments = extList.some(ext => ext.installments && ext.installments.length > 0);
+        const activeExt = extList.length > 0 ? extList[extList.length - 1] : undefined;
+        
+        let baseStatus = record.status;
+        let basePaidAmount = record.paidAmount;
+        let basePaidDate = record.paidDate;
+        let baseInvoice = record.invoice;
+        let baseRemaining = record.remainingAmount;
+        
+        // 1. Apply overrides (e.g. from payment confirm dialog)
+        const override = recordOverrides.get(record.id);
+        if (override) {
+          if (override.status !== undefined) baseStatus = override.status;
+          if (override.paidAmount !== undefined) basePaidAmount = override.paidAmount;
+          if (override.paidDate !== undefined) basePaidDate = override.paidDate;
+          if (override.invoice !== undefined) baseInvoice = override.invoice;
+          baseRemaining = Math.max(0, record.baseAmount - basePaidAmount);
+        }
+
+        // 2. Apply sub-installment rules (e.g. roll forward deficit)
+        if (hasSubInstallments && activeExt) {
+          let subDeficitRollover = 0;
+          const updatedSubInstallments = activeExt.installments.map((inst, instIdx) => {
+            const effectiveAmt = inst.amount + subDeficitRollover;
+            
+            if (inst.status === "paid") {
+              subDeficitRollover = 0;
+            } else {
+              subDeficitRollover = effectiveAmt; // carry forward
+            }
+            return {
+              ...inst,
+              amount: effectiveAmt,
+            };
+          });
+
+          // Check if all sub-installments are paid
+          const allSubPaid = activeExt.installments.every(i => i.status === "paid");
+          if (allSubPaid) {
+            baseStatus = "paid" as PaymentStatus;
+            basePaidAmount = record.baseAmount;
+            baseRemaining = 0;
+            const dates = activeExt.installments.map(i => i.paidDate).filter(Boolean);
+            if (dates.length > 0) basePaidDate = dates[dates.length - 1];
+            const lastInvoice = activeExt.installments[activeExt.installments.length - 1]?.invoice;
+            if (lastInvoice) baseInvoice = lastInvoice;
+          } else {
+            basePaidAmount = activeExt.installments
+              .filter(i => i.status === "paid")
+              .reduce((sum, i) => sum + i.amount, 0);
+            baseRemaining = Math.max(0, record.baseAmount - basePaidAmount);
+            baseStatus = basePaidAmount > 0 ? "partial" as PaymentStatus : record.status;
+          }
+        }
+
+        // 3. Apply Overpayment Cascade Rollover
+        let rolloverApplied = 0;
+        if (excessRollover > 0 && baseStatus !== "paid" && baseStatus !== "overpaid") {
+          if (excessRollover >= baseRemaining) {
+            rolloverApplied = baseRemaining;
+            excessRollover -= baseRemaining;
+            basePaidAmount = record.baseAmount;
+            baseRemaining = 0;
+            baseStatus = "paid";
+          } else {
+            rolloverApplied = excessRollover;
+            basePaidAmount += excessRollover;
+            baseRemaining -= excessRollover;
+            excessRollover = 0;
+            baseStatus = "partial";
+          }
+        }
+
+        // If this record has overpayment, add to excessRollover
+        if (basePaidAmount > record.baseAmount) {
+          excessRollover += (basePaidAmount - record.baseAmount);
+        }
+
+        return {
+          ...record,
+          status: baseStatus,
+          paidAmount: basePaidAmount,
+          remainingAmount: baseRemaining,
+          paidDate: basePaidDate,
+          invoice: baseInvoice,
+          rolloverApplied: rolloverApplied > 0 ? rolloverApplied : undefined,
+        };
+      });
+      
+      return {
+        ...stage,
+        records: updatedRecords,
+        stageStatus: paymentStatusToStageStatus(updatedRecords[0].status),
+      };
+    });
+  }, [rawPaymentInstallments, recordOverrides, globalExtensions]);
+
   const isOverdue = contract.status === "overdue";
   const remaining = contract.contractValue - contract.paidAmount;
   const totalLateFee = getContractTotalLateFee(contract);
@@ -2224,6 +2453,10 @@ export function PaymentDetails() {
             customerId={customerId!}
             contractId={contractId!}
             onNavigate={navigate}
+            recordOverrides={recordOverrides}
+            setRecordOverrides={setRecordOverrides}
+            globalExtensions={globalExtensions}
+            setGlobalExtensions={setGlobalExtensions}
           />
         ) : hasStages ? (
           <div>
@@ -2246,6 +2479,10 @@ export function PaymentDetails() {
                   customerId={customerId!}
                   contractId={contractId!}
                   onNavigate={navigate}
+                  recordOverrides={recordOverrides}
+                  setRecordOverrides={setRecordOverrides}
+                  globalExtensions={globalExtensions}
+                  setGlobalExtensions={setGlobalExtensions}
                 />
               ))}
             </div>

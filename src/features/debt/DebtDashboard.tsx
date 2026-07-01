@@ -29,7 +29,7 @@ import {
 } from "@/data/mockDataCongNo";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -55,7 +55,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ContractScoreCard } from "@/features/contracts/ContractListPage";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
 
 const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none hover:bg-slate-50";
 
@@ -168,7 +175,7 @@ function StatusBadgeGroup({
 export function DebtDashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Set<PaymentStatus>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // ── Derived stats
   const allContracts = customers.flatMap((c) => c.contracts);
@@ -197,19 +204,10 @@ export function DebtDashboard() {
           ct.unit.toLowerCase().includes(q)
       );
     const matchStatus =
-      statusFilter.size === 0 ||
-      c.contracts.some((ct) => statusFilter.has(ct.status));
+      statusFilter === "all" ||
+      c.contracts.some((ct) => ct.status === statusFilter);
     return matchSearch && matchStatus;
   });
-
-  const toggleStatusFilter = (s: PaymentStatus) => {
-    setStatusFilter((prev) => {
-      const next = new Set(prev);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
-  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -276,86 +274,75 @@ export function DebtDashboard() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-4 gap-4">
-          <ContractScoreCard
+          <CoreMetricCard
             icon={Users}
             label="Tổng khách hàng"
             value={`${customers.length} khách`}
-            helper={`${allContracts.length} hợp đồng · ${overdueCustomers.length} quá hạn`}
+            sub={`${allContracts.length} hợp đồng · ${overdueCustomers.length} quá hạn`}
             iconClass="bg-slate-100"
           />
-          <ContractScoreCard
+          <CoreMetricCard
             icon={Wallet}
             label="Tổng giá trị hợp đồng"
             value={formatVND(totalValue)}
-            helper={`${allContracts.length} hợp đồng`}
+            sub={`${allContracts.length} hợp đồng`}
             iconClass="bg-blue-50"
           />
-          <ContractScoreCard
+          <CoreMetricCard
             icon={TrendingUp}
             label="Đã thu"
             value={formatVND(totalPaid)}
-            helper={`${Math.round((totalPaid / totalValue) * 100)}% tổng danh mục`}
+            sub={`${Math.round((totalPaid / totalValue) * 100)}% tổng danh mục`}
             iconClass="bg-emerald-50"
+            valueClass="text-emerald-700"
           />
-          <ContractScoreCard
+          <CoreMetricCard
             icon={AlertCircle}
             label="Phạt trễ hạn (ước tính)"
             value={formatVND(totalLateFee)}
-            helper={`${overdueContracts.length} hợp đồng quá hạn`}
+            sub={`${overdueContracts.length} hợp đồng quá hạn`}
             iconClass="bg-red-50"
+            valueClass={totalLateFee > 0 ? "text-red-600" : "text-foreground"}
           />
         </div>
 
           {/* Customer Table */}
-          <Card className="max-w-full overflow-visible border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
-            <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
+          <Card className="max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
+            <div className="border-b border-slate-200 bg-white px-4 py-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold text-slate-900 px-1">Danh sách công nợ</h2>
-                <div className="flex items-center gap-2">
-                  <div className="relative min-w-0">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Tìm tên, dự án..."
-                      aria-label="Tìm khách hàng hoặc dự án trong danh sách công nợ"
-                      className="h-9 w-48 rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                    />
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={`${compactFilterTriggerClass} flex items-center gap-1.5`}
-                      >
-                        <Filter className="size-3 text-slate-500" />
-                        Lọc
-                        {statusFilter.size > 0 && (
-                          <span className="ml-1 rounded-full bg-slate-950 text-white w-4 h-4 text-[10px] flex items-center justify-center font-semibold">
-                            {statusFilter.size}
-                          </span>
-                        )}
-                        <ChevronDown className="size-3 ml-0.5 text-slate-400" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44 bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
-                      <DropdownMenuLabel className="text-[11px] font-semibold text-slate-400 px-2 py-1">
-                        Trạng thái hợp đồng
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator className="my-1 border-b border-[#E5EAF3]" />
-                      {(["paid", "upcoming", "overdue"] as PaymentStatus[]).map((s) => (
-                        <DropdownMenuCheckboxItem
-                          key={s}
-                          checked={statusFilter.has(s)}
-                          onCheckedChange={() => toggleStatusFilter(s)}
-                          className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
-                        >
-                          {statusConfig[s].label}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-slate-900">Danh sách công nợ</h2>
+                  <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                    {filtered.length} khách hàng phù hợp · Bấm vào dòng để xem chi tiết
+                  </p>
                 </div>
+              </div>
+            </div>
+
+            <div className="border-b border-slate-200 bg-slate-50/60 px-3 pb-3 pt-0">
+              <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
+                <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search"
+                    aria-label="Tìm trong danh sách công nợ"
+                    className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+                </div>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger aria-label="Lọc theo trạng thái công nợ" className={`${compactFilterTriggerClass} w-48 flex-shrink-0`}>
+                    <SelectValue placeholder="Trạng thái công nợ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="paid">Đã thanh toán</SelectItem>
+                    <SelectItem value="upcoming">Sắp đến hạn</SelectItem>
+                    <SelectItem value="overdue">Quá hạn</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -397,38 +384,38 @@ export function DebtDashboard() {
               })}
             </div>
 
-            <div className="hidden overflow-x-auto sm:block max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full">
-              <table className="min-w-max w-full table-fixed border-separate border-spacing-0 text-sm">
-                <thead className="sticky top-0 z-20">
-                  <tr>
-                    <th className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>
+            <div className="hidden max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full overflow-x-auto overflow-y-auto sm:block">
+              <Table className="min-w-[1120px] w-full table-fixed border-collapse text-2sm">
+                <TableHeader className="sticky top-0 z-20">
+                  <TableRow>
+                    <TableHead className="h-10 w-52 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
                       Khách hàng
-                    </th>
-                    <th className="h-11 w-44 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>
+                    </TableHead>
+                    <TableHead className="h-10 w-44 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
                       Hợp đồng
-                    </th>
-                    <th className="h-11 w-44 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-right align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>
+                    </TableHead>
+                    <TableHead className="h-10 w-44 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-right align-middle text-[11px] font-medium text-slate-600">
                       Tổng giá trị
-                    </th>
-                    <th className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>
+                    </TableHead>
+                    <TableHead className="h-10 w-52 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
                       Tiến độ thanh toán
-                    </th>
-                    <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>
+                    </TableHead>
+                    <TableHead className="h-10 w-40 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
                       Hạn gần nhất
-                    </th>
-                    <th className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>
+                    </TableHead>
+                    <TableHead className="h-10 w-40 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
                       Trạng thái
-                    </th>
-                    <th className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                    <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-slate-200 bg-slate-50 px-0 py-2 text-center text-[11px] font-medium text-slate-600">...</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
                         Không tìm thấy kết quả phù hợp bộ lọc
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     filtered.map((customer) => {
                       const totalVal = getCustomerTotalValue(customer);
@@ -444,19 +431,19 @@ export function DebtDashboard() {
                       const contractCount = customer.contracts.length;
 
                       return (
-                        <tr
+                        <TableRow
                           key={customer.id}
                           className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
                           onClick={() => navigate(`/debt/customer/${customer.id}`)}
                         >
                           {/* Customer */}
-                          <td className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className="h-11 w-52 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
                             <div className="flex items-center gap-3">
                               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white ${customer.avatarColor}`} style={{ fontWeight: 750 }}>
                                 {customer.initials}
                               </div>
                               <div className="min-w-0">
-                                <p className="truncate text-xs text-slate-800 group-hover:text-indigo-700" style={{ fontWeight: 650 }}>
+                                <p className="truncate text-xs font-medium text-slate-800 group-hover:text-indigo-700">
                                   {customer.name}
                                 </p>
                                 <p className="truncate text-[11px] text-slate-400">
@@ -464,13 +451,13 @@ export function DebtDashboard() {
                                 </p>
                               </div>
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Contracts */}
-                          <td className="h-11 w-44 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className="h-11 w-44 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
                             {contractCount === 1 ? (
                               <>
-                                <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>
+                                <p className="truncate text-xs font-medium text-slate-700">
                                   {customer.contracts[0].projectName}
                                 </p>
                                 <p className="truncate text-[11px] text-slate-400">
@@ -481,7 +468,7 @@ export function DebtDashboard() {
                               <>
                                 <div className="flex items-center gap-1.5">
                                   <FileText className="size-3.5 text-slate-400 shrink-0" />
-                                  <span className="text-xs text-slate-700" style={{ fontWeight: 600 }}>
+                                  <span className="text-xs font-medium text-slate-700">
                                     {contractCount} hợp đồng
                                   </span>
                                 </div>
@@ -492,20 +479,20 @@ export function DebtDashboard() {
                                 </p>
                               </>
                             )}
-                          </td>
+                          </TableCell>
 
                           {/* Total Value */}
-                          <td className="h-11 w-44 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle text-right group-hover:bg-slate-50">
-                            <p className="text-xs text-slate-800" style={{ fontWeight: 700 }}>
+                          <TableCell className="h-11 w-44 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle text-right group-hover:bg-slate-50">
+                            <p className="text-xs font-medium text-slate-800">
                               {formatVND(totalVal)}
                             </p>
                             <p className="text-[11px] text-slate-400">
                               Đã thu: {formatVND(totalPd)}
                             </p>
-                          </td>
+                          </TableCell>
 
                           {/* Progress */}
-                          <td className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className="h-11 w-52 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
                             <div className="space-y-1">
                               <div className="flex items-center justify-between text-[11px] text-slate-500">
                                 <span>{progress}%</span>
@@ -529,7 +516,7 @@ export function DebtDashboard() {
                                     <div className="flex items-center gap-1 cursor-help w-fit">
                                       <Info className="size-3 text-red-500 shrink-0" />
                                       <span className="text-[10px] text-red-600">
-                                        Phạt trễ: <span className="font-semibold">{formatVND(lateFee)}</span>
+                                        Phạt trễ: <span className="font-medium">{formatVND(lateFee)}</span>
                                       </span>
                                     </div>
                                   </TooltipTrigger>
@@ -548,13 +535,13 @@ export function DebtDashboard() {
                                 </Tooltip>
                               )}
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Next Due */}
-                          <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className="h-11 w-40 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
                             {nextDue ? (
                               <>
-                                <p className={`text-xs ${isOverdue ? "text-red-600 font-semibold" : "text-slate-700 font-medium"}`}>
+                                <p className={`text-xs ${isOverdue ? "font-medium text-red-600" : "font-medium text-slate-700"}`}>
                                   {fmtDate(nextDue.date)}
                                 </p>
                                 {isOverdue && nextDue.contract.daysOverdue != null && (
@@ -568,15 +555,15 @@ export function DebtDashboard() {
                             ) : (
                               <p className="text-xs text-slate-300">—</p>
                             )}
-                          </td>
+                          </TableCell>
 
                           {/* Status Badge Group */}
-                          <td className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className="h-11 w-40 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
                             <StatusBadgeGroup contracts={customer.contracts} />
-                          </td>
+                          </TableCell>
 
                           {/* Action Button */}
-                          <td className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
+                          <TableCell className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-slate-200 bg-white px-0 py-1.5 text-center group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -593,16 +580,16 @@ export function DebtDashboard() {
                                 Xem hợp đồng khách hàng
                               </TooltipContent>
                             </Tooltip>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
 
-            <div className="flex h-12 items-center justify-between border-t border-[#E5EAF3] bg-white px-4 text-xs text-slate-500">
+            <div className="flex h-12 items-center justify-between border-t border-slate-200 bg-white px-4 text-xs text-slate-500">
               <div className="flex items-center gap-4">
                 <div>Hiển thị {filtered.length} / {customers.length} khách hàng</div>
                 <span className="text-slate-300">|</span>

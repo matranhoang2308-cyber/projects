@@ -28,28 +28,28 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { customers as baseCustomers, contracts, getCustomerStats } from "@/data/mockDataHopDong";
-import { ContractScoreCard } from "@/features/contracts/ContractListPage";
+import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
 import { CustomerDetailSheet } from "./CustomerDetailSheet";
 import { CustomerCreateDialog } from "./CustomerCreateDialog";
 import type { Customer } from "@/data/mockDataHopDong";
 
 function fmtVnd(n: number) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} tỷ`;
-  if (n >= 1_000_000)     return `${(n / 1_000_000).toFixed(0)} triệu`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)} triệu`;
   return n.toLocaleString();
 }
 
 const typeFilters = [
-  { value: "all",         label: "Loại khách hàng" },
-  { value: "Cá nhân",    label: "Cá nhân"       },
+  { value: "all", label: "Loại khách hàng" },
+  { value: "Cá nhân", label: "Cá nhân" },
   { value: "Doanh nghiệp", label: "Doanh nghiệp" },
 ];
 
 const activityFilters = [
-  { value: "all",    label: "Trạng thái hợp đồng" },
-  { value: "active", label: "Đang có HĐ"        },
-  { value: "multi",  label: "Nhiều hợp đồng (≥2)" },
-  { value: "none",   label: "Chưa có HĐ nào"    },
+  { value: "all", label: "Trạng thái hợp đồng" },
+  { value: "active", label: "Đang có HĐ" },
+  { value: "multi", label: "Nhiều hợp đồng (≥2)" },
+  { value: "none", label: "Chưa có HĐ nào" },
 ];
 
 const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none";
@@ -75,6 +75,18 @@ const customerGroupClass: Record<string, string> = {
   Khác: "bg-violet-50 text-violet-700 ring-violet-100",
 };
 
+const customerSourceClass: Record<string, string> = {
+  Facebook: "bg-blue-50 text-blue-700 ring-blue-200",
+  Zalo: "bg-sky-50 text-sky-700 ring-sky-200",
+  Website: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  Hotline: "bg-slate-50 text-slate-700 ring-slate-200",
+  Email: "bg-orange-50 text-orange-700 ring-orange-200",
+  Offline: "bg-slate-50 text-slate-700 ring-slate-200",
+  "Giới thiệu": "bg-violet-50 text-violet-700 ring-violet-200",
+  Referral: "bg-violet-50 text-violet-700 ring-violet-200",
+  Khác: "bg-slate-50 text-slate-700 ring-slate-200",
+};
+
 const progressBarClass = (pct: number) => {
   if (pct >= 100) return "bg-emerald-500";
   if (pct >= 50) return "bg-blue-500";
@@ -82,16 +94,16 @@ const progressBarClass = (pct: number) => {
 };
 
 export function CustomerPage() {
-  const [search, setSearch]           = useState("");
-  const [typeFilter, setTypeFilter]   = useState("all");
-  const [actFilter, setActFilter]     = useState("all");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [actFilter, setActFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
   const [customerStatusFilter, setCustomerStatusFilter] = useState("all");
   const [displayFilter, setDisplayFilter] = useState("default");
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<Set<string>>(() => new Set());
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [sheetOpen, setSheetOpen]     = useState(false);
-  const [createOpen, setCreateOpen]   = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [customerList, setCustomerList] = useState<Customer[]>(baseCustomers);
 
@@ -99,7 +111,7 @@ export function CustomerPage() {
   const enriched = useMemo(() => {
     return customerList.map((c) => {
       const stats = getCustomerStats(c.id);
-      const ctrs  = contracts.filter((ct) => ct.customerId === c.id);
+      const ctrs = contracts.filter((ct) => ct.customerId === c.id);
       return { ...c, stats, ctrs };
     });
   }, [customerList]);
@@ -144,17 +156,17 @@ export function CustomerPage() {
       // Trạng thái hợp đồng filter
       let matchAct = true;
       if (actFilter === "active") matchAct = c.stats.activeCount > 0;
-      if (actFilter === "multi")  matchAct = c.stats.count >= 2;
-      if (actFilter === "none")   matchAct = c.stats.count === 0;
+      if (actFilter === "multi") matchAct = c.stats.count >= 2;
+      if (actFilter === "none") matchAct = c.stats.count === 0;
 
       return matchSearch && matchType && matchGroup && matchCustomerStatus && matchAct;
     });
   }, [enriched, search, typeFilter, groupFilter, customerStatusFilter, actFilter]);
 
   // Global summary
-  const totalCustomers     = customerList.length;
-  const individualCount    = customerList.filter((c) => c.type === "Cá nhân").length;
-  const corporateCount     = customerList.filter((c) => c.type === "Doanh nghiệp").length;
+  const totalCustomers = customerList.length;
+  const individualCount = customerList.filter((c) => c.type === "Cá nhân").length;
+  const corporateCount = customerList.filter((c) => c.type === "Doanh nghiệp").length;
   const multiContractCount = enriched.filter((c) => c.stats.count >= 2).length;
   const totalContractValue = contracts.reduce((s, c) => s + c.total, 0);
 
@@ -218,32 +230,32 @@ export function CustomerPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-4 gap-4">
-        <ContractScoreCard
+        <CoreMetricCard
           icon={Users}
           label="Tổng khách hàng"
           value={String(totalCustomers)}
-          helper="Đã đăng ký"
+          sub="Đã đăng ký"
           iconClass="bg-blue-50"
         />
-        <ContractScoreCard
+        <CoreMetricCard
           icon={User}
           label="Khách hàng cá nhân"
           value={String(individualCount)}
-          helper={`${corporateCount} doanh nghiệp`}
+          sub={`${corporateCount} doanh nghiệp`}
           iconClass="bg-blue-50"
         />
-        <ContractScoreCard
+        <CoreMetricCard
           icon={FileText}
           label="Khách hàng nhiều HĐ"
           value={String(multiContractCount)}
-          helper="Khách ≥ 2 hợp đồng"
+          sub="Khách ≥ 2 hợp đồng"
           iconClass="bg-orange-50"
         />
-        <ContractScoreCard
+        <CoreMetricCard
           icon={DollarSign}
           label="Tổng giá trị"
           value={`${fmtVnd(totalContractValue)} đ`}
-          helper="Tất cả hợp đồng"
+          sub="Tất cả hợp đồng"
           iconClass="bg-green-50"
         />
       </div>
@@ -255,7 +267,7 @@ export function CustomerPage() {
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-slate-900">Danh sách khách hàng</h2>
               <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                {filtered.length} khách hàng phù hợp · {selectedCustomerIds.size} đang chọn · 10 cột đang hiển thị
+                {filtered.length} khách hàng phù hợp · {selectedCustomerIds.size}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
@@ -264,7 +276,7 @@ export function CustomerPage() {
           </div>
         </div>
 
-        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 py-3">
+        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 pb-3 pt-0">
           <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
             <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -354,6 +366,10 @@ export function CustomerPage() {
                 <TableHead className="h-11 w-56 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Khách hàng</TableHead>
                 <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>CCCD/HC</TableHead>
                 <TableHead className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Liên hệ</TableHead>
+                <TableHead className="h-11 w-28 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Giới tính</TableHead>
+                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nghề nghiệp</TableHead>
+                <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nguồn</TableHead>
+                <TableHead className="h-11 w-64 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Địa chỉ liên hệ</TableHead>
                 <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Hợp đồng</TableHead>
                 <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tổng giá trị</TableHead>
                 <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tiến độ TT</TableHead>
@@ -448,6 +464,24 @@ export function CustomerPage() {
                       <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>{c.phone}</p>
                       <p className="truncate text-[11px] text-slate-400">{c.email}</p>
                     </TableCell>
+                    <TableCell className="h-11 w-28 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                      <p className={`truncate text-xs ${c.gender ? "text-slate-700" : "text-slate-300"}`} title={c.gender || "Chưa cập nhật"}>{c.gender || "—"}</p>
+                    </TableCell>
+                    <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                      <p className={`truncate text-xs ${c.job ? "text-slate-700" : "text-slate-300"}`} title={c.job || "Chưa cập nhật"}>{c.job || "—"}</p>
+                    </TableCell>
+                    <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                      {c.source ? (
+                        <Badge variant="outline" className={`rounded-[6px] border-transparent px-2.5 py-1 text-[11px] ring-1 ${customerSourceClass[c.source] ?? customerSourceClass.Khác}`} style={{ fontWeight: 650 }}>
+                          {c.source}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="h-11 w-64 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                      <p className={`truncate text-xs ${c.address ? "text-slate-700" : "text-slate-300"}`} title={c.address || "Chưa cập nhật"}>{c.address || "—"}</p>
+                    </TableCell>
                     <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
                       <div className="flex items-center gap-2">
                         {hasActiveContract && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />}
@@ -529,7 +563,7 @@ export function CustomerPage() {
 
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="px-4 py-12 text-center">
+                  <TableCell colSpan={15} className="px-4 py-12 text-center">
                     <div className="mx-auto max-w-sm space-y-1">
                       <p className="text-sm font-medium text-slate-700">Không tìm thấy khách hàng phù hợp</p>
                       <p className="text-xs text-slate-400">Thử đổi từ khóa tìm kiếm hoặc điều kiện lọc.</p>

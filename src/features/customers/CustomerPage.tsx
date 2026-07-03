@@ -53,6 +53,19 @@ const activityFilters = [
 ];
 
 const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none";
+const customerPanelClass = "max-w-full gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
+const customerPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";
+const customerPanelToolbarClass = "border-b border-[#E5EAF3] bg-[#F8FAFC] px-3 py-2.5";
+const customerPanelFooterClass = "flex min-h-11 flex-col gap-2 border-t border-[#E5EAF3] bg-[#F8FAFC] px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between";
+const customerPanelMetaClass = "inline-flex h-6 items-center rounded-md border border-[#E5EAF3] bg-[#F8FAFC] px-2.5 text-[11px] leading-none text-slate-600";
+const customerTableHeaderClass = "h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
+const customerTableCellClass = "h-11 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
+const customerStickyCellClass = "bg-white transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
+const customerBadgeClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
+const customerStatusClass = (active: boolean) =>
+  active
+    ? "bg-emerald-50 text-emerald-700 ring-emerald-200 before:mr-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-emerald-500 before:content-['']"
+    : "bg-slate-50 text-slate-600 ring-slate-200 before:mr-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-slate-400 before:content-['']";
 
 const getCustomerGroup = (customer: Customer, contractCount: number) => {
   if (customer.customerGroup) return customer.customerGroup;
@@ -213,12 +226,12 @@ export function CustomerPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
+    <div className="space-y-4 p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-slate-900">Quản lý khách hàng</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl font-semibold leading-7 text-slate-950">Quản lý khách hàng</h1>
+          <p className="mt-0.5 text-sm leading-5 text-slate-500">
             {totalCustomers} khách hàng · {contracts.length} hợp đồng tổng cộng
           </p>
         </div>
@@ -229,7 +242,7 @@ export function CustomerPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <CoreMetricCard
           icon={Users}
           label="Tổng khách hàng"
@@ -261,8 +274,8 @@ export function CustomerPage() {
       </div>
 
       {/* Customer Table */}
-      <Card className="max-w-full overflow-hidden border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
-        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+      <Card className={customerPanelClass}>
+        <div className={customerPanelHeaderClass}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-slate-900">Danh sách khách hàng</h2>
@@ -270,14 +283,20 @@ export function CustomerPage() {
                 {filtered.length} khách hàng phù hợp · {selectedCustomerIds.size}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
-              <span className="hidden sm:inline">Bấm vào dòng để xem chi tiết khách hàng</span>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <span className={customerPanelMetaClass}>{filtered.length} kết quả</span>
+              {selectedCustomerIds.size > 0 && (
+                <span className={`${customerPanelMetaClass} border-blue-200 bg-blue-50 text-blue-700`}>
+                  {selectedCustomerIds.size} đang chọn
+                </span>
+              )}
+              <span className="hidden text-xs text-slate-500 lg:inline">Bấm vào dòng để xem chi tiết khách hàng</span>
             </div>
           </div>
         </div>
 
-        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 pb-3 pt-0">
-          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
+        <div className={customerPanelToolbarClass}>
+          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 scrollbar-none whitespace-nowrap">
             <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -347,35 +366,35 @@ export function CustomerPage() {
           </div>
         </div>
 
-        <div className="max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full overflow-auto">
+        <div className="max-h-[calc(100dvh-320px)] min-h-[420px] max-w-full overflow-auto bg-white">
           <Table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
             <TableHeader className="sticky top-0 z-20">
               <TableRow>
-                <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#24344f] bg-[#0F2747] px-2 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>
+                <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-2 py-2 text-center text-[11px] text-slate-600 shadow-[6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>
                   <button
                     type="button"
                     aria-label="Chọn tất cả khách hàng đang hiển thị"
                     aria-pressed={currentPageSelected}
-                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0F2747] ${currentPageSelected ? "border-white bg-white text-[#0F2747]" : "border-white/60 bg-white/10 text-transparent"}`}
+                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${currentPageSelected ? "border-slate-900 bg-slate-900 text-white" : "border-[#DDE5F0] bg-white text-transparent hover:border-slate-500"}`}
                     onClick={toggleCurrentPageSelection}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
                 </TableHead>
-                <TableHead className="h-11 w-28 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Mã KH</TableHead>
-                <TableHead className="h-11 w-56 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Khách hàng</TableHead>
-                <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>CCCD/HC</TableHead>
-                <TableHead className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Liên hệ</TableHead>
-                <TableHead className="h-11 w-28 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Giới tính</TableHead>
-                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nghề nghiệp</TableHead>
-                <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nguồn</TableHead>
-                <TableHead className="h-11 w-64 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Địa chỉ liên hệ</TableHead>
-                <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Hợp đồng</TableHead>
-                <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tổng giá trị</TableHead>
-                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Tiến độ TT</TableHead>
-                <TableHead className="h-11 w-32 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Nhóm KH</TableHead>
-                <TableHead className="h-11 w-36 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái KH</TableHead>
-                <TableHead className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-28`} style={{ fontWeight: 650 }}>Mã KH</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-56`} style={{ fontWeight: 650 }}>Khách hàng</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>CCCD/HC</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-52`} style={{ fontWeight: 650 }}>Liên hệ</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-28`} style={{ fontWeight: 650 }}>Giới tính</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Nghề nghiệp</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Nguồn</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-64`} style={{ fontWeight: 650 }}>Địa chỉ liên hệ</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Hợp đồng</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Tổng giá trị</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Tiến độ TT</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Nhóm KH</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Trạng thái KH</TableHead>
+                <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center text-[11px] text-slate-600 shadow-[-6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>...</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -416,10 +435,10 @@ export function CustomerPage() {
                       }
                     }}
                   >
-                    <TableCell className="td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] bg-white px-2 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] px-2 py-1.5 text-center shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)] ${customerStickyCellClass}`}>
                       <button
                         type="button"
-                        className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-[#0F2747] bg-[#0F2747] text-white" : "border-[#E5EAF3] bg-white text-transparent hover:border-slate-400"}`}
+                        className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-slate-900 bg-slate-900 text-white" : "border-[#DDE5F0] bg-white text-transparent hover:border-slate-500"}`}
                         title="Chọn dòng"
                         aria-label={`Chọn khách hàng ${index + 1}`}
                         aria-pressed={isSelected}
@@ -431,10 +450,10 @@ export function CustomerPage() {
                         <CheckCircle2 className="h-3.5 w-3.5" />
                       </button>
                     </TableCell>
-                    <TableCell className="h-11 w-28 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-28`}>
                       <p className="truncate text-xs text-slate-700" style={{ fontWeight: 650 }}>{c.id}</p>
                     </TableCell>
-                    <TableCell className="h-11 w-56 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-56`}>
                       <div className="flex min-w-0 items-center gap-3">
                         <div
                           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white"
@@ -449,7 +468,7 @@ export function CustomerPage() {
                           <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
                             <span className="truncate text-[11px] text-slate-400">{c.type}</span>
                             {customerGroup !== "Thông thường" && (
-                              <Badge variant="outline" className={`shrink-0 rounded-full border-transparent px-2 py-0.5 text-[11px] ring-1 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>
+                              <Badge variant="outline" className={`${customerBadgeClass} h-5 shrink-0 px-2 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>
                                 {customerGroup}
                               </Badge>
                             )}
@@ -457,32 +476,32 @@ export function CustomerPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-36`}>
                       <p className={`truncate text-xs ${identityNumber === "—" ? "text-slate-300" : "text-slate-700"}`} title={identityNumber}>{identityNumber}</p>
                     </TableCell>
-                    <TableCell className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-52`}>
                       <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>{c.phone}</p>
                       <p className="truncate text-[11px] text-slate-400">{c.email}</p>
                     </TableCell>
-                    <TableCell className="h-11 w-28 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-28`}>
                       <p className={`truncate text-xs ${c.gender ? "text-slate-700" : "text-slate-300"}`} title={c.gender || "Chưa cập nhật"}>{c.gender || "—"}</p>
                     </TableCell>
-                    <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-40`}>
                       <p className={`truncate text-xs ${c.job ? "text-slate-700" : "text-slate-300"}`} title={c.job || "Chưa cập nhật"}>{c.job || "—"}</p>
                     </TableCell>
-                    <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-32`}>
                       {c.source ? (
-                        <Badge variant="outline" className={`rounded-[6px] border-transparent px-2.5 py-1 text-[11px] ring-1 ${customerSourceClass[c.source] ?? customerSourceClass.Khác}`} style={{ fontWeight: 650 }}>
+                        <Badge variant="outline" className={`${customerBadgeClass} ${customerSourceClass[c.source] ?? customerSourceClass.Khác}`} style={{ fontWeight: 650 }}>
                           {c.source}
                         </Badge>
                       ) : (
                         <span className="text-xs text-slate-300">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="h-11 w-64 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-64`}>
                       <p className={`truncate text-xs ${c.address ? "text-slate-700" : "text-slate-300"}`} title={c.address || "Chưa cập nhật"}>{c.address || "—"}</p>
                     </TableCell>
-                    <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-32`}>
                       <div className="flex items-center gap-2">
                         {hasActiveContract && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />}
                         <div>
@@ -491,11 +510,11 @@ export function CustomerPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-36`}>
                       <p className="truncate text-xs text-slate-800" style={{ fontWeight: 700 }}>{c.stats.totalValue > 0 ? fmtVnd(c.stats.totalValue) : "—"}</p>
                       {c.stats.totalValue > 0 && <p className="truncate text-[11px] text-slate-400">Còn {fmtVnd(remainingValue)}</p>}
                     </TableCell>
-                    <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`${customerTableCellClass} w-40`}>
                       {c.stats.totalValue > 0 ? (
                         <div className="flex items-center gap-2">
                           <div className="h-1.5 flex-1 rounded-full bg-slate-100">
@@ -507,15 +526,15 @@ export function CustomerPage() {
                         <span className="text-xs text-slate-300">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="h-11 w-32 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
-                      <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] ring-1 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>{customerGroup}</Badge>
+                    <TableCell className={`${customerTableCellClass} w-32`}>
+                      <Badge variant="outline" className={`${customerBadgeClass} ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>{customerGroup}</Badge>
                     </TableCell>
-                    <TableCell className="h-11 w-36 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
-                      <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] ring-1 ${hasActiveContract ? "bg-emerald-50 text-emerald-700 ring-emerald-100" : "bg-slate-100 text-slate-600 ring-slate-200"}`} style={{ fontWeight: 650 }}>
+                    <TableCell className={`${customerTableCellClass} w-36`}>
+                      <Badge variant="outline" className={`${customerBadgeClass} ${customerStatusClass(hasActiveContract)}`} style={{ fontWeight: 650 }}>
                         {customerStatus}
                       </Badge>
                     </TableCell>
-                    <TableCell className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                    <TableCell className={`td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] px-0 py-1.5 text-center shadow-[-6px_0_12px_-12px_rgba(15,23,42,0.45)] ${customerStickyCellClass}`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" aria-label={`Mở menu khách hàng ${c.name}`} className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300" onClick={(event) => event.stopPropagation()}>
@@ -575,7 +594,7 @@ export function CustomerPage() {
           </Table>
         </div>
 
-        <div className="flex min-h-12 flex-col gap-2 border-t border-[#E5EAF3] bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className={customerPanelFooterClass}>
           <div>Hiển thị {filtered.length} / {customerList.length} khách hàng</div>
           <Pagination className="mx-0 w-auto justify-start sm:justify-end">
             <PaginationContent>

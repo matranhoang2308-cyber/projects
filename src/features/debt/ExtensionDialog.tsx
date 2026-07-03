@@ -53,6 +53,9 @@ interface ExtensionForm {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
+const extensionInputClass = "h-8 text-xs";
+const extensionSmallInputClass = "h-7 text-xs";
+const extensionTextareaClass = "text-xs resize-none";
 
 function buildDefaultForm(
   record: PaymentRecord,
@@ -95,12 +98,14 @@ export function ExtensionDialog({
   onClose,
   record,
   existing,
+  nextInstallmentDueDate,
   onSave,
 }: {
   open: boolean;
   onClose: () => void;
   record: PaymentRecord;
   existing?: PaymentExtension;
+  nextInstallmentDueDate?: string;
   onSave: (ext: PaymentExtension) => void;
 }) {
   const [form, setForm] = useState<ExtensionForm>(() =>
@@ -124,8 +129,19 @@ export function ExtensionDialog({
     },
     0
   );
-  const amountsMatch = Math.abs(total - record.baseAmount) < 0.0005;
+  // Rule 9: tổng gia hạn con phải = số tiền CÒN LẠI (remainingAmount), không phải gốc ban đầu
+  const targetAmount = (record.remainingAmount != null && record.remainingAmount > 0)
+    ? record.remainingAmount
+    : record.baseAmount;
+  const amountsMatch = Math.abs(total - targetAmount) < 0.0005;
   const instCount = form.installments.length;
+
+  // Rule 13: cảnh báo nếu ngày hạn gia hạn cuối > ngày hạn đợt kế tiếp
+  const lastInstDueDate = form.installments[form.installments.length - 1]?.dueDate;
+  const rule13Conflict =
+    !!nextInstallmentDueDate &&
+    !!lastInstDueDate &&
+    new Date(lastInstDueDate) > new Date(nextInstallmentDueDate);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const updateInst = (id: string, field: "dueDate" | "amount", value: string) =>
@@ -166,7 +182,7 @@ export function ExtensionDialog({
     if (!form.approvedBy.trim()) errs.approvedBy = "Bắt buộc nhập tên nhân viên";
     if (!form.reason.trim()) errs.reason = "Bắt buộc nhập lý do gia hạn";
     if (!amountsMatch)
-      errs.amounts = `Tổng đợt ${formatVND(total)} chưa khớp với số gốc ${formatVND(record.baseAmount)}`;
+      errs.amounts = `Tổng đợt ${formatVND(total)} chưa khớp với số tiền còn lại ${formatVND(targetAmount)}`;
     form.installments.forEach((i, idx) => {
       if (!i.dueDate) errs[`date_${idx}`] = "Chưa chọn ngày";
       const cleanVal = parseFloat(i.amount.replace(/\D/g, "")) || 0;
@@ -265,7 +281,7 @@ export function ExtensionDialog({
                   <Label className="text-xs">Ngày yêu cầu</Label>
                   <Input
                     type="date"
-                    className="h-8 text-xs"
+                    className={extensionInputClass}
                     value={form.requestDate}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, requestDate: e.target.value }))
@@ -276,7 +292,7 @@ export function ExtensionDialog({
                   <Label className="text-xs">Ngày duyệt</Label>
                   <Input
                     type="date"
-                    className="h-8 text-xs"
+                    className={extensionInputClass}
                     value={form.approvedDate}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, approvedDate: e.target.value }))
@@ -290,7 +306,7 @@ export function ExtensionDialog({
                   </Label>
                   <Input
                     placeholder="Tên nhân viên sale"
-                    className={`h-8 text-xs ${errors.approvedBy ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                    className={`${extensionInputClass} ${errors.approvedBy ? "border-red-400 focus-visible:ring-red-300" : ""}`}
                     value={form.approvedBy}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, approvedBy: e.target.value }))
@@ -308,7 +324,7 @@ export function ExtensionDialog({
                 </Label>
                 <Textarea
                   placeholder="Mô tả lý do khách hàng yêu cầu gia hạn..."
-                  className={`text-xs min-h-[76px] resize-none ${errors.reason ? "border-red-400 focus-visible:ring-red-300" : ""}`}
+                  className={`${extensionTextareaClass} min-h-[76px] ${errors.reason ? "border-red-400 focus-visible:ring-red-300" : ""}`}
                   value={form.reason}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, reason: e.target.value }))
@@ -325,7 +341,7 @@ export function ExtensionDialog({
                 </Label>
                 <Textarea
                   placeholder="Ghi chú riêng cho nhân viên (không hiển thị với khách hàng)..."
-                  className="text-xs min-h-[56px] resize-none"
+                  className={`${extensionTextareaClass} min-h-[56px]`}
                   value={form.notes}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, notes: e.target.value }))
@@ -410,7 +426,7 @@ export function ExtensionDialog({
                     min={0}
                     max={100}
                     step={0.5}
-                    className="h-7 text-xs w-20"
+                    className={`${extensionSmallInputClass} w-20`}
                     value={form.penaltyRatePercent}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, penaltyRatePercent: e.target.value }))
@@ -467,14 +483,14 @@ export function ExtensionDialog({
                       <span className="text-xs text-foreground truncate pr-1">{label}</span>
                       <Input
                         type="date"
-                        className={`h-7 text-xs ${errors[`date_${idx}`] ? "border-red-400" : ""}`}
+                        className={`${extensionSmallInputClass} ${errors[`date_${idx}`] ? "border-red-400" : ""}`}
                         value={inst.dueDate}
                         onChange={(e) => updateInst(inst.id, "dueDate", e.target.value)}
                       />
                       <Input
                         type="text"
                         placeholder="VD: 100.000.000"
-                        className={`h-7 text-xs ${errors[`amount_${idx}`] ? "border-red-400" : ""}`}
+                        className={`${extensionSmallInputClass} ${errors[`amount_${idx}`] ? "border-red-400" : ""}`}
                         value={inst.amount}
                         onChange={(e) => updateInst(inst.id, "amount", e.target.value)}
                       />
@@ -501,7 +517,7 @@ export function ExtensionDialog({
                       {formatVND(total)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      / {formatVND(record.baseAmount)} gốc
+                      / {formatVND(targetAmount)} {targetAmount < record.baseAmount ? "còn lại" : "gốc"}
                     </span>
                     {amountsMatch ? (
                       <CheckCircle className="size-3.5 text-emerald-500 shrink-0" />
@@ -514,6 +530,19 @@ export function ExtensionDialog({
 
               {errors.amounts && (
                 <p className="text-[11px] text-red-500">{errors.amounts}</p>
+              )}
+
+              {/* Rule 13: cảnh báo xung đột lịch thu tiền */}
+              {rule13Conflict && nextInstallmentDueDate && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                  <AlertTriangle className="size-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-800">
+                    <span className="font-semibold">Cảnh báo xung đột lịch (Rule 13):</span>{" "}
+                    Ngày hạn gia hạn cuối ({new Date(lastInstDueDate!).toLocaleDateString("vi-VN")}) trễ hơn
+                    ngày đến hạn đợt kế tiếp ({new Date(nextInstallmentDueDate).toLocaleDateString("vi-VN")}).
+                    Khách hàng sẽ phải thanh toán gần như đồng thời 2 khoản lớn — ảnh hưởng đến dòng tiền dự án.
+                  </div>
+                </div>
               )}
             </div>
           </div>

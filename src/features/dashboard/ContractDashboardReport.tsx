@@ -4,12 +4,14 @@ import { AlertTriangle, BadgeCheck, CircleDollarSign, ClipboardCheck, FileCheck,
 import { Card } from "@/components/ui/card";
 import { DashboardFilters, TrendGroup } from "./dashboardApi";
 import { hdmbImportRecords, type HdmbRecord } from "@/data/hdmbImportSchema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type MetricTone = "blue" | "green" | "red" | "amber" | "slate" | "violet";
 const number = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
 const axisStyle = { fontSize: 11, fill: "#64748b" };
-const chartSelectClass = "crm-native-select h-9 min-w-[164px] rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
-const dateInputClass = "h-9 min-w-0 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const chartSelectClass = "h-9 min-w-[164px] rounded-[8px] border border-[#E5EAF3] bg-white text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition shadow-none text-left";
+const dateInputClass = "h-9 min-w-0 w-full rounded-[8px] border border-[#E5EAF3] bg-white px-2.5 text-xs font-medium text-slate-700 outline-none hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition";
+const reportStatusBadgeBaseClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
 const metricToneClass: Record<MetricTone, string> = {
   blue: "border-blue-100 bg-blue-50 text-blue-700",
   green: "border-emerald-100 bg-emerald-50 text-emerald-700",
@@ -17,6 +19,14 @@ const metricToneClass: Record<MetricTone, string> = {
   amber: "border-amber-100 bg-amber-50 text-amber-700",
   slate: "border-slate-100 bg-slate-50 text-slate-700",
   violet: "border-violet-100 bg-violet-50 text-violet-700",
+};
+const metricAccentClass: Record<MetricTone, string> = {
+  blue: "bg-blue-600",
+  green: "bg-emerald-600",
+  red: "bg-red-600",
+  amber: "bg-amber-500",
+  slate: "bg-slate-500",
+  violet: "bg-violet-600",
 };
 
 const dossierStatuses = ["Đã cọc", "Đã phát hành", "Đã ký", "Đã đóng dấu", "Chờ trả HĐMB", "Đã trả", "Bàn giao"] as const;
@@ -72,6 +82,18 @@ type TransferDashboardLog = {
 function normalizeStatus(status?: string) {
   if (status === "Chờ trả hợp đồng") return "Chờ trả HĐMB";
   return status || "Đã cọc";
+}
+
+function dossierStatusBadgeClass(status?: string) {
+  const normalized = normalizeStatus(status);
+  if (normalized === "Đã cọc") return `${reportStatusBadgeBaseClass} bg-emerald-50 text-emerald-700 ring-emerald-200`;
+  if (normalized === "Đã phát hành") return `${reportStatusBadgeBaseClass} bg-blue-50 text-blue-700 ring-blue-200`;
+  if (normalized === "Đã ký") return `${reportStatusBadgeBaseClass} bg-cyan-50 text-cyan-700 ring-cyan-200`;
+  if (normalized === "Đã đóng dấu") return `${reportStatusBadgeBaseClass} bg-violet-50 text-violet-700 ring-violet-200`;
+  if (normalized === "Chờ trả HĐMB") return `${reportStatusBadgeBaseClass} bg-amber-50 text-amber-700 ring-amber-200`;
+  if (normalized === "Đã trả") return `${reportStatusBadgeBaseClass} bg-slate-50 text-slate-700 ring-slate-200`;
+  if (normalized === "Bàn giao") return `${reportStatusBadgeBaseClass} bg-indigo-50 text-indigo-700 ring-indigo-200`;
+  return `${reportStatusBadgeBaseClass} bg-slate-50 text-slate-600 ring-slate-200`;
 }
 
 function parseDate(value?: string) {
@@ -159,87 +181,26 @@ function progressBucket(date: Date | null, group: TrendGroup) {
     const week = Math.ceil((dayOfYear + startOfYear.getDay()) / 7);
     return { label: `Tuần ${week}`, sortKey: String(week).padStart(2, "0") };
   }
-  if (group === "month") return { label: `Tháng ${month}`, sortKey: `${year}-${String(month).padStart(2, "0")}` };
+  if (group === "month") return { label: `Tháng ${month}/${year}`, sortKey: `${year}-${String(month).padStart(2, "0")}` };
   return { label: String(year), sortKey: String(year) };
 }
 
-function ensureProgressBuckets<T extends { date: string; sortKey: string }>(
-  points: T[],
-  group: TrendGroup,
-  fromStr?: string,
-  toStr?: string,
-  defaults?: Partial<T>
-): T[] {
-  const byKey = new Map(points.map((p) => [p.sortKey, p]));
-
-  if (group === "day" || group === "custom") {
-    const to = toStr ? new Date(`${toStr}T00:00:00`) : new Date();
-    const from = fromStr ? new Date(`${fromStr}T00:00:00`) : new Date(to.getTime() - 30 * 86_400_000);
-    
-    const required: Array<{ date: string; sortKey: string }> = [];
-    const curr = new Date(from);
-    while (curr <= to) {
-      const sortKey = curr.toISOString().slice(0, 10);
-      const label = curr.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }).replace("/", "-");
-      required.push({ date: label, sortKey });
-      curr.setDate(curr.getDate() + 1);
-    }
-    
-    required.forEach(({ date, sortKey }) => {
-      if (!byKey.has(sortKey)) {
-        byKey.set(sortKey, { date, sortKey, ...defaults } as T);
-      }
-    });
-  } else if (group === "week") {
-    const weeksStr = points.map((p) => parseInt(p.sortKey, 10)).filter((w) => !isNaN(w));
-    if (weeksStr.length > 0) {
-      const minWeek = Math.min(...weeksStr);
-      const maxWeek = Math.max(...weeksStr);
-      const startWeek = Math.max(1, minWeek - 3);
-      const endWeek = Math.min(52, maxWeek + 3);
-      for (let w = startWeek; w <= endWeek; w++) {
-        const key = String(w).padStart(2, "0");
-        if (!byKey.has(key)) {
-          byKey.set(key, { date: `Tuần ${w}`, sortKey: key, ...defaults } as T);
-        }
-      }
-    } else {
-      const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86_400_000) + 1;
-      const currentWeek = Math.ceil((dayOfYear + startOfYear.getDay()) / 7);
-      for (let w = Math.max(1, currentWeek - 7); w <= currentWeek; w++) {
-        const key = String(w).padStart(2, "0");
-        if (!byKey.has(key)) {
-          byKey.set(key, { date: `Tuần ${w}`, sortKey: key, ...defaults } as T);
-        }
-      }
-    }
-  } else if (group === "month") {
-    const year = new Date().getFullYear();
-    for (let m = 1; m <= 12; m++) {
-      const key = `${year}-${String(m).padStart(2, "0")}`;
-      const label = `Tháng ${m}`;
-      if (!byKey.has(key)) {
-        byKey.set(key, { date: label, sortKey: key, ...defaults } as T);
-      }
-    }
-  } else if (group === "year") {
+function ensureProgressBuckets(points: Array<{ date: string; count: number; sortKey: string }>, group: TrendGroup) {
+  if (group === "year") {
     const year = new Date().getFullYear();
     const required = [year - 2, year - 1, year].map((item) => String(item));
+    const byKey = new Map(points.map((point) => [point.sortKey, point]));
     required.forEach((key) => {
-      if (!byKey.has(key)) {
-        byKey.set(key, { date: key, sortKey: key, ...defaults } as T);
-      }
+      if (!byKey.has(key)) byKey.set(key, { date: key, count: 0, sortKey: key });
     });
+    return Array.from(byKey.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
   }
 
-  return Array.from(byKey.values()).map((p) => {
-    if (group === "week") {
-      return { ...p, date: p.date.startsWith("Tuần") ? p.date : `Tuần ${Number(p.sortKey)}` };
-    }
-    return p;
-  });
+  if (group === "week") {
+    return points.map((point) => ({ ...point, date: `Tuần ${Number(point.sortKey)}` }));
+  }
+
+  return points;
 }
 
 function filterByChartTime(records: HdmbRecord[], group: TrendGroup, from: string, to: string) {
@@ -277,19 +238,74 @@ function filterStatusByChartTime(records: HdmbRecord[], group: TrendGroup, from:
 }
 
 function ChartTimeControl({ label, group, setGroup, from, setFrom, to, setTo }: { label: string; group: TrendGroup; setGroup: (value: TrendGroup) => void; from: string; setFrom: (value: string) => void; to: string; setTo: (value: string) => void }) {
-  return <div className="grid gap-2"><select aria-label={`Thời gian - ${label}`} className={chartSelectClass} value={group} onChange={(event) => setGroup(event.target.value as TrendGroup)}>{trendOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>{group === "custom" && <div className="grid grid-cols-2 gap-2"><input aria-label={`Từ ngày - ${label}`} className={dateInputClass} type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} /><input aria-label={`Đến ngày - ${label}`} className={dateInputClass} type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} /></div>}</div>;
+  return (
+    <div className="grid gap-2">
+      <Select value={group} onValueChange={(val) => setGroup(val as TrendGroup)}>
+        <SelectTrigger aria-label={`Thời gian - ${label}`} className={chartSelectClass}>
+          <SelectValue placeholder="Thời gian" />
+        </SelectTrigger>
+        <SelectContent>
+          {trendOptions.map((item) => (
+            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {group === "custom" && (
+        <div className="grid grid-cols-2 gap-2">
+          <input aria-label={`Từ ngày - ${label}`} className={dateInputClass} type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} />
+          <input aria-label={`Đến ngày - ${label}`} className={dateInputClass} type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ContractQuantityControl({ value, onChange }: { value: ContractQuantityView; onChange: (value: ContractQuantityView) => void }) {
-  return <select aria-label="Góc nhìn số lượng hợp đồng" className={chartSelectClass} value={value} onChange={(event) => onChange(event.target.value as ContractQuantityView)}>{contractQuantityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>;
+  return (
+    <Select value={value} onValueChange={(val) => onChange(val as ContractQuantityView)}>
+      <SelectTrigger aria-label="Góc nhìn số lượng hợp đồng" className={chartSelectClass}>
+        <SelectValue placeholder="Chọn góc nhìn" />
+      </SelectTrigger>
+      <SelectContent>
+        {contractQuantityOptions.map((item) => (
+          <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function TransferBarControl({ value, onChange }: { value: TransferBarMetric; onChange: (value: TransferBarMetric) => void }) {
-  return <select aria-label="Metric bar chart chuyển nhượng" className={chartSelectClass} value={value} onChange={(event) => onChange(event.target.value as TransferBarMetric)}>{transferBarMetricOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>;
+  return (
+    <Select value={value} onValueChange={(val) => onChange(val as TransferBarMetric)}>
+      <SelectTrigger aria-label="Metric bar chart chuyển nhượng" className={chartSelectClass}>
+        <SelectValue placeholder="Chọn chỉ số" />
+      </SelectTrigger>
+      <SelectContent>
+        {transferBarMetricOptions.map((item) => (
+          <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function TransferLineControl({ metric, setMetric, group, setGroup, from, setFrom, to, setTo }: { metric: TransferLineMetric; setMetric: (value: TransferLineMetric) => void; group: TrendGroup; setGroup: (value: TrendGroup) => void; from: string; setFrom: (value: string) => void; to: string; setTo: (value: string) => void }) {
-  return <div className="grid gap-2 sm:grid-cols-[160px_1fr]"><select aria-label="Chỉ số chuyển nhượng" className={chartSelectClass} value={metric} onChange={(event) => setMetric(event.target.value as TransferLineMetric)}>{transferLineMetricOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><ChartTimeControl label="Chuyển nhượng" group={group} setGroup={setGroup} from={from} setFrom={setFrom} to={to} setTo={setTo} /></div>;
+  return (
+    <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
+      <Select value={metric} onValueChange={(val) => setMetric(val as TransferLineMetric)}>
+        <SelectTrigger aria-label="Chỉ số chuyển nhượng" className={chartSelectClass}>
+          <SelectValue placeholder="Chọn chỉ số" />
+        </SelectTrigger>
+        <SelectContent>
+          {transferLineMetricOptions.map((item) => (
+            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ChartTimeControl label="Chuyển nhượng" group={group} setGroup={setGroup} from={from} setFrom={setFrom} to={to} setTo={setTo} />
+    </div>
+  );
 }
 
 function contractQuantityLabel(record: HdmbRecord, view: ContractQuantityView) {
@@ -314,15 +330,15 @@ function contractQuantitySortKey(label: string, view: ContractQuantityView) {
 }
 
 function MetricCard({ label, value, hint, icon: Icon, tone = "blue" }: { label: string; value: string; hint: string; icon: React.ElementType; tone?: MetricTone }) {
-  return <Card className="relative gap-0 overflow-hidden rounded-xl border-slate-200 bg-white p-5 shadow-sm"><span className="absolute inset-x-0 top-0 h-0.5 bg-blue-600" /><p className="min-h-5 pr-12 text-xs font-medium leading-5 text-slate-500">{label}</p><p className="mt-3 whitespace-nowrap text-xl font-medium leading-7 tabular-nums text-slate-950">{value}</p><p className="mt-1.5 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-lg border ${metricToneClass[tone]}`}><Icon className="size-5" /></div></Card>;
+  return <Card className="relative min-h-[112px] gap-0 overflow-hidden rounded-lg border-[#E5EAF3] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><span className={`absolute inset-x-0 top-0 h-0.5 ${metricAccentClass[tone]}`} /><p className="min-h-4 pr-11 text-[11px] font-medium leading-4 text-slate-500">{label}</p><p className="mt-1 break-words text-lg font-semibold leading-6 tracking-[-0.01em] tabular-nums text-slate-950">{value}</p><p className="mt-1 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md border ${metricToneClass[tone]}`}><Icon className="size-4.5" /></div></Card>;
 }
 
 function TransferMetricCard({ label, value, hint, icon: Icon, tone = "blue" }: { label: string; value: string; hint: string; icon: React.ElementType; tone?: MetricTone }) {
-  return <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><span className="absolute inset-x-0 top-0 h-0.5 bg-blue-600" /><p className="min-h-5 pr-12 text-xs font-medium leading-5 text-slate-500">{label}</p><p className="mt-3 whitespace-nowrap text-xl font-medium leading-7 tabular-nums text-slate-950">{value}</p><p className="mt-1.5 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-lg border ${metricToneClass[tone]}`}><Icon className="size-5" /></div></div>;
+  return <div className="relative min-h-[112px] overflow-hidden rounded-lg border border-[#E5EAF3] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><span className={`absolute inset-x-0 top-0 h-0.5 ${metricAccentClass[tone]}`} /><p className="min-h-4 pr-11 text-[11px] font-medium leading-4 text-slate-500">{label}</p><p className="mt-1 break-words text-lg font-semibold leading-6 tracking-[-0.01em] tabular-nums text-slate-950">{value}</p><p className="mt-1 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md border ${metricToneClass[tone]}`}><Icon className="size-4.5" /></div></div>;
 }
 
 function TransferMetricGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div><h4 className="mb-3 text-xs font-medium uppercase tracking-[0.04em] text-slate-500">{title}</h4><div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">{children}</div></div>;
+  return <div><h4 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500">{title}</h4><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{children}</div></div>;
 }
 
 function ChartCard({ title, description, action, children }: { title: string; description: string; action: React.ReactNode; children: React.ReactNode }) {
@@ -427,11 +443,10 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
       acc[bucket.sortKey].count += 1;
       return acc;
     }, {});
-    const filled = ensureProgressBuckets(Object.values(grouped), progressGroup, progressFrom, progressTo, { count: 0 });
-    return filled
+    return ensureProgressBuckets(Object.values(grouped), progressGroup)
       .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
       .map(({ date, count }) => ({ date, count }));
-  }, [progressGroup, progressRecords, progressFrom, progressTo]);
+  }, [progressGroup, progressRecords]);
   const contractQuantityData = useMemo(() => {
     const grouped = records.reduce<Record<string, { label: string; count: number; sortKey: string }>>((acc, record) => {
       const label = contractQuantityLabel(record, contractQuantityView);
@@ -467,8 +482,7 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
       acc[bucket.sortKey].value += transferLogValue(entry.record, entry.log);
       return acc;
     }, {});
-    const filled = ensureProgressBuckets(Object.values(grouped), transferLineGroup, transferLineFrom, transferLineTo, { count: 0, value: 0 });
-    return filled
+    return Object.values(grouped)
       .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
       .map(({ date, count, value }) => ({ date, count, value }));
   }, [transferEntries, transferLineFrom, transferLineGroup, transferLineTo]);
@@ -508,7 +522,7 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
 
   return (
     <div className="space-y-7">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {metrics.map((item) => <MetricCard key={item.label} label={item.label} value={number(item.value)} hint={item.hint} icon={item.icon} tone={item.tone} />)}
       </div>
       <section className="space-y-5">
@@ -555,24 +569,24 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
           <p className="mt-1 text-xs leading-5 text-slate-500">Chi tiết các hợp đồng mua bán phát sinh trong kỳ báo cáo.</p>
         </div>
         <div className="mt-4 max-h-[320px] overflow-auto">
-          <table className="w-full min-w-[980px] border-collapse text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[0_1px_0_#e2e8f0]">
+          <table className="w-full min-w-[980px] border-separate border-spacing-0 text-sm">
+            <thead className="sticky top-0 z-10">
               <tr>
                 {["Mã KH", "Khách hàng", "Mã sản phẩm", "Phân khu", "Loại sản phẩm", "Trạng thái hồ sơ", "Ngày"].map((label) => (
-                  <th key={label} className="px-3 py-2.5 text-left text-2sm font-medium text-slate-500">{label}</th>
+                  <th key={label} className="border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left text-[11px] leading-4 text-slate-600 last:border-r-0" style={{ fontWeight: 650 }}>{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {records.map((record) => (
-                <tr key={record.id} className="border-b border-slate-100 hover:bg-blue-50/35">
-                  <td className="px-3 py-2.5 text-2sm font-medium text-blue-700">{record.values.c2}</td>
-                  <td className="px-3 py-2.5 text-2sm font-medium text-slate-900">{record.values.c3}</td>
-                  <td className="px-3 py-2.5 text-2sm text-slate-600">{record.values.c51}</td>
-                  <td className="px-3 py-2.5 text-2sm text-slate-600">{record.values.c52}</td>
-                  <td className="px-3 py-2.5 text-2sm text-slate-600">{record.values.c55}</td>
-                  <td className="px-3 py-2.5 text-2sm text-slate-700">{normalizeStatus(record.status)}</td>
-                  <td className="px-3 py-2.5 text-2sm text-slate-600">{record.values.c106 || record.values.c107 || "—"}</td>
+                <tr key={record.id} className="transition-colors hover:bg-[#F8FAFC]">
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2.5 text-2sm text-blue-700" style={{ fontWeight: 600 }}>{record.values.c2}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2.5 text-2sm text-slate-900" style={{ fontWeight: 600 }}>{record.values.c3}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2.5 text-2sm text-slate-600">{record.values.c51}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2.5 text-2sm text-slate-600">{record.values.c52}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2.5 text-2sm text-slate-600">{record.values.c55}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2.5"><span className={dossierStatusBadgeClass(record.status)} style={{ fontWeight: 650 }}>{normalizeStatus(record.status)}</span></td>
+                  <td className="border-b border-[#E5EAF3] px-3 py-2.5 text-2sm text-slate-600">{record.values.c106 || record.values.c107 || "—"}</td>
                 </tr>
               ))}
             </tbody>

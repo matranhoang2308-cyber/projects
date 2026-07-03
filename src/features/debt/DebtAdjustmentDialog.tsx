@@ -37,6 +37,10 @@ interface DebtAdjustmentDialogProps {
   onConfirm: (auditLog: DebtAuditLog) => void;
 }
 
+const adjustmentInputClass = "h-10 text-sm";
+const adjustmentSelectTriggerClass = "";
+const adjustmentTextareaClass = "resize-none text-sm";
+
 type AdjustmentType =
   | "due-date"
   | "principal-due"
@@ -52,6 +56,12 @@ type AdjustmentType =
 
 const adjustmentTypeLabels: Partial<Record<AdjustmentType, string>> = {
   "reduce-waive-interest": "Giảm/miễn lãi trễ hạn",
+  "due-date": "Điều chỉnh ngày đến hạn",
+  "principal-due": "Điều chỉnh số tiền gốc phải thu",
+  "paid-amount": "Điều chỉnh số tiền đã thanh toán",
+  "remaining-principal": "Điều chỉnh số tiền gốc còn lại",
+  "change-debt-status": "Thay đổi trạng thái công nợ",
+  "reverse-payment": "Hoàn/hủy giao dịch thanh toán",
 };
 
 export function DebtAdjustmentDialog({
@@ -156,6 +166,10 @@ export function DebtAdjustmentDialog({
     "reduce-waive-interest",
   ].includes(adjustmentType);
 
+  const isDateField = adjustmentType === "due-date";
+  const isStatusField = adjustmentType === "change-debt-status";
+  const isReversePayment = adjustmentType === "reverse-payment";
+
   const handleConfirm = () => {
     if (!adjustmentType || !newValue || !reason || !approvedBy) return;
 
@@ -255,7 +269,7 @@ export function DebtAdjustmentDialog({
               value={adjustmentType}
               onValueChange={(v) => setAdjustmentType(v as AdjustmentType)}
             >
-              <SelectTrigger id="adjustment-type">
+              <SelectTrigger id="adjustment-type" className={adjustmentSelectTriggerClass}>
                 <SelectValue placeholder="Chọn loại điều chỉnh" />
               </SelectTrigger>
               <SelectContent>
@@ -287,27 +301,57 @@ export function DebtAdjustmentDialog({
                   <Label htmlFor="new-value">
                     Giá trị mới <span className="text-red-500">*</span>
                   </Label>
-                  <div className="relative">
+                  {isDateField ? (
                     <Input
                       id="new-value"
-                      placeholder={isAmountField ? "VD: 100.000.000" : "Nhập giá trị mới"}
+                      type="date"
                       value={newValue}
-                      onChange={(e) => {
-                        if (isAmountField) {
-                          const clean = e.target.value.replace(/\D/g, "");
-                          setNewValue(clean ? parseInt(clean, 10).toLocaleString("vi-VN") : "");
-                        } else {
-                          setNewValue(e.target.value);
-                        }
-                      }}
-                      className={isAmountField ? "pr-12" : ""}
+                      onChange={(e) => setNewValue(e.target.value)}
+                      className={adjustmentInputClass}
                     />
-                    {isAmountField && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
-                        VND
-                      </span>
-                    )}
-                  </div>
+                  ) : isStatusField ? (
+                    <select
+                      id="new-value"
+                      value={newValue}
+                      onChange={(e) => setNewValue(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">-- Chọn trạng thái --</option>
+                      <option value="not-due">Chưa đến hạn</option>
+                      <option value="upcoming">Sắp đến hạn</option>
+                      <option value="partial">Thanh toán một phần</option>
+                      <option value="overdue">Quá hạn</option>
+                      <option value="paid">Đã thanh toán</option>
+                      <option value="extended">Đã gia hạn</option>
+                      <option value="grace-period">Trong ân hạn</option>
+                    </select>
+                  ) : isReversePayment ? (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Thao tác này sẽ hoàn tác giao dịch thanh toán và điều chỉnh lại số dư. Nhập lý do bên dưới.
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        id="new-value"
+                        placeholder={isAmountField ? "VD: 100.000.000" : "Nhập giá trị mới"}
+                        value={newValue}
+                        onChange={(e) => {
+                          if (isAmountField) {
+                            const clean = e.target.value.replace(/\D/g, "");
+                            setNewValue(clean ? parseInt(clean, 10).toLocaleString("vi-VN") : "");
+                          } else {
+                            setNewValue(e.target.value);
+                          }
+                        }}
+                        className={isAmountField ? `${adjustmentInputClass} pr-12` : adjustmentInputClass}
+                      />
+                      {isAmountField && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">
+                          VND
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -322,6 +366,7 @@ export function DebtAdjustmentDialog({
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
+                  className={adjustmentTextareaClass}
                 />
               </div>
 
@@ -334,6 +379,7 @@ export function DebtAdjustmentDialog({
                     placeholder="Tên người yêu cầu"
                     value={requestedBy}
                     onChange={(e) => setRequestedBy(e.target.value)}
+                    className={adjustmentInputClass}
                   />
                 </div>
 
@@ -346,6 +392,7 @@ export function DebtAdjustmentDialog({
                     placeholder="Tên người phê duyệt"
                     value={approvedBy}
                     onChange={(e) => setApprovedBy(e.target.value)}
+                    className={adjustmentInputClass}
                   />
                 </div>
               </div>
@@ -359,6 +406,7 @@ export function DebtAdjustmentDialog({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={2}
+                  className={adjustmentTextareaClass}
                 />
               </div>
             </>

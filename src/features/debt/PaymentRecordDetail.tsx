@@ -508,7 +508,7 @@ export function PaymentRecordDetail() {
     upcoming: { label: "Sắp đến hạn", className: "border-blue-200 bg-blue-50 text-blue-700" },
     paid: { label: "Đã thanh toán", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
     partial: { label: "Thanh toán một phần", className: "border-orange-200 bg-orange-50 text-orange-700" },
-    overpaid: { label: "Thanh toán dư", className: "border-cyan-200 bg-cyan-50 text-cyan-700" },
+    overpaid: { label: "Đã thanh toán", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
     overdue: { label: "Quá hạn", className: "border-red-200 bg-red-50 text-red-700" },
     "grace-period": { label: "Quá hạn (trong ân hạn)", className: "border-amber-200 bg-amber-50 text-amber-700" },
     "deposit-forfeited": { label: "Mất cọc", className: "border-red-300 bg-red-100 text-red-800" },

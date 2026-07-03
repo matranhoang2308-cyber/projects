@@ -1,17 +1,33 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import {
-  CheckCircle2, XCircle,
-  Eye, ChevronRight, Search,
+  CheckCircle2,
+  Eye, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "@/components/ui/pagination";
 import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { ContractDetailSheet } from "../contracts/ContractDetailSheet";
+import { PaymentDetails } from "../debt/PaymentDetails";
 import type { Customer, Contract } from "@/data/mockDataHopDong";
 
 const statusConfig: Record<string, string> = {
@@ -26,6 +42,7 @@ type CustomerDetailTab =
   | "interactionHistory"
   | "journey"
   | "debt"
+  | "contracts"
   | "pointHistory"
   | "bookingHistory"
   | "ticket";
@@ -35,6 +52,7 @@ const customerDetailTabs: Array<{ value: CustomerDetailTab; label: string }> = [
   { value: "interactionHistory", label: "Lịch sử trao đổi" },
   { value: "journey", label: "Hành trình khách hàng" },
   { value: "debt", label: "Công nợ" },
+  { value: "contracts", label: "Hợp đồng" },
   { value: "pointHistory", label: "Lịch sử tích đổi điểm" },
   { value: "bookingHistory", label: "Lịch sử booking" },
   { value: "ticket", label: "Ticket" },
@@ -61,11 +79,14 @@ type CustomerDetailPageProps = {
   contracts: Contract[];
   stats: CustomerDetailStats;
   onOpenContract: (contract: Contract) => void;
+  onOpenDebtDetail: (contract: Contract) => void;
 };
 
 export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }: CustomerDetailSheetProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [contractSheetOpen, setContractSheetOpen] = useState(false);
+  const [selectedDebtContract, setSelectedDebtContract] = useState<Contract | null>(null);
+  const [debtSheetOpen, setDebtSheetOpen] = useState(false);
 
   if (!customer) return null;
 
@@ -81,6 +102,11 @@ export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }:
     setContractSheetOpen(true);
   };
 
+  const openDebtDetail = (c: Contract) => {
+    setSelectedDebtContract(c);
+    setDebtSheetOpen(true);
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -89,7 +115,7 @@ export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }:
           className="inset-x-auto left-1/2 top-1/2 h-[92vh] w-[calc(100vw-48px)] max-w-[1440px] -translate-x-1/2 -translate-y-1/2 gap-0 overflow-hidden rounded-xl border border-slate-200 p-0 shadow-2xl sm:max-w-[1440px]"
           aria-describedby={undefined}
         >
-          <CustomerDetailPage customer={customer} contracts={contracts} stats={{ totalValue, totalPaid, outstanding, activeCount, cancelCount, overallPct }} onOpenContract={openContract} />
+          <CustomerDetailPage customer={customer} contracts={contracts} stats={{ totalValue, totalPaid, outstanding, activeCount, cancelCount, overallPct }} onOpenContract={openContract} onOpenDebtDetail={openDebtDetail} />
         </SheetContent>
       </Sheet>
 
@@ -99,11 +125,28 @@ export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }:
         open={contractSheetOpen}
         onOpenChange={setContractSheetOpen}
       />
+
+      <Sheet open={debtSheetOpen} onOpenChange={setDebtSheetOpen}>
+        <SheetContent
+          className="w-full p-0 sm:max-w-[1180px]"
+          aria-describedby={undefined}
+        >
+          <SheetTitle className="sr-only">Chi tiết công nợ {selectedDebtContract?.id}</SheetTitle>
+          {selectedDebtContract && (
+            <PaymentDetails
+              customerId={customer.id}
+              contractId={selectedDebtContract.id}
+              mode="sheet"
+              onClose={() => setDebtSheetOpen(false)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
 
-function CustomerDetailPage({ customer, contracts, stats, onOpenContract }: CustomerDetailPageProps) {
+function CustomerDetailPage({ customer, contracts, stats, onOpenContract, onOpenDebtDetail }: CustomerDetailPageProps) {
   const [activeTab, setActiveTab] = useState<CustomerDetailTab>("extraInfo");
 
   return (
@@ -118,6 +161,7 @@ function CustomerDetailPage({ customer, contracts, stats, onOpenContract }: Cust
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenContract={onOpenContract}
+        onOpenDebtDetail={onOpenDebtDetail}
       />
     </div>
   );
@@ -168,6 +212,7 @@ function CustomerDetailBody({
   activeTab,
   onTabChange,
   onOpenContract,
+  onOpenDebtDetail,
 }: {
   customer: Customer;
   contracts: Contract[];
@@ -175,6 +220,7 @@ function CustomerDetailBody({
   activeTab: CustomerDetailTab;
   onTabChange: (tab: CustomerDetailTab) => void;
   onOpenContract: (contract: Contract) => void;
+  onOpenDebtDetail: (contract: Contract) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -186,6 +232,7 @@ function CustomerDetailBody({
           activeTab={activeTab}
           onTabChange={onTabChange}
           onOpenContract={onOpenContract}
+          onOpenDebtDetail={onOpenDebtDetail}
         />
       </div>
       <div className="flex h-16 shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-white px-6">
@@ -209,6 +256,33 @@ function CustomerDetailBody({
 
 function CustomerProfileSidebar({ customer }: { customer: Customer; stats: CustomerDetailStats }) {
   const empty = "Chưa cập nhật";
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = async (label: string, value: string) => {
+    if (!value || value === empty) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = value;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+
+      setCopiedField(label);
+      window.setTimeout(() => setCopiedField((current) => (current === label ? null : current)), 1600);
+    } catch {
+      setCopiedField(null);
+    }
+  };
+
   const rows = [
     { label: "Họ và tên", value: customer.name || empty },
     { label: "Email", value: customer.email || empty, copyable: Boolean(customer.email) },
@@ -241,9 +315,25 @@ function CustomerProfileSidebar({ customer }: { customer: Customer; stats: Custo
                 {row.value}
               </p>
               {row.copyable && (
-                <button type="button" className="relative h-4 w-4 shrink-0 text-slate-400" aria-label={`Sao chép ${row.label.toLowerCase()}`}>
-                  <span className="absolute left-1 top-0 h-3 w-3 rounded-[2px] border border-current bg-white" />
-                  <span className="absolute left-0 top-1 h-3 w-3 rounded-[2px] border border-current bg-white" />
+                <button
+                  type="button"
+                  className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                    copiedField === row.label
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  }`}
+                  aria-label={`${copiedField === row.label ? "Đã sao chép" : "Sao chép"} ${row.label.toLowerCase()}`}
+                  title={`${copiedField === row.label ? "Đã sao chép" : "Sao chép"} ${row.label.toLowerCase()}`}
+                  onClick={() => copyToClipboard(row.label, row.value)}
+                >
+                  {copiedField === row.label ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <span aria-hidden="true" className="relative block h-4 w-4">
+                      <span className="absolute left-1 top-0 h-3 w-3 rounded-[2px] border border-current bg-white" />
+                      <span className="absolute left-0 top-1 h-3 w-3 rounded-[2px] border border-current bg-white" />
+                    </span>
+                  )}
                 </button>
               )}
             </div>
@@ -260,12 +350,14 @@ function CustomerMainPanel({
   activeTab,
   onTabChange,
   onOpenContract,
+  onOpenDebtDetail,
 }: {
   customer: Customer;
   contracts: Contract[];
   activeTab: CustomerDetailTab;
   onTabChange: (tab: CustomerDetailTab) => void;
   onOpenContract: (contract: Contract) => void;
+  onOpenDebtDetail: (contract: Contract) => void;
 }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -276,6 +368,7 @@ function CustomerMainPanel({
           customer={customer}
           contracts={contracts}
           onOpenContract={onOpenContract}
+          onOpenDebtDetail={onOpenDebtDetail}
         />
       </div>
     </div>
@@ -321,17 +414,21 @@ function CustomerTabContent({
   customer,
   contracts,
   onOpenContract,
+  onOpenDebtDetail,
 }: {
   activeTab: CustomerDetailTab;
   customer: Customer;
   contracts: Contract[];
   onOpenContract: (contract: Contract) => void;
+  onOpenDebtDetail: (contract: Contract) => void;
 }) {
   switch (activeTab) {
     case "extraInfo":
       return <CustomerExtraInfoTab customer={customer} />;
     case "debt":
-      return <CustomerDebtTab customer={customer} contracts={contracts} onOpenContract={onOpenContract} />;
+      return <CustomerDebtTab customer={customer} contracts={contracts} onOpenDebtDetail={onOpenDebtDetail} />;
+    case "contracts":
+      return <CustomerContractsTab contracts={contracts} onOpenContract={onOpenContract} />;
     case "interactionHistory":
       return <CustomerInteractionHistoryTab />;
     case "journey":
@@ -347,101 +444,554 @@ function CustomerTabContent({
   }
 }
 
+type DebtPaymentFilter = "all" | "on-time" | "upcoming" | "overdue" | "completed" | "unpaid";
+
+const debtFilterOptions: Array<{ value: DebtPaymentFilter; label: string }> = [
+  { value: "all", label: "Tất cả" },
+  { value: "on-time", label: "Đúng hạn" },
+  { value: "upcoming", label: "Sắp đến hạn" },
+  { value: "overdue", label: "Quá hạn" },
+  { value: "completed", label: "Đã hoàn thành" },
+  { value: "unpaid", label: "Chưa thanh toán" },
+];
+
+const debtTableHeaderClass = "h-11 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
+const debtTableCellClass = "h-[58px] border-b border-r border-[#E5EAF3] bg-white px-3 py-2 align-middle text-xs text-slate-700 transition-colors group-hover:bg-[#F8FAFC]";
+const debtBadgeClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
+
+function formatMoney(value: number) {
+  return `${value.toLocaleString("vi-VN")}đ`;
+}
+
+function parseMoney(value?: string) {
+  return Number(value?.replace(/[^\d]/g, "") || 0);
+}
+
+function parseVietnameseDate(date: string) {
+  const [day, month, year] = date.split("/").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getUnitCode(property: string) {
+  const normalized = property
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  const codeMatch = normalized.match(/[A-Z]\d(?:[-.]\d{2,4})?|[A-Z]\d-\d{2,4}|[A-Z]-\d{2,4}|[A-Z]\d{1,2}-\d{2}|[A-Z]\d{1,2}-[A-Z]?\d{2,4}/);
+  if (codeMatch) return codeMatch[0].replace(".", "-");
+  const words = normalized.match(/[A-Z0-9]+/g) ?? [];
+  return words.slice(-3).join("-") || property;
+}
+
+function getDebtPaymentGroup(contract: Contract): DebtPaymentFilter {
+  if (contract.pct >= 100) return "completed";
+  if (contract.paid <= 0) return "unpaid";
+  if (contract.payments.some((payment) => payment.status === "overdue")) return "overdue";
+  if (contract.payments.some((payment) => payment.status === "pending")) return "upcoming";
+  return "on-time";
+}
+
+function getDebtOverdueMeta(contract: Contract) {
+  const overduePayments = contract.payments.filter((payment) => payment.status === "overdue");
+  if (contract.pct >= 100) return { label: "Đúng hạn", className: "bg-emerald-50 text-emerald-700 ring-emerald-200", days: 0, penalty: 0 };
+  if (overduePayments.length === 0) return { label: "Đúng hạn", className: "bg-emerald-50 text-emerald-700 ring-emerald-200", days: 0, penalty: 0 };
+
+  const today = new Date();
+  const maxDays = Math.max(
+    ...overduePayments.map((payment) => {
+      const dueDate = parseVietnameseDate(payment.due);
+      return Math.max(1, Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000));
+    }),
+  );
+  const penalty = overduePayments.reduce((sum, payment) => sum + parseMoney(payment.extension?.penaltyAmount), 0);
+  const group = maxDays >= 60 ? 60 : maxDays >= 30 ? 30 : maxDays;
+
+  return {
+    label: group >= 30 ? `Quá hạn ${group} ngày` : `Quá hạn ${maxDays} ngày`,
+    className: group >= 60 ? "bg-rose-50 text-rose-700 ring-rose-200" : "bg-red-50 text-red-700 ring-red-200",
+    days: maxDays,
+    penalty,
+  };
+}
+
 function CustomerDebtTab({
   customer,
   contracts,
-  onOpenContract,
+  onOpenDebtDetail,
 }: {
   customer: Customer;
+  contracts: Contract[];
+  onOpenDebtDetail: (contract: Contract) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState<DebtPaymentFilter>("all");
+  const [displayFilter, setDisplayFilter] = useState("default");
+  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [page, setPage] = useState(1);
+
+  const filteredContracts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return contracts.filter((contract) => {
+      const unitCode = getUnitCode(contract.property);
+      const paymentGroup = getDebtPaymentGroup(contract);
+      const matchesSearch =
+        !query ||
+        contract.id.toLowerCase().includes(query) ||
+        unitCode.toLowerCase().includes(query) ||
+        contract.customer.toLowerCase().includes(query) ||
+        customer.name.toLowerCase().includes(query);
+      const matchesFilter = paymentFilter === "all" || paymentGroup === paymentFilter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [contracts, customer.name, paymentFilter, search]);
+
+  const perPage = Number(rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * perPage;
+  const visibleContracts = filteredContracts.slice(startIndex, startIndex + perPage);
+
+  return (
+    <div className="p-5">
+      <div className="overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50">
+        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+              <div className="relative min-w-[220px] flex-1 lg:max-w-xs">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Tìm kiếm..."
+                  aria-label="Tìm kiếm công nợ theo ID, mã căn, mã hợp đồng hoặc tên khách hàng"
+                  className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+
+              <Select
+                value={paymentFilter}
+                onValueChange={(value) => {
+                  setPaymentFilter(value as DebtPaymentFilter);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger aria-label="Lọc theo trạng thái thanh toán" className="h-9 w-full rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none sm:w-52">
+                  <SelectValue placeholder="Trạng thái thanh toán" />
+                </SelectTrigger>
+                <SelectContent>
+                  {debtFilterOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Select value={displayFilter} onValueChange={setDisplayFilter}>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className="h-9 w-full rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none sm:w-28">
+                <SelectValue placeholder="Hiển thị" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Hiển thị</SelectItem>
+                <SelectItem value="all">Tất cả cột</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Table className="min-w-[1320px] border-separate border-spacing-0 text-sm">
+          <TableHeader className="sticky top-0 z-10">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>ID công nợ</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Mã căn</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-28`} style={{ fontWeight: 650 }}>Ngày ký</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>NV phụ trách</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36 text-right`} style={{ fontWeight: 650 }}>Tổng giá trị</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36 text-right`} style={{ fontWeight: 650 }}>Đã thanh toán</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36 text-right`} style={{ fontWeight: 650 }}>Còn lại</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Nhóm quá hạn</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-56`} style={{ fontWeight: 650 }}>Tiến độ thanh toán</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Trạng thái HĐ</TableHead>
+              <TableHead className="h-11 w-20 border-b border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-center align-middle text-[11px] leading-4 text-slate-600" style={{ fontWeight: 650 }}>Hành động</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleContracts.map((contract) => {
+              const remaining = Math.max(0, contract.total - contract.paid);
+              const overdueMeta = getDebtOverdueMeta(contract);
+              const hasOverdue = overdueMeta.days > 0;
+              return (
+                <TableRow
+                  key={contract.id}
+                  role="button"
+                  tabIndex={0}
+                  className="group cursor-pointer hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                  onClick={() => onOpenDebtDetail(contract)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onOpenDebtDetail(contract);
+                    }
+                  }}
+                >
+                  <TableCell className={`${debtTableCellClass} font-semibold text-blue-600`} title={contract.id}>{contract.id}</TableCell>
+                  <TableCell className={`${debtTableCellClass} font-semibold text-slate-800`} title={contract.property}>{getUnitCode(contract.property)}</TableCell>
+                  <TableCell className={debtTableCellClass}>{contract.date}</TableCell>
+                  <TableCell className={debtTableCellClass}>{contract.salesperson}</TableCell>
+                  <TableCell className={`${debtTableCellClass} text-right font-semibold tabular-nums text-slate-900`}>{formatMoney(contract.total)}</TableCell>
+                  <TableCell className={`${debtTableCellClass} text-right font-semibold tabular-nums text-slate-800`}>{formatMoney(contract.paid)}</TableCell>
+                  <TableCell className={`${debtTableCellClass} text-right font-semibold tabular-nums text-slate-800`}>{formatMoney(remaining)}</TableCell>
+                  <TableCell className={debtTableCellClass}>
+                    <Badge variant="outline" className={`${debtBadgeClass} ${overdueMeta.className}`} style={{ fontWeight: 650 }}>
+                      {overdueMeta.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={debtTableCellClass}>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className={hasOverdue ? "font-semibold text-red-600" : "font-semibold text-slate-600"}>{contract.pct}%</span>
+                        <span className="truncate text-slate-500">Còn lại: {formatMoney(remaining)}</span>
+                      </div>
+                      <Progress
+                        value={contract.pct}
+                        className={`h-2 ${hasOverdue ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500" : contract.pct === 100 ? "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500" : "bg-emerald-50 [&>[data-slot=progress-indicator]]:bg-emerald-500"}`}
+                      />
+                      {overdueMeta.penalty > 0 && (
+                        <p className="text-xs font-medium text-red-600">Phạt: {formatMoney(overdueMeta.penalty)}</p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className={debtTableCellClass}>
+                    <Badge variant="outline" className={`${debtBadgeClass} ${statusConfig[contract.status]}`} style={{ fontWeight: 650 }}>
+                      {contract.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="h-[58px] border-b border-[#E5EAF3] bg-white px-3 py-2 text-center align-middle transition-colors group-hover:bg-[#F8FAFC]">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Xem công nợ ${contract.id}`}
+                      title="Xem công nợ"
+                      className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-slate-300"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenDebtDetail(contract);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {visibleContracts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={11} className="h-32 border-b border-[#E5EAF3] px-4 py-10 text-center text-sm text-slate-400">
+                  {contracts.length === 0 ? "Khách hàng chưa có hợp đồng nào" : "Không tìm thấy công nợ phù hợp"}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        <div className="flex min-h-14 flex-col gap-3 border-t border-[#E5EAF3] bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <span>Hiển thị</span>
+            <Select
+              value={rowsPerPage}
+              onValueChange={(value) => {
+                setRowsPerPage(value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger aria-label="Chọn số dòng mỗi trang" className="h-8 w-[72px] rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs shadow-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span>dòng · Tổng {filteredContracts.length} bản ghi</span>
+          </div>
+          <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <span className="px-2 tabular-nums">
+                  {filteredContracts.length === 0 ? "0-0" : `${startIndex + 1}-${Math.min(startIndex + perPage, filteredContracts.length)}`} of {filteredContracts.length}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={currentPage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>‹</Button>
+              </PaginationItem>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => index + 1).map((pageNumber) => (
+                <PaginationItem key={pageNumber}>
+                  <Button
+                    variant={pageNumber === currentPage ? "secondary" : "ghost"}
+                    size="sm"
+                    className={`h-8 w-8 rounded-[8px] p-0 text-xs ${pageNumber === currentPage ? "bg-slate-100 text-slate-900" : "text-slate-500"}`}
+                    onClick={() => setPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </Button>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={currentPage >= totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>›</Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const contractStatusFilterOptions = [
+  "Đang ký",
+  "Đã ký",
+  "Công chứng",
+  "Đã hủy",
+  "Đã cọc",
+  "Chờ xác nhận",
+  "Đã phát hành",
+  "Đã đóng dấu",
+  "Chờ trả HĐMB",
+  "Đã trả",
+  "Bàn giao",
+];
+
+function getProductType(property: string) {
+  const normalized = property.toLowerCase();
+  if (normalized.includes("shophouse")) return "Shophouse";
+  if (normalized.includes("penthouse")) return "Penthouse";
+  if (normalized.includes("duplex")) return "Duplex";
+  if (normalized.includes("sky")) return "Sky Garden";
+  if (normalized.includes("biệt thự")) return "Biệt thự";
+  if (normalized.includes("liền kề")) return "Liền kề";
+  if (normalized.includes("kiot")) return "Kiot";
+  if (normalized.includes("văn phòng")) return "Văn phòng";
+  if (normalized.includes("kho")) return "Kho xưởng";
+  if (normalized.includes("mặt bằng")) return "Mặt bằng";
+  return "Căn hộ";
+}
+
+function CustomerContractsTab({
+  contracts,
+  onOpenContract,
+}: {
   contracts: Contract[];
   onOpenContract: (contract: Contract) => void;
 }) {
   const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [contractStatusFilter, setContractStatusFilter] = useState("all");
+  const [displayFilter, setDisplayFilter] = useState("default");
+  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [page, setPage] = useState(1);
+
+  const filteredContracts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return contracts.filter((contract) => {
+      const unitCode = getUnitCode(contract.property);
+      const productType = getProductType(contract.property);
+      const matchesSearch =
+        !query ||
+        contract.id.toLowerCase().includes(query) ||
+        unitCode.toLowerCase().includes(query) ||
+        productType.toLowerCase().includes(query);
+      const matchesStatus = contractStatusFilter === "all" || contract.status === contractStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [contracts, contractStatusFilter, search]);
+
+  const perPage = Number(rowsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * perPage;
+  const visibleContracts = filteredContracts.slice(startIndex, startIndex + perPage);
+
   return (
-    <div className="space-y-3 px-5 py-4">
-      {contracts.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 text-sm">
-          Khách hàng chưa có hợp đồng nào
-        </div>
-      ) : (
-        contracts.map((c) => {
-          const hasOverdue = c.payments.some((p) => p.status === "overdue");
-          return (
-            <div
-              key={c.id}
-              className={`border rounded-xl p-4 transition-all cursor-pointer hover:shadow-sm hover:border-indigo-200 group ${
-                hasOverdue ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-white"
-              }`}
-              onClick={() => onOpenContract(c)}
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className="text-xs text-indigo-600" style={{ fontWeight: 700 }}>{c.id}</span>
-                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-xs ${statusConfig[c.status]}`} style={{ fontWeight: 500 }}>
-                      {c.status}
-                    </span>
-                    {hasOverdue && (
-                      <span className="inline-flex items-center gap-1 text-xs text-red-600" style={{ fontWeight: 500 }}>
-                        <XCircle className="w-3 h-3" /> Quá hạn TT
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-slate-800 truncate" style={{ fontWeight: 500 }}>{c.property}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{c.type} · Ký {c.date} · NV: {c.salesperson}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-400 shrink-0 mt-1 transition-colors" />
+    <div className="p-5">
+      <div className="overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50">
+        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+              <div className="relative min-w-[220px] flex-1 lg:max-w-xs">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Tìm kiếm..."
+                  aria-label="Tìm kiếm hợp đồng theo mã HĐMB, mã căn hoặc loại sản phẩm"
+                  className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                  <div
-                    className={`h-1.5 rounded-full ${c.pct === 100 ? "bg-emerald-500" : hasOverdue ? "bg-red-400" : "bg-blue-500"}`}
-                    style={{ width: `${c.pct}%` }}
-                  />
-                </div>
-                <span className="text-xs text-slate-500 shrink-0 w-8 text-right">{c.pct}%</span>
-                <span className="text-xs text-slate-700 shrink-0" style={{ fontWeight: 600 }}>{c.value} đ</span>
-              </div>
-
-              <div className="flex gap-2 mt-2.5 flex-wrap">
-                {c.payments.some((p) => p.status === "on-time") && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
-                    <CheckCircle2 className="w-3 h-3" />
-                    {c.payments.filter((p) => p.status === "on-time").length} đúng hạn
-                  </span>
-                )}
-                {c.payments.some((p) => p.status === "overdue") && (
-                  <span className="flex items-center gap-1 text-xs text-red-700 bg-red-50 border border-red-100 rounded-full px-2 py-0.5">
-                    <XCircle className="w-3 h-3" />
-                    {c.payments.filter((p) => p.status === "overdue").length} quá hạn
-                  </span>
-                )}
-                {c.payments.some((p) => p.status === "pending") && (
-                  <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-full px-2 py-0.5">
-                    {c.payments.filter((p) => p.status === "pending").length} chờ thanh toán
-                  </span>
-                )}
-                {c.payments.length === 0 && (
-                  <span className="text-xs text-slate-400">Không có lịch thanh toán</span>
-                )}
-              </div>
-
-              <div className="flex justify-end mt-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 gap-1.5 text-xs group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); navigate(`/debt/customer/${customer.id}/contract/${c.id}`); }}
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  Xem chi tiết HĐ
-                </Button>
-              </div>
+              <Select
+                value={contractStatusFilter}
+                onValueChange={(value) => {
+                  setContractStatusFilter(value);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className="h-9 w-full rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none sm:w-52">
+                  <SelectValue placeholder="Trạng thái hợp đồng" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  {contractStatusFilterOptions.map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          );
-        })
-      )}
+
+            <Select value={displayFilter} onValueChange={setDisplayFilter}>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className="h-9 w-full rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none sm:w-28">
+                <SelectValue placeholder="Hiển thị" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Hiển thị</SelectItem>
+                <SelectItem value="all">Tất cả cột</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Table className="min-w-[1280px] border-separate border-spacing-0 text-sm">
+          <TableHeader className="sticky top-0 z-10">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Mã HĐMB</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Mã căn</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Loại sản phẩm</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-28`} style={{ fontWeight: 650 }}>Ngày ký</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36 text-right`} style={{ fontWeight: 650 }}>Giá trị HĐ</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36 text-right`} style={{ fontWeight: 650 }}>Công nợ còn lại</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>NV phụ trách</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Trạng thái HĐ</TableHead>
+              <TableHead className={`${debtTableHeaderClass} w-44`} style={{ fontWeight: 650 }}>Tiến độ thanh toán</TableHead>
+              <TableHead className="h-11 w-20 border-b border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-center align-middle text-[11px] leading-4 text-slate-600" style={{ fontWeight: 650 }}>Hành động</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleContracts.map((contract) => {
+              const remaining = Math.max(0, contract.total - contract.paid);
+              return (
+                <TableRow
+                  key={contract.id}
+                  className="group hover:bg-[#F8FAFC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                >
+                  <TableCell className={`${debtTableCellClass} font-semibold`}>
+                    <button
+                      type="button"
+                      className="text-left text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      onClick={() => onOpenContract(contract)}
+                    >
+                      {contract.id}
+                    </button>
+                  </TableCell>
+                  <TableCell className={`${debtTableCellClass} font-semibold text-slate-800`} title={contract.property}>{getUnitCode(contract.property)}</TableCell>
+                  <TableCell className={debtTableCellClass}>{getProductType(contract.property)}</TableCell>
+                  <TableCell className={debtTableCellClass}>{contract.date}</TableCell>
+                  <TableCell className={`${debtTableCellClass} text-right font-semibold tabular-nums text-slate-900`}>{formatMoney(contract.total)}</TableCell>
+                  <TableCell className={`${debtTableCellClass} text-right font-semibold tabular-nums text-slate-800`}>{formatMoney(remaining)}</TableCell>
+                  <TableCell className={debtTableCellClass}>{contract.salesperson}</TableCell>
+                  <TableCell className={debtTableCellClass}>
+                    <Badge variant="outline" className={`${debtBadgeClass} ${statusConfig[contract.status] ?? "bg-slate-50 text-slate-700 ring-slate-200"}`} style={{ fontWeight: 650 }}>
+                      {contract.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={debtTableCellClass}>
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-semibold text-slate-600">{contract.pct}%</span>
+                      <Progress
+                        value={contract.pct}
+                        className={`h-2 ${contract.pct === 100 ? "bg-emerald-100 [&>[data-slot=progress-indicator]]:bg-emerald-500" : "bg-blue-50 [&>[data-slot=progress-indicator]]:bg-blue-500"}`}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="h-[58px] border-b border-[#E5EAF3] bg-white px-3 py-2 text-center align-middle transition-colors group-hover:bg-[#F8FAFC]">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Xem chi tiết hợp đồng ${contract.id}`}
+                      title="Xem chi tiết hợp đồng"
+                      className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-slate-300"
+                      onClick={() => onOpenContract(contract)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {visibleContracts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={10} className="h-32 border-b border-[#E5EAF3] px-4 py-10 text-center text-sm text-slate-400">
+                  {contracts.length === 0 ? "Khách hàng chưa có hợp đồng nào" : "Không tìm thấy hợp đồng phù hợp"}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        <div className="flex min-h-14 flex-col gap-3 border-t border-[#E5EAF3] bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <span>Hiển thị</span>
+            <Select
+              value={rowsPerPage}
+              onValueChange={(value) => {
+                setRowsPerPage(value);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger aria-label="Chọn số dòng mỗi trang" className="h-8 w-[72px] rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs shadow-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <span>dòng · Tổng {filteredContracts.length} bản ghi</span>
+          </div>
+          <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <span className="px-2 tabular-nums">
+                  {filteredContracts.length === 0 ? "0-0" : `${startIndex + 1}-${Math.min(startIndex + perPage, filteredContracts.length)}`} of {filteredContracts.length}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={currentPage <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>‹</Button>
+              </PaginationItem>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => index + 1).map((pageNumber) => (
+                <PaginationItem key={pageNumber}>
+                  <Button
+                    variant={pageNumber === currentPage ? "secondary" : "ghost"}
+                    size="sm"
+                    className={`h-8 w-8 rounded-[8px] p-0 text-xs ${pageNumber === currentPage ? "bg-slate-100 text-slate-900" : "text-slate-500"}`}
+                    onClick={() => setPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </Button>
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={currentPage >= totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>›</Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      </div>
     </div>
   );
 }

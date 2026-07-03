@@ -580,19 +580,18 @@ const baseCustomers: Customer[] = [
               {
                 id: "c1r3-1",
                 label: "Bàn giao căn hộ & nghiệm thu (20%)",
-                dueDate: "2025-12-20",
+                dueDate: "2026-08-20",
                 baseAmount: 0.9,
                 status: "upcoming",
               },
               {
                 id: "c1r3-2",
                 label: "Hoàn tất hồ sơ sổ đỏ (5%)",
-                dueDate: "2026-06-20",
+                dueDate: "2027-02-20",
                 baseAmount: 0.225,
                 paidAmount: 0,
                 remainingAmount: 0.225,
-                status: "overdue",
-                debtStatus: "overdue",
+                status: "upcoming",
               },
             ],
           },
@@ -1120,14 +1119,14 @@ const baseCustomers: Customer[] = [
                       {
                         id: "ext-c3-r24-v2-i1",
                         label: "Đợt gia hạn 1/2",
-                        dueDate: "2026-05-31",
+                        dueDate: "2026-07-31",
                         amount: 0.476,
                         status: "upcoming",
                       },
                       {
                         id: "ext-c3-r24-v2-i2",
                         label: "Đợt gia hạn 2/2",
-                        dueDate: "2026-06-30",
+                        dueDate: "2026-08-31",
                         amount: 0.476,
                         status: "upcoming",
                       },
@@ -1521,14 +1520,14 @@ const baseCustomers: Customer[] = [
               {
                 id: "c4r3-1",
                 label: "Bàn giao căn hộ & nghiệm thu (10%)",
-                dueDate: "2025-11-10",
+                dueDate: "2026-11-10",
                 baseAmount: 0.51,
                 status: "upcoming",
               },
               {
                 id: "c4r3-2",
                 label: "Hoàn tất hồ sơ sổ đỏ (5%)",
-                dueDate: "2026-05-10",
+                dueDate: "2027-05-10",
                 baseAmount: 0.255,
                 status: "upcoming",
               },
@@ -1658,7 +1657,7 @@ const baseCustomers: Customer[] = [
                       {
                         id: "ext-c5-r22-i1",
                         label: "Đợt gia hạn 1/1",
-                        dueDate: "2026-05-30",
+                        dueDate: "2026-07-30",
                         amount: 1.1,
                         status: "upcoming",
                       },
@@ -1883,7 +1882,7 @@ const baseCustomers: Customer[] = [
               {
                 id: "c6-1-r6",
                 label: "Đợt 6 – Hoàn thiện thô (15%)",
-                dueDate: "2026-05-20",
+                dueDate: "2026-08-20",
                 baseAmount: 0.6,
                 status: "upcoming",
               },
@@ -2213,14 +2212,14 @@ const baseCustomers: Customer[] = [
               {
                 id: "c6-3-r6",
                 label: "Bàn giao căn hộ & nghiệm thu (5%)",
-                dueDate: "2025-12-15",
+                dueDate: "2026-12-15",
                 baseAmount: 0.105,
                 status: "upcoming",
               },
               {
                 id: "c6-3-r7",
                 label: "Hoàn tất hồ sơ sổ đỏ (5%)",
-                dueDate: "2026-06-15",
+                dueDate: "2027-06-15",
                 baseAmount: 0.105,
                 status: "upcoming",
               },
@@ -2405,14 +2404,14 @@ const baseCustomers: Customer[] = [
               {
                 id: "c7r3-1",
                 label: "Bàn giao căn hộ & nghiệm thu (5%)",
-                dueDate: "2025-10-05",
+                dueDate: "2026-10-05",
                 baseAmount: 0.275,
                 status: "upcoming",
               },
               {
                 id: "c7r3-2",
                 label: "Hoàn tất hồ sơ sổ đỏ (5%)",
-                dueDate: "2026-04-05",
+                dueDate: "2027-04-05",
                 baseAmount: 0.275,
                 status: "upcoming",
               },
@@ -2624,13 +2623,28 @@ const demoProjects = [
 const demoNames = ["Phạm Gia Hân", "Đỗ Minh Quân", "Võ Thanh Tùng", "Mai Khánh Linh", "Bùi Quốc Việt", "Ngô Thu Trang"];
 const demoStatuses: PaymentStatus[] = ["paid", "partial", "overdue", "upcoming", "overpaid", "extended"];
 const demoInvoiceStatuses: InvoiceStatus[] = ["issued", "pending", "cancelled", "issued", "pending", "issued"];
-const demoDueDates = ["2026-06-02", "2026-06-08", "2026-06-14", "2026-06-21", "2026-07-10", "2026-08-18"];
+function getDemoDueDate(recordIndex: number): string {
+  const baseMonth = 1; // February (0-indexed is 1)
+  const baseYear = 2026;
+  const date = new Date(baseYear, baseMonth + recordIndex, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function demoRecord(customerIndex: number, recordIndex: number, baseAmount: number): PaymentRecord {
-  const status = demoStatuses[(customerIndex + recordIndex) % demoStatuses.length];
+  let status: PaymentStatus = "not-due";
+  if (recordIndex === 0) status = "paid";
+  else if (recordIndex === 1) status = "overpaid";
+  else if (recordIndex === 2) status = "partial";
+  else if (recordIndex === 3) status = "overdue";
+  else if (recordIndex === 4) status = "upcoming";
+  else status = "not-due";
+
   const paidAmount = status === "paid" ? baseAmount : status === "overpaid" ? baseAmount + 0.08 : status === "partial" ? Number((baseAmount * 0.45).toFixed(3)) : 0;
   const remainingAmount = Math.max(0, Number((baseAmount - Math.min(paidAmount, baseAmount)).toFixed(3)));
-  const dueDate = demoDueDates[(customerIndex + recordIndex) % demoDueDates.length];
+  const dueDate = getDemoDueDate(recordIndex);
   const isOverdue = status === "overdue" || status === "extended";
   return {
     id: `demo-r${customerIndex + 1}-${recordIndex + 1}`,
@@ -2689,7 +2703,7 @@ const dashboardDemoCustomers: Customer[] = demoNames.map((name, index) => {
       contractValue,
       paidAmount,
       paymentProgress: Math.round((paidAmount / contractValue) * 100),
-      dueDate: demoDueDates[index],
+      dueDate: getDemoDueDate(0),
       status: demoStatuses[index],
       debtStatus: demoStatuses[index] === "overdue" ? "overdue" : "current",
       stages: [{
@@ -2708,3 +2722,27 @@ const dashboardDemoCustomers: Customer[] = demoNames.map((name, index) => {
 });
 
 export const customers: Customer[] = [...baseCustomers, ...dashboardDemoCustomers];
+
+// Post-processing to align all due dates across all customers and contracts
+customers.forEach((customer) => {
+  customer.contracts.forEach((contract) => {
+    let recordCounter = 0;
+    contract.stages.forEach((stage) => {
+      stage.records.forEach((record) => {
+        const dueDate = getDemoDueDate(recordCounter);
+        record.dueDate = dueDate;
+        if (record.paidDate) {
+          record.paidDate = dueDate;
+        }
+        if (record.invoice) {
+          record.invoice.dueDate = dueDate;
+          if (record.invoice.issuedDate) {
+            record.invoice.issuedDate = dueDate;
+          }
+        }
+        recordCounter++;
+      });
+    });
+    contract.dueDate = getDemoDueDate(0);
+  });
+});

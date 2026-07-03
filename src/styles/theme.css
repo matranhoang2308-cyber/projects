@@ -119,6 +119,15 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-size-2sm: 0.8125rem;
   --font-size-2xs: 0.6875rem;
+
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --shadow-2xl: none;
+  --shadow-inner: none;
+  --shadow: none;
 }
 
 @layer base {

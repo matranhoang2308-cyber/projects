@@ -225,6 +225,7 @@ export function CustomerCreateDialog({
   };
 
   const inputClass = "h-10 border-slate-200 bg-white text-sm focus-visible:ring-slate-400";
+  const selectTriggerClass = "h-10 border-slate-200 bg-white";
   const textareaClass = "min-h-24 resize-none border-slate-200 bg-white text-sm focus-visible:ring-slate-400";
 
   return (
@@ -316,7 +317,7 @@ export function CustomerCreateDialog({
                   </FormField>
                   <FormField label="Giới tính">
                     <Select value={draft.gender} onValueChange={(value) => set("gender", value)}>
-                      <SelectTrigger className="h-10 border-slate-200 bg-white">
+                      <SelectTrigger className={selectTriggerClass}>
                         <SelectValue placeholder="Chọn giới tính" />
                       </SelectTrigger>
                       <SelectContent>
@@ -355,7 +356,7 @@ export function CustomerCreateDialog({
                   </FormField>
                   <FormField label="Nguồn khách hàng">
                     <Select value={draft.source} onValueChange={(value) => set("source", value)}>
-                      <SelectTrigger className="h-10 border-slate-200 bg-white"><SelectValue placeholder="Chọn nguồn khách hàng" /></SelectTrigger>
+                      <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Chọn nguồn khách hàng" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Website">Website</SelectItem>
                         <SelectItem value="Referral">Referral</SelectItem>
@@ -367,7 +368,7 @@ export function CustomerCreateDialog({
                   </FormField>
                   <FormField label="Trạng thái khách hàng">
                     <Select value={draft.customerStatus} onValueChange={(value) => set("customerStatus", value)}>
-                      <SelectTrigger className="h-10 border-slate-200 bg-white"><SelectValue placeholder="Chọn trạng thái khách hàng" /></SelectTrigger>
+                      <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Chọn trạng thái khách hàng" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Mới">Mới</SelectItem>
                         <SelectItem value="Đang chăm sóc">Đang chăm sóc</SelectItem>
@@ -387,7 +388,7 @@ export function CustomerCreateDialog({
                   </FormField>
                   <FormField label="Nhóm khách hàng">
                     <Select value={draft.customerGroup} onValueChange={(value) => set("customerGroup", value)}>
-                      <SelectTrigger className="h-10 border-slate-200 bg-white"><SelectValue placeholder="Chọn nhóm khách hàng" /></SelectTrigger>
+                      <SelectTrigger className={selectTriggerClass}><SelectValue placeholder="Chọn nhóm khách hàng" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Nhà đầu tư">Nhà đầu tư</SelectItem>
                         <SelectItem value="An cư">An cư</SelectItem>

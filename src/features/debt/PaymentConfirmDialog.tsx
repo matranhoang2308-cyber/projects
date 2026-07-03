@@ -29,6 +29,8 @@ interface PaymentConfirmDialogProps {
   onConfirm: (paidAmount: number, paidDate: string, invoice: InvoiceFile) => void;
 }
 
+const paymentInputClass = "h-10 text-sm";
+
 export function PaymentConfirmDialog({
   open,
   onClose,
@@ -40,23 +42,39 @@ export function PaymentConfirmDialog({
   const [paidDate, setPaidDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
+  const [bankName, setBankName] = useState<string>("");
+  const [bankAccount, setBankAccount] = useState<string>("");
+  const [transactionRef, setTransactionRef] = useState<string>("");
 
   // Reset when dialog opens
   useEffect(() => {
     if (open) {
       setPaidAmount("");
       setPaidDate(new Date().toISOString().split("T")[0]);
+      setBankName("");
+      setBankAccount("");
+      setTransactionRef("");
     }
   }, [open]);
 
-  // Calculate allocation result
+  // Calculate allocation result (Principal first, then Interest)
   const rawCleanAmount = parseFloat(paidAmount.replace(/\D/g, "")) || 0;
   const paidAmountNum = rawCleanAmount / 1000000000;
-  const allocation = allocatePayment(paidAmountNum, record.remainingAmount);
-
-  const isExactPayment = allocation.status === "paid";
-  const isOverpayment = allocation.status === "overpaid";
-  const isUnderpayment = allocation.status === "partial";
+  
+  const lateInterest = record.lateInterest ?? 0;
+  const principalDue = record.remainingAmount;
+  
+  const allocatedToPrincipal = Math.min(paidAmountNum, principalDue);
+  const remainingPaidAmount = Math.max(0, paidAmountNum - allocatedToPrincipal);
+  const allocatedToInterest = Math.min(remainingPaidAmount, lateInterest);
+  const overpaid = Math.max(0, remainingPaidAmount - lateInterest);
+  
+  const remainingPrincipal = Math.max(0, principalDue - allocatedToPrincipal);
+  const remainingInterest = Math.max(0, lateInterest - allocatedToInterest);
+  
+  const isExactPayment = paidAmountNum >= principalDue - 0.000001 && paidAmountNum <= (principalDue + lateInterest) + 0.000001;
+  const isOverpayment = paidAmountNum > (principalDue + lateInterest) + 0.000001;
+  const isUnderpayment = paidAmountNum > 0 && paidAmountNum < principalDue - 0.000001;
 
   const handleConfirm = () => {
     if (paidAmountNum <= 0) return;
@@ -70,11 +88,11 @@ export function PaymentConfirmDialog({
       fileSize: "156 KB",
       uploadDate: paidDate,
       issuedBy: `${contractName} – Phòng Tài chính`,
-      bankName: "Vietcombank – CN TP.HCM",
-      bankAccount: "0071003920481",
-      transactionRef: `VCB${paidDate.replace(/-/g, "")}-${Math.floor(Math.random() * 90000) + 10000}`,
-      principalAmount: allocation.allocatedToPrincipal,
-      nonInvoiceInterest: 0, // AKH does not invoice interest
+      bankName: bankName.trim() || "Vietcombank – CN TP.HCM",
+      bankAccount: bankAccount.trim() || "0071003920481",
+      transactionRef: transactionRef.trim() || `VCB${paidDate.replace(/-/g, "")}-${Math.floor(Math.random() * 90000) + 10000}`,
+      principalAmount: allocatedToPrincipal,
+      nonInvoiceInterest: allocatedToInterest,
       pendingInvoiceAmount: 0,
     };
 
@@ -83,8 +101,8 @@ export function PaymentConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl p-0 gap-0">
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/60">
+      <DialogContent className="max-w-2xl p-0 gap-0 max-h-[calc(100vh-40px)] flex flex-col overflow-hidden my-5">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/60 shrink-0">
           <div className="flex items-center gap-2">
             <BadgeCheck className="size-5 text-emerald-600" />
             <DialogTitle className="text-base text-foreground">
@@ -96,7 +114,7 @@ export function PaymentConfirmDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
           {/* Installment info */}
           <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
             <div className="grid grid-cols-2 gap-4">
@@ -135,6 +153,14 @@ export function PaymentConfirmDialog({
                 </div>
               )}
             </div>
+            <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Tổng phải thu (gốc + lãi)
+              </p>
+              <p className="text-lg font-semibold text-foreground">
+                {formatVND(record.remainingAmount + (record.lateInterest ?? 0))}
+              </p>
+            </div>
           </div>
 
           {/* Payment input */}
@@ -153,7 +179,7 @@ export function PaymentConfirmDialog({
                     const clean = e.target.value.replace(/\D/g, "");
                     setPaidAmount(clean ? parseInt(clean, 10).toLocaleString("vi-VN") : "");
                   }}
-                  className="pr-16"
+                  className={`${paymentInputClass} pr-16`}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   VND
@@ -170,6 +196,58 @@ export function PaymentConfirmDialog({
                 type="date"
                 value={paidDate}
                 onChange={(e) => setPaidDate(e.target.value)}
+                className={paymentInputClass}
+              />
+            </div>
+
+            <div className="pt-2">
+              <Separator className="my-2 opacity-60" />
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-3">
+                Thông tin giao dịch chuyển khoản
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bank-name">
+                  Ngân hàng (Tùy chọn)
+                </Label>
+                <Input
+                  id="bank-name"
+                  type="text"
+                  placeholder="Mặc định: Vietcombank – CN TP.HCM"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  className={paymentInputClass}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bank-account">
+                  Số tài khoản (Tùy chọn)
+                </Label>
+                <Input
+                  id="bank-account"
+                  type="text"
+                  placeholder="Mặc định: 0071003920481"
+                  value={bankAccount}
+                  onChange={(e) => setBankAccount(e.target.value)}
+                  className={paymentInputClass}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transaction-ref">
+                Mã giao dịch / Tham chiếu (Tùy chọn)
+              </Label>
+              <Input
+                id="transaction-ref"
+                type="text"
+                placeholder="Mặc định: VCB[Ngày]-[Ngẫu nhiên]"
+                value={transactionRef}
+                onChange={(e) => setTransactionRef(e.target.value)}
+                className={paymentInputClass}
               />
             </div>
           </div>
@@ -209,7 +287,7 @@ export function PaymentConfirmDialog({
                         <div className="flex items-center justify-between">
                           <span>Phân bổ cho đợt hiện tại:</span>
                           <span className="font-medium">
-                            {formatVND(allocation.allocatedToPrincipal)}
+                            {formatVND(allocatedToPrincipal + allocatedToInterest)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-blue-600">
@@ -218,7 +296,7 @@ export function PaymentConfirmDialog({
                             Chuyển sang đợt tiếp theo:
                           </span>
                           <span className="font-medium">
-                            {formatVND(allocation.overpaid)}
+                            {formatVND(overpaid)}
                           </span>
                         </div>
                       </div>
@@ -236,7 +314,7 @@ export function PaymentConfirmDialog({
                         <div className="flex items-center justify-between">
                           <span>Đã thanh toán:</span>
                           <span className="font-medium">
-                            {formatVND(allocation.allocatedToPrincipal)}
+                            {formatVND(allocatedToPrincipal + allocatedToInterest)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-red-600">
@@ -245,7 +323,7 @@ export function PaymentConfirmDialog({
                             Còn nợ:
                           </span>
                           <span className="font-medium">
-                            {formatVND(allocation.remaining)}
+                            {formatVND(remainingPrincipal + remainingInterest)}
                           </span>
                         </div>
                       </div>
@@ -263,25 +341,26 @@ export function PaymentConfirmDialog({
                     <FileText className="size-5 text-slate-600 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-foreground font-medium mb-1">
-                        Thông tin hóa đơn
+                        Thông tin hóa đơn & Biên nhận
                       </p>
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div className="space-y-1.5 text-xs text-slate-600">
                         <div className="flex items-center justify-between">
-                          <span>Số tiền xuất hóa đơn:</span>
-                          <span className="text-foreground font-medium">
-                            {formatVND(allocation.allocatedToPrincipal)}
+                          <span>Số tiền xuất hóa đơn (Gốc):</span>
+                          <span className="text-foreground font-semibold">
+                            {formatVND(allocatedToPrincipal)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span>Nội dung:</span>
-                          <span className="text-foreground">Thanh toán gốc</span>
+                          <span>Nội dung hóa đơn:</span>
+                          <span className="text-foreground">Thanh toán gốc - {record.label}</span>
                         </div>
-                        {record.lateInterest && record.lateInterest > 0 && (
-                          <div className="pt-1 border-t border-border/40">
-                            <p className="text-[11px] italic text-orange-600">
-                              <Info className="size-3 inline mr-1" />
-                              Lãi trễ hạn {formatVND(record.lateInterest)} không xuất hóa đơn
-                            </p>
+                        {allocatedToInterest > 0 && (
+                          <div className="pt-1.5 border-t border-border/40 flex items-center justify-between text-orange-600">
+                            <span className="flex items-center gap-1 font-medium">
+                              <Info className="size-3" />
+                              Biên nhận thu lãi trễ hạn (không VAT):
+                            </span>
+                            <span className="font-semibold">{formatVND(allocatedToInterest)}</span>
                           </div>
                         )}
                       </div>
@@ -293,7 +372,7 @@ export function PaymentConfirmDialog({
           )}
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border/60">
+        <DialogFooter className="px-6 py-4 border-t border-border/60 shrink-0">
           <div className="flex items-center gap-2 w-full">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Hủy

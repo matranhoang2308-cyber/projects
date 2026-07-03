@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, BarChart, CartesianGrid, Cell, Funnel, FunnelChart, LabelList, Line, LineChart, Pie, PieChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, Treemap, XAxis, YAxis, ZAxis } from "recharts";
 import { DashboardFilters, getAgencyPerformance, getCustomerDemographics, getCustomerStructure, getProductCharts, getSalesInventorySummary, getSalesTrends, SalesInventorySummary, SalesTrendData, TrendGroup } from "./dashboardApi";
 import { CustomerRankingReports } from "./CustomerRankingReports";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Tone = "inventory" | "revenue" | "customer" | "warning" | "danger";
 const toneStyles: Record<Tone, { icon: string; iconBg: string; accent: string }> = {
@@ -45,11 +46,11 @@ function money(value: number) {
 
 function MetricCard({ label, value, hint, icon: Icon, tone }: { label: string; value: string; hint: string; icon: React.ElementType; tone: Tone }) {
   const style = toneStyles[tone];
-  return <Card className="relative gap-0 overflow-hidden rounded-xl border-slate-200 bg-white p-5 shadow-sm"><span className="absolute inset-x-0 top-0 h-0.5 bg-blue-600" /><p className="min-h-5 pr-12 text-xs font-medium leading-5 text-slate-500">{label}</p><p className="mt-3 whitespace-nowrap text-xl font-semibold leading-7 tabular-nums text-slate-950">{value}</p><p className="mt-1.5 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-lg border ${style.iconBg} ${style.icon}`}><Icon className="size-5" /></div></Card>;
+  return <Card className="relative min-h-[112px] gap-0 overflow-hidden rounded-lg border-[#E5EAF3] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><span className={`absolute inset-x-0 top-0 h-0.5 ${style.accent}`} /><p className="min-h-4 pr-11 text-[11px] font-medium leading-4 text-slate-500">{label}</p><p className="mt-1 break-words text-lg font-semibold leading-6 tracking-[-0.01em] tabular-nums text-slate-950">{value}</p><p className="mt-1 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md border ${style.iconBg} ${style.icon}`}><Icon className="size-4.5" /></div></Card>;
 }
 
 function LoadingReport() {
-  return <div className="space-y-7" aria-label="Đang tải báo cáo">{[5, 4, 7].map((count, group) => <section key={group}><Skeleton className="mb-2 h-5 w-28" /><Skeleton className="mb-4 h-3 w-64" /><div className={`grid grid-cols-2 gap-4 lg:grid-cols-4 ${count === 5 ? "xl:grid-cols-5" : ""}`}>{Array.from({ length: count }).map((_, i) => <Card key={i} className="rounded-2xl border-slate-200 p-5 shadow-none"><Skeleton className="h-3 w-24" /><Skeleton className="mt-5 h-7 w-28" /><Skeleton className="mt-2 h-3 w-20" /></Card>)}</div></section>)}</div>;
+  return <div className="space-y-7" aria-label="Đang tải báo cáo">{[5, 4, 7].map((count, group) => <section key={group}><Skeleton className="mb-2 h-5 w-28" /><Skeleton className="mb-4 h-3 w-64" /><div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ${count === 5 ? "xl:grid-cols-5" : ""}`}>{Array.from({ length: count }).map((_, i) => <Card key={i} className="min-h-[112px] rounded-lg border-[#E5EAF3] p-4 shadow-none"><Skeleton className="h-3 w-24" /><Skeleton className="mt-4 h-6 w-28" /><Skeleton className="mt-2 h-3 w-20" /></Card>)}</div></section>)}</div>;
 }
 
 function EmptyReport() {
@@ -63,7 +64,8 @@ const unsoldGroupOptions: Array<{ value: UnsoldGroup; label: string }> = [
   { value: "productType", label: "Theo sản phẩm" },
 ];
 const productTypeOrder = ["Sky Garden", "Penhouse", "Sky Villa Residence", "Duplex Garden"];
-const chartSelectClass = "crm-native-select h-9 min-w-[164px] rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const chartSelectClass = "h-9 min-w-[164px] rounded-[8px] border border-[#E5EAF3] bg-white text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition shadow-none text-left";
+const reportLegendBadgeClass = "inline-flex h-6 max-w-full items-center rounded-md bg-slate-50 px-2.5 text-[11px] leading-none text-slate-700 ring-1 ring-slate-200";
 const trendGroupOptions: Array<{ value: TrendGroup; label: string }> = [
   { value: "day", label: "Theo ngày" },
   { value: "week", label: "Theo tuần" },
@@ -71,7 +73,7 @@ const trendGroupOptions: Array<{ value: TrendGroup; label: string }> = [
   { value: "year", label: "Theo năm" },
   { value: "custom", label: "Khoảng thời gian" },
 ];
-const dateInputClass = "h-9 min-w-0 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const dateInputClass = "h-9 min-w-0 w-full rounded-[8px] border border-[#E5EAF3] bg-white px-2.5 text-xs font-medium text-slate-700 outline-none hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition";
 
 function inputDate(date: Date) {
   const offset = date.getTimezoneOffset();
@@ -122,7 +124,26 @@ function useTimedChartData<T>(filters: DashboardFilters, loader: TimedLoader<T>)
 }
 
 function ChartTimeControl<T>({ chartName, state }: { chartName: string; state: TimedChartData<T> }) {
-  return <div className="grid gap-2"><select aria-label={`Thời gian - ${chartName}`} className={chartSelectClass} value={state.group} onChange={(event) => state.setGroup(event.target.value as TrendGroup)}>{trendGroupOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{state.group === "custom" && <div className="grid grid-cols-2 gap-2"><input aria-label={`Ngày bắt đầu - ${chartName}`} className={dateInputClass} type="date" value={state.from} max={state.to} onChange={(event) => state.setFrom(event.target.value)} /><input aria-label={`Ngày kết thúc - ${chartName}`} className={dateInputClass} type="date" value={state.to} min={state.from} onChange={(event) => state.setTo(event.target.value)} /></div>}</div>;
+  return (
+    <div className="grid gap-2">
+      <Select value={state.group} onValueChange={(val) => state.setGroup(val as TrendGroup)}>
+        <SelectTrigger aria-label={`Thời gian - ${chartName}`} className={chartSelectClass}>
+          <SelectValue placeholder="Thời gian" />
+        </SelectTrigger>
+        <SelectContent>
+          {trendGroupOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.group === "custom" && (
+        <div className="grid grid-cols-2 gap-2">
+          <input aria-label={`Ngày bắt đầu - ${chartName}`} className={dateInputClass} type="date" value={state.from} max={state.to} onChange={(event) => state.setFrom(event.target.value)} />
+          <input aria-label={`Ngày kết thúc - ${chartName}`} className={dateInputClass} type="date" value={state.to} min={state.from} onChange={(event) => state.setTo(event.target.value)} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TimedSectionError({ states, label }: { states: Array<TimedChartData<unknown>>; label: string }) {
@@ -136,7 +157,7 @@ function ChartCard({ title, description, legend, headerAction, children }: { tit
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
-  return <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: color }} />{label}</span>;
+  return <span className={reportLegendBadgeClass} style={{ fontWeight: 650 }}><span className="mr-1.5 h-2 w-2 rounded-[3px]" style={{ backgroundColor: color }} />{label}</span>;
 }
 
 function ChartSkeleton() {
@@ -180,7 +201,7 @@ function ProductChartsSection({ filters }: { filters: DashboardFilters }) {
   const heatTotal = heatData.zoneStatusMatrix.reduce((sum, item) => sum + item.sold + item.available, 0);
 
   return <section className={states.some((state) => state.loading) ? "pointer-events-none opacity-60" : ""} aria-labelledby="product-charts-title" aria-busy={states.some((state) => state.loading)}><div className="mb-4 flex items-start gap-3"><span className="mt-1 h-8 w-1 rounded-full bg-blue-600" /><div><h2 id="product-charts-title" className="text-base font-semibold tracking-[-0.01em] text-slate-950">Phân tích sản phẩm</h2><p className="mt-1 text-xs text-slate-500">So sánh quy mô, giá trị và tình trạng bán theo cơ cấu giỏ hàng</p></div></div><div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-    <ChartCard title={unsoldChart.title} description={unsoldChart.description} headerAction={<div className="flex flex-wrap items-center justify-end gap-3"><select aria-label="Nhóm dữ liệu" className={chartSelectClass} value={unsoldGroup} onChange={(event) => setUnsoldGroup(event.target.value as UnsoldGroup)}>{unsoldGroupOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChartTimeControl chartName="Sản phẩm chưa bán" state={unsoldState} /></div>} legend={<LegendItem color="#2563eb" label="Sản phẩm chưa bán" />}>{availableTotal === 0 ? <div className="flex h-full items-center justify-center text-center text-xs text-slate-500">Không có sản phẩm chưa bán theo nhóm dữ liệu này.</div> : <ResponsiveContainer width="100%" height="100%"><BarChart data={unsoldChart.data} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={false} interval={0} /><YAxis allowDecimals={false} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [number(Number(value)), "Chưa bán"]} /><Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={52} isAnimationActive={false} /></BarChart></ResponsiveContainer>}</ChartCard>
+    <ChartCard title={unsoldChart.title} description={unsoldChart.description} headerAction={<div className="flex flex-wrap items-center justify-end gap-3"><Select value={unsoldGroup} onValueChange={(val) => setUnsoldGroup(val as UnsoldGroup)}><SelectTrigger aria-label="Nhóm dữ liệu" className={chartSelectClass}><SelectValue placeholder="Chọn nhóm" /></SelectTrigger><SelectContent>{unsoldGroupOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><ChartTimeControl chartName="Sản phẩm chưa bán" state={unsoldState} /></div>} legend={<LegendItem color="#2563eb" label="Sản phẩm chưa bán" />}>{availableTotal === 0 ? <div className="flex h-full items-center justify-center text-center text-xs text-slate-500">Không có sản phẩm chưa bán theo nhóm dữ liệu này.</div> : <ResponsiveContainer width="100%" height="100%"><BarChart data={unsoldChart.data} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={false} interval={0} /><YAxis allowDecimals={false} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [number(Number(value)), "Chưa bán"]} /><Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={52} isAnimationActive={false} /></BarChart></ResponsiveContainer>}</ChartCard>
     {productValueTotal === 0 ? <EmptyChart title="Không có giá trị sản phẩm" /> : <ChartCard title="Giá trị theo loại sản phẩm" description="Tổng giá trị giỏ hàng, phân nhóm theo loại sản phẩm" headerAction={<ChartTimeControl chartName="Giá trị theo loại sản phẩm" state={valueState} />} legend={<LegendItem color="#059669" label="Giá trị sản phẩm" />}><ResponsiveContainer width="100%" height="100%"><BarChart data={valueData.valueByProductType} layout="vertical" margin={{ top: 8, right: 18, left: 12, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1_000_000_000)} tỷ`} /><YAxis dataKey="productType" type="category" width={68} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Giá trị"]} /><Bar dataKey="value" fill="#059669" radius={[0, 6, 6, 0]} maxBarSize={34} isAnimationActive={false} /></BarChart></ResponsiveContainer></ChartCard>}
     {statusTotal === 0 ? <EmptyChart title="Không có dữ liệu tình trạng bán" /> : <ChartCard title="Cơ cấu đã bán / chưa bán" description="Tỷ trọng sản phẩm theo trạng thái bán hiện tại" headerAction={<ChartTimeControl chartName="Cơ cấu tình trạng bán" state={statusState} />} legend={<>{statusData.salesStatus.map((item) => <LegendItem key={item.name} color={item.fill} label={`${item.name}: ${number(item.value)}`} />)}</>}><ResponsiveContainer width="100%" height="100%"><Treemap data={statusData.salesStatus} dataKey="value" nameKey="name" stroke="#ffffff" aspectRatio={1.75} content={(props) => { const { x = 0, y = 0, width = 0, height = 0, name, value, fill } = props; return <g><rect x={x} y={y} width={width} height={height} rx={8} fill={fill} stroke="#fff" strokeWidth={4} /><text x={x + 14} y={y + 26} fill="#fff" fontSize={13} fontWeight={600}>{name}</text><text x={x + 14} y={y + 47} fill="rgba(255,255,255,.86)" fontSize={12}>{number(Number(value))} sản phẩm</text></g>; }} /></ResponsiveContainer></ChartCard>}
     {heatTotal === 0 ? <EmptyChart title="Không có dữ liệu tình trạng bán" /> : <ChartCard title={heatChartTitle} description={heatChartDescription} headerAction={<ChartTimeControl chartName={heatChartTitle} state={heatState} />} legend={<><LegendItem color="#dbeafe" label="Thấp" /><LegendItem color="#2563eb" label="Cao" /></>}><div className="grid h-full grid-cols-[minmax(92px,1.2fr)_repeat(2,minmax(76px,1fr))] content-center gap-2" role="table" aria-label={heatChartDescription}><span /><span className="pb-1 text-center text-[11px] font-semibold text-slate-500" role="columnheader">Đã bán</span><span className="pb-1 text-center text-[11px] font-semibold text-slate-500" role="columnheader">Chưa bán</span>{heatChartData.map((item) => <div className="contents" key={item.zone}><span className="flex items-center text-xs font-medium text-slate-600" role="rowheader">{item.zone}</span>{([item.sold, item.available] as number[]).map((value, index) => { const alpha = 0.12 + value / maxHeatValue * 0.88; return <div key={index} role="cell" aria-label={`${item.zone}, ${index === 0 ? "Đã bán" : "Chưa bán"}: ${value}`} className="flex h-12 items-center justify-center rounded-lg text-xs font-semibold tabular-nums" style={{ backgroundColor: `rgba(37,99,235,${alpha})`, color: alpha > 0.55 ? "white" : "#1e3a8a" }}>{number(value)}</div>; })}</div>)}</div></ChartCard>}
@@ -202,7 +223,18 @@ function useSalesTrendSeries(filters: DashboardFilters, group: TrendGroup, from:
 }
 
 function TrendSelect({ chartName, value, onChange }: { chartName: string; value: TrendGroup; onChange: (value: TrendGroup) => void }) {
-  return <select aria-label={`Thời gian - ${chartName}`} className={chartSelectClass} value={value} onChange={(event) => onChange(event.target.value as TrendGroup)}>{trendGroupOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
+  return (
+    <Select value={value} onValueChange={(val) => onChange(val as TrendGroup)}>
+      <SelectTrigger aria-label={`Thời gian - ${chartName}`} className={chartSelectClass}>
+        <SelectValue placeholder="Thời gian" />
+      </SelectTrigger>
+      <SelectContent>
+        {trendGroupOptions.map((option) => (
+          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 function TrendRange({ chartName, from, to, onFromChange, onToChange }: { chartName: string; from: string; to: string; onFromChange: (value: string) => void; onToChange: (value: string) => void }) {
@@ -335,5 +367,5 @@ export function SalesInventoryReport({ filters }: { filters: DashboardFilters })
     { title: "Khách hàng", description: "Tình trạng ký kết và tiến độ thu theo HDMB", tone: "customer", items: [["Tổng khách hàng", number(data.customers.totalCustomers), "COUNT(customer)", User, "customer"], ["Tổng khách đã ký", number(data.customers.signedCustomers), "Khách hàng có HDMB", FileCheck, "customer"], ["Tổng khách chưa ký", number(data.customers.unsignedCustomers), "Khách hàng chưa có HDMB", FileClock, "warning"], ["Tổng giá trị HDMB", money(data.customers.totalContractValue), "SUM(contractValue)", DollarSign, "revenue"], ["Tổng đã thu", money(data.customers.receivedAmount), "SUM(receivedAmount)", Wallet, "revenue"], ["Tổng còn thu", money(data.customers.remainingAmount), "HDMB − Đã thu", TrendingDown, "danger"], ["Giá trị bình quân khách hàng", money(data.customers.averageCustomerValue), "AVG(contractValue)", CircleDollarSign, "customer"]] },
   ];
 
-  return <div className="space-y-8"><div className={loading ? "pointer-events-none opacity-60" : ""} aria-busy={loading}>{loading && <p className="sr-only" aria-live="polite">Đang cập nhật dữ liệu báo cáo</p>}{sections.map((section) => <section key={section.title} className="mb-7" aria-labelledby={`section-${section.title}`}><div className="mb-4 flex items-start gap-3"><span className="mt-1 h-8 w-1 rounded-full bg-blue-600" /><div><h2 id={`section-${section.title}`} className="text-base font-semibold tracking-[-0.01em] text-slate-950">{section.title}</h2><p className="mt-1 text-xs text-slate-500">{section.description}</p></div></div><div className={`grid grid-cols-2 gap-4 lg:grid-cols-4 ${section.items.length === 5 ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>{section.items.map(([label, value, hint, icon, tone]) => <MetricCard key={label} label={label} value={value} hint={hint} icon={icon} tone={tone} />)}</div></section>)}</div><ProductChartsSection filters={filters} /><SalesTrendSection filters={filters} /><AgencyPerformanceSection filters={filters} /><CustomerStructureSection filters={filters} /><CustomerDemographicsSection filters={filters} /><CustomerRankingReports filters={filters} /><p className="text-right text-[11px] text-slate-400">Cập nhật {new Date(data.meta.updatedAt).toLocaleString("vi-VN")} · Nguồn: {data.meta.source === "api" ? "API" : "dữ liệu demo"}</p></div>;
+  return <div className="space-y-8"><div className={loading ? "pointer-events-none opacity-60" : ""} aria-busy={loading}>{loading && <p className="sr-only" aria-live="polite">Đang cập nhật dữ liệu báo cáo</p>}{sections.map((section) => <section key={section.title} className="mb-7" aria-labelledby={`section-${section.title}`}><div className="mb-4 flex items-start gap-3"><span className="mt-1 h-8 w-1 rounded-full bg-blue-600" /><div><h2 id={`section-${section.title}`} className="text-base font-semibold tracking-[-0.01em] text-slate-950">{section.title}</h2><p className="mt-1 text-xs text-slate-500">{section.description}</p></div></div><div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ${section.items.length === 5 ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>{section.items.map(([label, value, hint, icon, tone]) => <MetricCard key={label} label={label} value={value} hint={hint} icon={icon} tone={tone} />)}</div></section>)}</div><ProductChartsSection filters={filters} /><SalesTrendSection filters={filters} /><AgencyPerformanceSection filters={filters} /><CustomerStructureSection filters={filters} /><CustomerDemographicsSection filters={filters} /><CustomerRankingReports filters={filters} /><p className="text-right text-[11px] text-slate-400">Cập nhật {new Date(data.meta.updatedAt).toLocaleString("vi-VN")} · Nguồn: {data.meta.source === "api" ? "API" : "dữ liệu demo"}</p></div>;
 }

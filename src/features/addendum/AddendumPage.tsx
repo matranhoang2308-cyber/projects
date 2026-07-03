@@ -213,6 +213,17 @@ const dialogSteps = [
   { id: 3, label: "Xác nhận & Gửi",       desc: "Kiểm tra và gửi phê duyệt" },
 ];
 
+const addendumInputClass = "h-10 rounded-[8px] border-[#E5EAF3] bg-white text-sm font-medium text-slate-800 shadow-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-100";
+const addendumSelectTriggerClass = "h-10 rounded-[8px] border-[#E5EAF3] bg-white text-sm font-medium text-slate-700 shadow-none transition hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 data-[state=open]:border-slate-400 data-[state=open]:bg-white";
+const addendumTextareaClass = "resize-none rounded-[8px] border-[#E5EAF3] bg-white text-sm font-medium text-slate-800 shadow-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-100";
+const addendumSearchInputClass = "w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-8 pr-3 text-xs font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+const addendumPanelClass = "gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
+const addendumPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";
+const addendumPanelBodyClass = "p-4";
+const addendumPanelMetaClass = "inline-flex h-6 items-center rounded-md border border-[#E5EAF3] bg-[#F8FAFC] px-2.5 text-[11px] leading-none text-slate-600";
+const addendumTableHeaderClass = "border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
+const addendumTableCellClass = "border-b border-r border-[#E5EAF3] bg-white px-3 py-2 align-middle transition-colors group-hover:bg-[#F8FAFC]";
+
 // ─── FF helper ────────────────────────────────────────────────────────────────
 function FF({ label, required, children, className }: {
   label: string; required?: boolean; children: React.ReactNode; className?: string;
@@ -238,10 +249,10 @@ function TemplateFields({ templateId, fields, onChange }: {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <FF label="Giá cũ (VNĐ)" required>
-            <Input placeholder="2,400,000,000" value={fields.oldPrice || ""} onChange={e => onChange("oldPrice", e.target.value)} className="text-sm" />
+            <Input placeholder="2,400,000,000" value={fields.oldPrice || ""} onChange={e => onChange("oldPrice", e.target.value)} className={addendumInputClass} />
           </FF>
           <FF label="Giá mới (VNĐ)" required>
-            <Input placeholder="2,520,000,000" value={fields.newPrice || ""} onChange={e => onChange("newPrice", e.target.value)} className="text-sm" />
+            <Input placeholder="2,520,000,000" value={fields.newPrice || ""} onChange={e => onChange("newPrice", e.target.value)} className={addendumInputClass} />
           </FF>
           <FF label="Chênh lệch" className="col-span-2">
             <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
@@ -253,10 +264,10 @@ function TemplateFields({ templateId, fields, onChange }: {
           </FF>
         </div>
         <FF label="Lý do điều chỉnh giá" required>
-          <Textarea placeholder="Ví dụ: Biến động chi phí vật liệu xây dựng Q1/2026..." value={fields.reason || ""} onChange={e => onChange("reason", e.target.value)} className="text-sm resize-none" rows={3} />
+          <Textarea placeholder="Ví dụ: Biến động chi phí vật liệu xây dựng Q1/2026..." value={fields.reason || ""} onChange={e => onChange("reason", e.target.value)} className={addendumTextareaClass} rows={3} />
         </FF>
         <FF label="Cơ sở pháp lý">
-          <Textarea placeholder="Biên bản thỏa thuận ngày 10/04/2026, điều 7 khoản 2 HĐ gốc..." value={fields.legal || ""} onChange={e => onChange("legal", e.target.value)} className="text-sm resize-none" rows={2} />
+          <Textarea placeholder="Biên bản thỏa thuận ngày 10/04/2026, điều 7 khoản 2 HĐ gốc..." value={fields.legal || ""} onChange={e => onChange("legal", e.target.value)} className={addendumTextareaClass} rows={2} />
         </FF>
       </div>
     );
@@ -264,10 +275,10 @@ function TemplateFields({ templateId, fields, onChange }: {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <FF label="Ngày bàn giao cũ" required>
-            <Input type="date" value={fields.oldDate || ""} onChange={e => onChange("oldDate", e.target.value)} className="text-sm" />
+            <Input type="date" value={fields.oldDate || ""} onChange={e => onChange("oldDate", e.target.value)} className={addendumInputClass} />
           </FF>
           <FF label="Ngày bàn giao mới" required>
-            <Input type="date" value={fields.newDate || ""} onChange={e => onChange("newDate", e.target.value)} className="text-sm" />
+            <Input type="date" value={fields.newDate || ""} onChange={e => onChange("newDate", e.target.value)} className={addendumInputClass} />
           </FF>
           <FF label="Số ngày gia hạn" className="col-span-2">
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm">
@@ -279,10 +290,10 @@ function TemplateFields({ templateId, fields, onChange }: {
           </FF>
         </div>
         <FF label="Lý do gia hạn" required>
-          <Textarea placeholder="Chậm tiến độ thi công do điều kiện thời tiết bất thường..." value={fields.reason || ""} onChange={e => onChange("reason", e.target.value)} className="text-sm resize-none" rows={3} />
+          <Textarea placeholder="Chậm tiến độ thi công do điều kiện thời tiết bất thường..." value={fields.reason || ""} onChange={e => onChange("reason", e.target.value)} className={addendumTextareaClass} rows={3} />
         </FF>
         <FF label="Cam kết bồi thường (nếu có)">
-          <Input placeholder="Bên bán sẽ hỗ trợ 5 triệu/tháng chi phí thuê nhà tạm..." value={fields.compensation || ""} onChange={e => onChange("compensation", e.target.value)} className="text-sm" />
+          <Input placeholder="Bên bán sẽ hỗ trợ 5 triệu/tháng chi phí thuê nhà tạm..." value={fields.compensation || ""} onChange={e => onChange("compensation", e.target.value)} className={addendumInputClass} />
         </FF>
       </div>
     );
@@ -293,15 +304,15 @@ function TemplateFields({ templateId, fields, onChange }: {
           <p className="text-xs text-amber-700">Chuyển nhượng quyền mua cần xác minh pháp lý từ bộ phận Legal.</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <FF label="Họ tên bên mua cũ"><Input placeholder="Nguyễn Văn A" value={fields.oldBuyer || ""} onChange={e => onChange("oldBuyer", e.target.value)} className="text-sm" /></FF>
-          <FF label="CCCD bên mua cũ"><Input placeholder="012345678901" value={fields.oldId || ""} onChange={e => onChange("oldId", e.target.value)} className="text-sm" /></FF>
-          <FF label="Họ tên bên mua mới" required><Input placeholder="Trần Thị B" value={fields.newBuyer || ""} onChange={e => onChange("newBuyer", e.target.value)} className="text-sm" /></FF>
-          <FF label="CCCD bên mua mới" required><Input placeholder="098765432100" value={fields.newId || ""} onChange={e => onChange("newId", e.target.value)} className="text-sm" /></FF>
-          <FF label="SĐT bên mua mới" required><Input placeholder="0987 654 321" value={fields.newPhone || ""} onChange={e => onChange("newPhone", e.target.value)} className="text-sm" /></FF>
-          <FF label="Email bên mua mới"><Input placeholder="email@example.com" value={fields.newEmail || ""} onChange={e => onChange("newEmail", e.target.value)} className="text-sm" /></FF>
+          <FF label="Họ tên bên mua cũ"><Input placeholder="Nguyễn Văn A" value={fields.oldBuyer || ""} onChange={e => onChange("oldBuyer", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="CCCD bên mua cũ"><Input placeholder="012345678901" value={fields.oldId || ""} onChange={e => onChange("oldId", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="Họ tên bên mua mới" required><Input placeholder="Trần Thị B" value={fields.newBuyer || ""} onChange={e => onChange("newBuyer", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="CCCD bên mua mới" required><Input placeholder="098765432100" value={fields.newId || ""} onChange={e => onChange("newId", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="SĐT bên mua mới" required><Input placeholder="0987 654 321" value={fields.newPhone || ""} onChange={e => onChange("newPhone", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="Email bên mua mới"><Input placeholder="email@example.com" value={fields.newEmail || ""} onChange={e => onChange("newEmail", e.target.value)} className={addendumInputClass} /></FF>
         </div>
         <FF label="Lý do chuyển nhượng" required>
-          <Textarea placeholder="Lý do thay đổi bên mua..." value={fields.reason || ""} onChange={e => onChange("reason", e.target.value)} className="text-sm resize-none" rows={2} />
+          <Textarea placeholder="Lý do thay đổi bên mua..." value={fields.reason || ""} onChange={e => onChange("reason", e.target.value)} className={addendumTextareaClass} rows={2} />
         </FF>
       </div>
     );
@@ -319,11 +330,11 @@ function TemplateFields({ templateId, fields, onChange }: {
           </div>
         </FF>
         <div className="grid grid-cols-2 gap-4">
-          <FF label="Ngân hàng mới (nếu vay)"><Input placeholder="Vietcombank" value={fields.bank || ""} onChange={e => onChange("bank", e.target.value)} className="text-sm" /></FF>
-          <FF label="Tỷ lệ vay (%)"><Input placeholder="70" value={fields.loanPct || ""} onChange={e => onChange("loanPct", e.target.value)} className="text-sm" /></FF>
+          <FF label="Ngân hàng mới (nếu vay)"><Input placeholder="Vietcombank" value={fields.bank || ""} onChange={e => onChange("bank", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="Tỷ lệ vay (%)"><Input placeholder="70" value={fields.loanPct || ""} onChange={e => onChange("loanPct", e.target.value)} className={addendumInputClass} /></FF>
         </div>
         <FF label="Mô tả thay đổi lịch thanh toán" required>
-          <Textarea placeholder="Đổi từ 3 đợt → 6 đợt, mỗi đợt cách nhau 2 tháng..." value={fields.scheduleDesc || ""} onChange={e => onChange("scheduleDesc", e.target.value)} className="text-sm resize-none" rows={3} />
+          <Textarea placeholder="Đổi từ 3 đợt → 6 đợt, mỗi đợt cách nhau 2 tháng..." value={fields.scheduleDesc || ""} onChange={e => onChange("scheduleDesc", e.target.value)} className={addendumTextareaClass} rows={3} />
         </FF>
       </div>
     );
@@ -335,7 +346,7 @@ function TemplateFields({ templateId, fields, onChange }: {
         </div>
         <FF label="Lý do chấm dứt" required>
           <Select value={fields.reason || ""} onValueChange={v => onChange("reason", v)}>
-            <SelectTrigger className="text-sm"><SelectValue placeholder="Chọn lý do" /></SelectTrigger>
+            <SelectTrigger className={addendumSelectTriggerClass}><SelectValue placeholder="Chọn lý do" /></SelectTrigger>
             <SelectContent>
               {["Bên mua đơn phương hủy", "Bên bán vi phạm cam kết", "Thỏa thuận đồng thuận", "BĐS không đủ điều kiện pháp lý", "Lý do khác"].map((r) => (
                 <SelectItem key={r} value={r}>{r}</SelectItem>
@@ -344,27 +355,27 @@ function TemplateFields({ templateId, fields, onChange }: {
           </Select>
         </FF>
         <div className="grid grid-cols-2 gap-4">
-          <FF label="Phạt vi phạm (VNĐ)"><Input placeholder="0" value={fields.penalty || ""} onChange={e => onChange("penalty", e.target.value)} className="text-sm" /></FF>
-          <FF label="Hoàn tiền đặt cọc (VNĐ)"><Input placeholder="240,000,000" value={fields.refund || ""} onChange={e => onChange("refund", e.target.value)} className="text-sm" /></FF>
+          <FF label="Phạt vi phạm (VNĐ)"><Input placeholder="0" value={fields.penalty || ""} onChange={e => onChange("penalty", e.target.value)} className={addendumInputClass} /></FF>
+          <FF label="Hoàn tiền đặt cọc (VNĐ)"><Input placeholder="240,000,000" value={fields.refund || ""} onChange={e => onChange("refund", e.target.value)} className={addendumInputClass} /></FF>
         </div>
         <FF label="Điều kiện chấm dứt chi tiết" required>
-          <Textarea placeholder="Mô tả đầy đủ các điều kiện, nghĩa vụ của mỗi bên..." value={fields.detail || ""} onChange={e => onChange("detail", e.target.value)} className="text-sm resize-none" rows={4} />
+          <Textarea placeholder="Mô tả đầy đủ các điều kiện, nghĩa vụ của mỗi bên..." value={fields.detail || ""} onChange={e => onChange("detail", e.target.value)} className={addendumTextareaClass} rows={4} />
         </FF>
       </div>
     );
     case "T06": return (
       <div className="space-y-4">
         <FF label="Tên điều khoản mới" required>
-          <Input placeholder="Điều 12 – Quyền sử dụng khu vực chung" value={fields.clauseName || ""} onChange={e => onChange("clauseName", e.target.value)} className="text-sm" />
+          <Input placeholder="Điều 12 – Quyền sử dụng khu vực chung" value={fields.clauseName || ""} onChange={e => onChange("clauseName", e.target.value)} className={addendumInputClass} />
         </FF>
         <FF label="Nội dung điều khoản" required>
-          <Textarea placeholder="Điền toàn bộ nội dung điều khoản bổ sung..." value={fields.clauseContent || ""} onChange={e => onChange("clauseContent", e.target.value)} className="text-sm resize-none" rows={5} />
+          <Textarea placeholder="Điền toàn bộ nội dung điều khoản bổ sung..." value={fields.clauseContent || ""} onChange={e => onChange("clauseContent", e.target.value)} className={addendumTextareaClass} rows={5} />
         </FF>
         <FF label="Điều khoản HĐ gốc cần sửa đổi">
-          <Input placeholder="Điều 8, khoản 3" value={fields.refClause || ""} onChange={e => onChange("refClause", e.target.value)} className="text-sm" />
+          <Input placeholder="Điều 8, khoản 3" value={fields.refClause || ""} onChange={e => onChange("refClause", e.target.value)} className={addendumInputClass} />
         </FF>
         <FF label="Căn cứ pháp lý">
-          <Textarea placeholder="Căn cứ nghị định, thông tư..." value={fields.legal || ""} onChange={e => onChange("legal", e.target.value)} className="text-sm resize-none" rows={2} />
+          <Textarea placeholder="Căn cứ nghị định, thông tư..." value={fields.legal || ""} onChange={e => onChange("legal", e.target.value)} className={addendumTextareaClass} rows={2} />
         </FF>
       </div>
     );
@@ -475,7 +486,7 @@ function AddendumDialog({ open, onClose, onSuccess }: {
                       placeholder="Tìm theo mã HĐ, khách hàng, căn..."
                       value={contractSearch}
                       onChange={e => setContractSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400"
+                      className={addendumSearchInputClass}
                     />
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
@@ -542,7 +553,7 @@ function AddendumDialog({ open, onClose, onSuccess }: {
                       placeholder="Tìm mẫu phụ lục..."
                       value={templateSearch}
                       onChange={e => setTemplateSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-slate-400 placeholder:text-slate-400"
+                      className={addendumSearchInputClass}
                     />
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
@@ -604,7 +615,7 @@ function AddendumDialog({ open, onClose, onSuccess }: {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
                   <p className="text-xs text-emerald-800" style={{ fontWeight: 600 }}>NGÀY HIỆU LỰC PHỤ LỤC</p>
                   <div className="flex items-center gap-3">
-                    <Input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} className="text-sm w-44 bg-white" />
+                    <Input type="date" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} className={`${addendumInputClass} w-44`} />
                     <p className="text-xs text-emerald-700">Phụ lục có hiệu lực từ ngày này</p>
                   </div>
                 </div>
@@ -978,7 +989,7 @@ function AddendumDetailSheet({ item, open, onClose }: {
                 placeholder="Nhập ghi chú hoặc yêu cầu chỉnh sửa..."
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                className="text-sm resize-none"
+                className={addendumTextareaClass}
                 rows={2}
               />
               <Button variant="outline" size="sm" className="mt-2 gap-1.5 text-xs" disabled={!comment}>
@@ -1063,12 +1074,12 @@ export function AddendumPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="space-y-4 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
         <div>
-          <h1 className="text-slate-900">Quản lý phụ lục</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Tạo, theo dõi và quản lý phụ lục hợp đồng</p>
+          <h1 className="text-xl font-semibold leading-7 text-slate-950">Quản lý phụ lục</h1>
+          <p className="mt-0.5 text-sm leading-5 text-slate-500">Tạo, theo dõi và quản lý phụ lục hợp đồng</p>
         </div>
         <Button size="sm" className="h-10 gap-2 bg-slate-950 text-sm hover:bg-slate-800" onClick={() => setDialogOpen(true)}>
           <Plus className="w-4 h-4" />Phụ lục mới
@@ -1101,16 +1112,16 @@ export function AddendumPage() {
         </AlertDescription>
       </Alert>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {/* Left */}
-        <div className="xl:col-span-2 space-y-5">
+        <div className="space-y-4 xl:col-span-2">
           {/* Template grid */}
-          <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-            <CardHeader className="border-b border-slate-100 pb-4">
+          <Card className={addendumPanelClass}>
+            <CardHeader className={addendumPanelHeaderClass}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-indigo-600" />
-                  <CardTitle className="text-slate-900">Thư viện mẫu phụ lục</CardTitle>
+                  <CardTitle className="text-sm font-semibold text-slate-900">Thư viện mẫu phụ lục</CardTitle>
                 </div>
                 <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setDialogOpen(true)}>
                   <Plus className="w-3.5 h-3.5" />Tạo ngay
@@ -1118,7 +1129,7 @@ export function AddendumPage() {
               </div>
               <CardDescription className="text-xs">6 loại phụ lục chuẩn · Click để tạo mới</CardDescription>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className={addendumPanelBodyClass}>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {templates.map((t) => {
                   const Icon = t.icon;
@@ -1142,24 +1153,32 @@ export function AddendumPage() {
           </Card>
 
           {/* Pending table */}
-          <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-600" />
-                  <CardTitle className="text-slate-900">Phụ lục đang xử lý</CardTitle>
+          <Card className={addendumPanelClass}>
+            <CardHeader className={addendumPanelHeaderClass}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-slate-600" />
+                    <CardTitle className="text-sm font-semibold text-slate-900">Phụ lục đang xử lý</CardTitle>
+                  </div>
+                  <CardDescription className="mt-0.5 text-xs leading-5 text-slate-500">
+                    {pendingList.length} phụ lục · {pendingList.filter(p => p.status !== "Đã ký").length} chờ xử lý
+                  </CardDescription>
                 </div>
-                <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-xs">
-                  {pendingList.filter(p => p.status !== "Đã ký").length} chờ xử lý
-                </Badge>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <span className={addendumPanelMetaClass}>{pendingList.length} kết quả</span>
+                  <span className={`${addendumPanelMetaClass} border-amber-200 bg-amber-50 text-amber-700`}>
+                    {pendingList.filter(p => p.status !== "Đã ký").length} chờ xử lý
+                  </span>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <table className="w-full text-sm">
+              <table className="w-full border-separate border-spacing-0 text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50">
+                  <tr>
                     {["Mã PL", "Loại", "Nhân viên", "Trạng thái", ""].map((h, i) => (
-                      <th key={i} className={cn("text-left px-4 py-2.5 text-xs text-slate-500", i === 2 && "hidden sm:table-cell")} style={{ fontWeight: 600 }}>{h}</th>
+                      <th key={i} className={cn(addendumTableHeaderClass, i === 2 && "hidden sm:table-cell", i === 4 && "w-14 border-r-0 text-center")} style={{ fontWeight: 650 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1170,7 +1189,7 @@ export function AddendumPage() {
                       role="button"
                       tabIndex={0}
                       aria-label={`Mở chi tiết phụ lục ${p.id}`}
-                      className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                      className="group cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
                       onClick={() => openDetail(p.id)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -1179,23 +1198,23 @@ export function AddendumPage() {
                         }
                       }}
                     >
-                      <td className="px-4 py-3">
+                      <td className={addendumTableCellClass}>
                         <span className="text-xs text-indigo-600" style={{ fontWeight: 600 }}>{p.id}</span>
                         <p className="text-xs text-slate-400">{p.contract}</p>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={addendumTableCellClass}>
                         <span className="text-xs text-slate-700">{p.type}</span>
                         <p className="text-xs text-slate-400">{p.created}</p>
                       </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
+                      <td className={`${addendumTableCellClass} hidden sm:table-cell`}>
                         <span className="text-xs text-slate-600">{p.by}</span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={addendumTableCellClass}>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs ${pendingStatusCfg[p.status]}`} style={{ fontWeight: 500 }}>
                           {p.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={`${addendumTableCellClass} border-r-0 text-center`}>
                         <Button
                           variant="ghost" size="sm" aria-label={`Xem phụ lục ${p.id}`} className="h-9 w-9 p-0"
                           onClick={(e) => { e.stopPropagation(); openDetail(p.id); }}
@@ -1213,15 +1232,15 @@ export function AddendumPage() {
 
         {/* Right: Timeline */}
         <div>
-          <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-            <CardHeader className="border-b border-slate-100 pb-4">
+          <Card className={addendumPanelClass}>
+            <CardHeader className={addendumPanelHeaderClass}>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-500" />
-                <CardTitle className="text-slate-900">Nhật ký thay đổi</CardTitle>
+                <CardTitle className="text-sm font-semibold text-slate-900">Nhật ký thay đổi</CardTitle>
               </div>
               <CardDescription className="text-xs">Lịch sử chỉnh sửa & phê duyệt</CardDescription>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className={addendumPanelBodyClass}>
               <div className="relative">
                 <div className="absolute left-3.5 top-4 bottom-4 w-px bg-slate-200" />
                 <div className="space-y-4">

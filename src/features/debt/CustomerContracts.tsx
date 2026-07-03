@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft,
@@ -14,6 +15,12 @@ import {
   CheckCircle2,
   Clock,
   Circle,
+  Eye,
+  FileSpreadsheet,
+  LayoutList,
+  MoreHorizontal,
+  Search,
+  Table2,
 } from "lucide-react";
 
 import {
@@ -35,8 +42,47 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+type ViewMode = "block" | "table";
+
+const debtPanelClass = "max-w-full gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
+const debtPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";
+const debtPanelToolbarClass = "border-b border-[#E5EAF3] bg-[#F8FAFC] px-3 py-2.5";
+const debtPanelFooterClass = "flex min-h-11 flex-col gap-2 border-t border-[#E5EAF3] bg-[#F8FAFC] px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between";
+const debtPanelMetaClass = "inline-flex h-6 items-center rounded-md border border-[#E5EAF3] bg-[#F8FAFC] px-2.5 text-[11px] leading-none text-slate-600";
+const debtTableHeaderClass = "h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
+const debtTableCellClass = "h-11 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
+const debtStickyCellClass = "bg-white transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
+const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none";
+const debtStatusBadgeBaseClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
 
 const statusConfig: Record<PaymentStatus, { label: string; className: string; dot: string }> = {
   "not-due": {
@@ -60,9 +106,9 @@ const statusConfig: Record<PaymentStatus, { label: string; className: string; do
     dot: "bg-amber-500",
   },
   overpaid: {
-    label: "Thanh toán dư",
-    className: "border-cyan-200 bg-cyan-50 text-cyan-700",
-    dot: "bg-cyan-500",
+    label: "Đã thanh toán",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    dot: "bg-emerald-500",
   },
   overdue: {
     label: "Quá hạn",
@@ -92,6 +138,120 @@ function fmtDate(d: string) {
     month: "2-digit",
     year: "numeric",
   });
+}
+
+function compactValue(value?: string | number | null) {
+  if (value === undefined || value === null || value === "") return "-";
+  return String(value);
+}
+
+function contractRemaining(contract: Contract) {
+  return Number(Math.max(0, contract.contractValue - contract.paidAmount).toFixed(3));
+}
+
+function getAllRecords(contract: Contract) {
+  return contract.stages?.flatMap((stage) => stage.records) ?? [];
+}
+
+function getDepositRecord(contract: Contract) {
+  return getAllRecords(contract)[0];
+}
+
+function getCurrentStage(contract: Contract) {
+  return contract.stages?.find((stage) => stage.stageStatus === "in-progress")
+    ?? contract.stages?.find((stage) => stage.stageStatus === "pending")
+    ?? contract.stages?.[contract.stages.length - 1];
+}
+
+function getDistributionUnit(contract: Contract) {
+  if (contract.projectName.includes("Vinhomes")) return "Vinhomes";
+  if (contract.projectName.includes("Masteri")) return "Masterise Homes";
+  if (contract.projectName.includes("Empire")) return "Empire Group";
+  return "-";
+}
+
+function getDiscountPercent(contract: Contract) {
+  const remainder = Math.max(0, 100 - contract.paymentProgress);
+  if (contract.status === "paid") return 0;
+  return Number(Math.min(8, Math.max(1.5, remainder / 12)).toFixed(1));
+}
+
+function exportContractsExcel(contracts: Contract[]) {
+  const escapeCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
+  const headers = [
+    "Mã sản phẩm",
+    "NVTV",
+    "TPKD",
+    "GD/Sàn SLK",
+    "Đơn vị phân phối",
+    "Giai đoạn",
+    "Hướng",
+    "Loại sản phẩm",
+    "Đơn giá",
+    "Giá bán",
+    "Tổng chiết khấu (%)",
+    "Tổng chiết khấu (Tiền)",
+    "Giá trị HĐ sau chiết khấu",
+    "Ngày cọc",
+    "Số tiền cọc",
+    "Đã thu cọc",
+    "Ngày ký hợp đồng",
+    "PTTT",
+    "Tổng đợt thanh toán",
+    "Đợt thanh toán hiện tại",
+    "Tổng phải thu",
+    "Tỷ lệ đã thu",
+    "Tổng đã thu",
+    "Tỷ lệ còn lại",
+    "Tổng còn lại",
+    "Thời gian công chứng dự kiến",
+    "Trạng thái",
+  ];
+  const rows = [
+    headers,
+    ...contracts.map((contract) => {
+      const deposit = getDepositRecord(contract);
+      const currentStage = getCurrentStage(contract);
+      const discountPct = getDiscountPercent(contract);
+      const discountAmount = Number((contract.contractValue * discountPct / 100).toFixed(3));
+      return [
+        contract.unit,
+        compactValue(contract.salesperson),
+        "-",
+        "-",
+        getDistributionUnit(contract),
+        compactValue(currentStage?.name),
+        "-",
+        compactValue(contract.productType),
+        formatVND(contract.contractValue),
+        formatVND(contract.contractValue),
+        `${discountPct}%`,
+        formatVND(discountAmount),
+        formatVND(Math.max(0, contract.contractValue - discountAmount)),
+        deposit ? fmtDate(deposit.dueDate) : "-",
+        deposit ? formatVND(deposit.baseAmount) : "-",
+        deposit ? formatVND(deposit.paidAmount ?? (deposit.status === "paid" ? deposit.baseAmount : 0)) : "-",
+        deposit ? fmtDate(deposit.dueDate) : "-",
+        compactValue(contract.paymentMethod),
+        String(getAllRecords(contract).length),
+        compactValue(currentStage ? `GĐ${currentStage.stageNumber}` : "-"),
+        formatVND(contract.contractValue),
+        `${contract.paymentProgress}%`,
+        formatVND(contract.paidAmount),
+        `${Math.max(0, 100 - contract.paymentProgress)}%`,
+        formatVND(contractRemaining(contract)),
+        fmtDate(contract.dueDate),
+        statusConfig[contract.status].label,
+      ];
+    }),
+  ];
+  const csv = `\uFEFF${rows.map((row) => row.map((cell) => escapeCell(String(cell))).join(",")).join("\n")}`;
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "danh-sach-hop-dong-cong-no.csv";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function StatusIcon({ status }: { status: PaymentStatus }) {
@@ -309,6 +469,13 @@ function ContractCard({
 export function CustomerContracts() {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<ViewMode>("block");
+  const [tableSearch, setTableSearch] = useState("");
+  const [tableStatusFilter, setTableStatusFilter] = useState<string>("all");
+  const [tableLotTypeFilter, setTableLotTypeFilter] = useState<string>("all");
+  const [tablePaymentMethodFilter, setTablePaymentMethodFilter] = useState<string>("all");
+  const [selectedContractIds, setSelectedContractIds] = useState<Set<string>>(() => new Set());
+  const [currentPage, setCurrentPage] = useState(1);
 
   let targetCustomerId = customerId;
   if (customerId && customerId.startsWith("C")) {
@@ -319,6 +486,31 @@ export function CustomerContracts() {
   }
 
   const customer = customers.find((c) => c.id === targetCustomerId);
+  const customerContracts = customer?.contracts ?? [];
+  const tableRows = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    return customerContracts.filter((contract) => {
+      const matchesSearch =
+        !q ||
+        contract.unit.toLowerCase().includes(q) ||
+        contract.contractCode.toLowerCase().includes(q) ||
+        contract.projectName.toLowerCase().includes(q) ||
+        (contract.salesperson ?? "").toLowerCase().includes(q) ||
+        (contract.productType ?? "").toLowerCase().includes(q);
+      const matchesStatus = tableStatusFilter === "all" || contract.status === tableStatusFilter;
+      const matchesLotType = tableLotTypeFilter === "all" || (contract.productType ?? "-") === tableLotTypeFilter;
+      const matchesPaymentMethod = tablePaymentMethodFilter === "all" || (contract.paymentMethod ?? "-") === tablePaymentMethodFilter;
+      return matchesSearch && matchesStatus && matchesLotType && matchesPaymentMethod;
+    });
+  }, [customerContracts, tableSearch, tableStatusFilter, tableLotTypeFilter, tablePaymentMethodFilter]);
+  const lotTypeOptions = useMemo(
+    () => Array.from(new Set(customerContracts.map((contract) => contract.productType).filter(Boolean))).sort() as string[],
+    [customerContracts]
+  );
+  const paymentMethodOptions = useMemo(
+    () => Array.from(new Set(customerContracts.map((contract) => contract.paymentMethod).filter(Boolean))).sort() as string[],
+    [customerContracts]
+  );
 
   if (!customer) {
     return (
@@ -343,6 +535,32 @@ export function CustomerContracts() {
   const totalLateFee = getCustomerTotalLateFee(customer);
   const overdueContracts = customer.contracts.filter((ct) => ct.status === "overdue");
   const isOverdue = worst === "overdue";
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(tableRows.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, pageCount);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const pageEndIndex = Math.min(pageStartIndex + pageSize, tableRows.length);
+  const paginatedContracts = tableRows.slice(pageStartIndex, pageEndIndex);
+  const currentPageSelected = paginatedContracts.length > 0 && paginatedContracts.every((contract) => selectedContractIds.has(contract.id));
+  const toggleSelectedContract = (contractId: string) => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contractId)) next.delete(contractId);
+      else next.add(contractId);
+      return next;
+    });
+  };
+  const toggleCurrentPageSelection = () => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      const shouldSelect = !currentPageSelected;
+      paginatedContracts.forEach((contract) => {
+        if (shouldSelect) next.add(contract.id);
+        else next.delete(contract.id);
+      });
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-full bg-slate-50/80">
@@ -493,42 +711,371 @@ export function CustomerContracts() {
                 )}
               </p>
             </div>
-            {/* Quick stats pills */}
-            <div className="hidden sm:flex items-center gap-2">
-              {(["paid", "upcoming", "overdue"] as PaymentStatus[]).map((s) => {
-                const count = customer.contracts.filter((ct) => ct.status === s).length;
-                if (count === 0) return null;
-                return (
-                  <div
-                    key={s}
-                    className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${statusConfig[s].className}`}
-                  >
-                    <StatusIcon status={s} />
-                    {count} {statusConfig[s].label.toLowerCase()}
-                  </div>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              {/* Quick stats pills */}
+              <div className="hidden lg:flex items-center gap-2">
+                {(["paid", "upcoming", "overdue"] as PaymentStatus[]).map((s) => {
+                  const count = customer.contracts.filter((ct) => ct.status === s).length;
+                  if (count === 0) return null;
+                  return (
+                    <div
+                      key={s}
+                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${statusConfig[s].className}`}
+                    >
+                      <StatusIcon status={s} />
+                      {count} {statusConfig[s].label.toLowerCase()}
+                    </div>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 border-slate-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                onClick={() => exportContractsExcel(tableRows)}
+                aria-label="Xuất Excel"
+                title="Xuất Excel"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center border border-slate-200 bg-slate-50 p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("block")}
+                  className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                    viewMode === "block"
+                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                  aria-label="Xem dạng block"
+                  title="Dạng block"
+                >
+                  <LayoutList className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                    viewMode === "table"
+                      ? "bg-white text-slate-800 shadow-sm border border-slate-200/50"
+                      : "text-slate-400 hover:text-slate-600"
+                  }`}
+                  aria-label="Xem dạng bảng"
+                  title="Dạng bảng"
+                >
+                  <Table2 className="size-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Contracts grid */}
-          <div
-            className={
-              customer.contracts.length === 1
-                ? "max-w-xl"
-                : customer.contracts.length === 2
-                ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
-                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-            }
-          >
-            {customer.contracts.map((contract) => (
-              <ContractCard
-                key={contract.id}
-                contract={contract}
-                customerId={customer.id}
-              />
-            ))}
-          </div>
+          {viewMode === "block" ? (
+            <div
+              className={
+                customer.contracts.length === 1
+                  ? "max-w-xl"
+                  : customer.contracts.length === 2
+                  ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
+                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              }
+            >
+              {customer.contracts.map((contract) => (
+                <ContractCard
+                  key={contract.id}
+                  contract={contract}
+                  customerId={customer.id}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card className={debtPanelClass}>
+              <div className={debtPanelHeaderClass}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-slate-900">Danh sách hợp đồng công nợ</h3>
+                    <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                      {tableRows.length} hợp đồng phù hợp · {selectedContractIds.size} đang chọn
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span className={debtPanelMetaClass}>{tableRows.length} kết quả</span>
+                    <span className={debtPanelMetaClass}>{customer.contracts.length} hợp đồng</span>
+                    <span className="hidden text-xs text-slate-500 lg:inline">Bấm vào mã sản phẩm để xem chi tiết</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={debtPanelToolbarClass}>
+                <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 scrollbar-none whitespace-nowrap">
+                  <div className="relative min-w-[220px] flex-1 flex-shrink-0 lg:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={tableSearch}
+                      onChange={(e) => {
+                        setTableSearch(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder="Search"
+                      aria-label="Tìm trong danh sách hợp đồng công nợ"
+                      className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                    />
+                  </div>
+                  <Select
+                    value={tableStatusFilter}
+                    onValueChange={(value) => {
+                      setTableStatusFilter(value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger aria-label="Lọc theo trạng thái" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
+                      <SelectValue placeholder="Trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                      <SelectItem value="paid">Đã thanh toán</SelectItem>
+                      <SelectItem value="upcoming">Sắp đến hạn</SelectItem>
+                      <SelectItem value="overdue">Quá hạn</SelectItem>
+                      <SelectItem value="partial">Thanh toán một phần</SelectItem>
+                      <SelectItem value="extended">Đã gia hạn</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={tableLotTypeFilter}
+                    onValueChange={(value) => {
+                      setTableLotTypeFilter(value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger aria-label="Lọc theo loại lô" className={`${compactFilterTriggerClass} w-40 flex-shrink-0`}>
+                      <SelectValue placeholder="Loại lô" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả loại lô</SelectItem>
+                      {lotTypeOptions.map((value) => (
+                        <SelectItem key={value} value={value}>{value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={tablePaymentMethodFilter}
+                    onValueChange={(value) => {
+                      setTablePaymentMethodFilter(value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger aria-label="Lọc theo PTTT" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
+                      <SelectValue placeholder="PTTT" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả PTTT</SelectItem>
+                      {paymentMethodOptions.map((value) => (
+                        <SelectItem key={value} value={value}>{value}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="max-h-[calc(100dvh-320px)] min-h-[420px] max-w-full overflow-auto bg-white">
+                <Table className="min-w-[3600px] table-fixed border-separate border-spacing-0 text-sm">
+                  <TableHeader className="sticky top-0 z-20">
+                    <TableRow>
+                      <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-2 py-2 text-center text-[11px] text-slate-600 shadow-[6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>
+                        <button
+                          type="button"
+                          aria-label="Chọn tất cả dòng trong trang"
+                          aria-pressed={currentPageSelected}
+                          className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${currentPageSelected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-transparent hover:border-slate-500"}`}
+                          onClick={toggleCurrentPageSelection}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        </button>
+                      </TableHead>
+                      {[
+                        ["Mã sản phẩm", "w-36"],
+                        ["NVTV", "w-36"],
+                        ["TPKD", "w-32"],
+                        ["GD/Sàn SLK", "w-36"],
+                        ["Đơn vị phân phối", "w-44"],
+                        ["Giai đoạn", "w-52"],
+                        ["Hướng", "w-24"],
+                        ["Loại sản phẩm", "w-36"],
+                        ["Đơn giá", "w-32 text-right"],
+                        ["Giá bán", "w-32 text-right"],
+                        ["Tổng chiết khấu (%)", "w-40 text-right"],
+                        ["Tổng chiết khấu (Tiền)", "w-44 text-right"],
+                        ["Giá trị HĐ sau chiết khấu", "w-48 text-right"],
+                        ["Ngày cọc", "w-32"],
+                        ["Số tiền cọc", "w-32 text-right"],
+                        ["Đã thu cọc", "w-32 text-right"],
+                        ["Ngày ký hợp đồng", "w-40"],
+                        ["PTTT", "w-44"],
+                        ["Tổng đợt thanh toán", "w-40 text-right"],
+                        ["Đợt thanh toán hiện tại", "w-44"],
+                        ["Tổng phải thu", "w-36 text-right"],
+                        ["Tỷ lệ đã thu", "w-32 text-right"],
+                        ["Tổng đã thu", "w-36 text-right"],
+                        ["Tỷ lệ còn lại", "w-32 text-right"],
+                        ["Tổng còn lại", "w-36 text-right"],
+                        ["Thời gian công chứng dự kiến", "w-52"],
+                        ["Trạng thái", "w-40"],
+                      ].map(([label, width]) => (
+                        <TableHead key={label} className={`${debtTableHeaderClass} ${width}`} style={{ fontWeight: 650 }}>
+                          {label}
+                        </TableHead>
+                      ))}
+                      <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center text-[11px] text-slate-600 shadow-[-6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>...</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tableRows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={29} className="px-4 py-12 text-center text-sm text-slate-400">
+                          Không tìm thấy hợp đồng phù hợp bộ lọc
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedContracts.map((contract) => {
+                        const deposit = getDepositRecord(contract);
+                        const currentStage = getCurrentStage(contract);
+                        const discountPct = getDiscountPercent(contract);
+                        const discountAmount = Number((contract.contractValue * discountPct / 100).toFixed(3));
+                        const isSelected = selectedContractIds.has(contract.id);
+                        const detailPath = `/debt/customer/${customer.id}/contract/${contract.id}`;
+                        const paidDeposit = deposit ? (deposit.paidAmount ?? (deposit.status === "paid" ? deposit.baseAmount : 0)) : 0;
+                        const dataCells: Array<{ value: string; className?: string; strong?: boolean }> = [
+                          { value: compactValue(contract.salesperson), className: "w-36" },
+                          { value: "-", className: "w-32" },
+                          { value: "-", className: "w-36" },
+                          { value: getDistributionUnit(contract), className: "w-44" },
+                          { value: compactValue(currentStage?.name), className: "w-52" },
+                          { value: "-", className: "w-24" },
+                          { value: compactValue(contract.productType), className: "w-36" },
+                          { value: formatVND(contract.contractValue), className: "w-32 text-right tabular-nums", strong: true },
+                          { value: formatVND(contract.contractValue), className: "w-32 text-right tabular-nums", strong: true },
+                          { value: `${discountPct}%`, className: "w-40 text-right tabular-nums" },
+                          { value: formatVND(discountAmount), className: "w-44 text-right tabular-nums" },
+                          { value: formatVND(Math.max(0, contract.contractValue - discountAmount)), className: "w-48 text-right tabular-nums", strong: true },
+                          { value: deposit ? fmtDate(deposit.dueDate) : "-", className: "w-32" },
+                          { value: deposit ? formatVND(deposit.baseAmount) : "-", className: "w-32 text-right tabular-nums" },
+                          { value: deposit ? formatVND(paidDeposit) : "-", className: "w-32 text-right tabular-nums" },
+                          { value: deposit ? fmtDate(deposit.dueDate) : "-", className: "w-40" },
+                          { value: compactValue(contract.paymentMethod), className: "w-44" },
+                          { value: String(getAllRecords(contract).length), className: "w-40 text-right tabular-nums" },
+                          { value: compactValue(currentStage ? `GĐ${currentStage.stageNumber}` : "-"), className: "w-44" },
+                          { value: formatVND(contract.contractValue), className: "w-36 text-right tabular-nums", strong: true },
+                          { value: `${contract.paymentProgress}%`, className: "w-32 text-right tabular-nums" },
+                          { value: formatVND(contract.paidAmount), className: "w-36 text-right tabular-nums text-emerald-700", strong: true },
+                          { value: `${Math.max(0, 100 - contract.paymentProgress)}%`, className: "w-32 text-right tabular-nums" },
+                          { value: formatVND(contractRemaining(contract)), className: "w-36 text-right tabular-nums", strong: true },
+                          { value: fmtDate(contract.dueDate), className: "w-52" },
+                        ];
+
+                        return (
+                          <TableRow
+                            key={contract.id}
+                            data-state={isSelected ? "selected" : undefined}
+                            className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300"
+                            onClick={(event) => {
+                              const target = event.target as HTMLElement;
+                              if (target.closest(".td-actions") || target.closest(".td-select")) return;
+                              navigate(detailPath);
+                            }}
+                          >
+                            <TableCell className={`td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] px-2 py-1.5 text-center shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)] ${debtStickyCellClass}`}>
+                              <button
+                                type="button"
+                                className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-slate-900 bg-slate-900 text-white" : "border-[#DDE5F0] bg-white text-transparent hover:border-slate-500"}`}
+                                title="Chọn dòng"
+                                aria-label={`Chọn hợp đồng ${contract.contractCode}`}
+                                aria-pressed={isSelected}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleSelectedContract(contract.id);
+                                }}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              </button>
+                            </TableCell>
+                            <TableCell className={`${debtTableCellClass} w-36`}>
+                              <button
+                                type="button"
+                                className="truncate text-xs leading-5 text-blue-600 hover:text-blue-700 hover:underline"
+                                style={{ fontWeight: 650 }}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  navigate(detailPath);
+                                }}
+                              >
+                                {contract.unit}
+                              </button>
+                              <p className="truncate text-[11px] text-slate-400">{contract.contractCode}</p>
+                            </TableCell>
+                            {dataCells.map((cell, index) => (
+                              <TableCell key={`${contract.id}-${index}`} className={`${debtTableCellClass} ${cell.className ?? ""}`}>
+                                <p className={`truncate text-xs leading-5 ${cell.strong ? "text-slate-900" : "text-slate-700"}`} style={{ fontWeight: cell.strong ? 600 : 400 }} title={cell.value}>
+                                  {cell.value}
+                                </p>
+                              </TableCell>
+                            ))}
+                            <TableCell className={`${debtTableCellClass} w-40`}>
+                              <Badge className={`${debtStatusBadgeBaseClass} ${statusConfig[contract.status].className}`} style={{ fontWeight: 650 }}>
+                                {statusConfig[contract.status].label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={`td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] px-0 py-1.5 text-center shadow-[-6px_0_12px_-12px_rgba(15,23,42,0.45)] ${debtStickyCellClass}`}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" aria-label={`Mở menu ${contract.contractCode}`} className="h-8 w-8 rounded-md p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-300" onClick={(event) => event.stopPropagation()}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-36 bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                                  <DropdownMenuItem
+                                    className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      navigate(detailPath);
+                                    }}
+                                  >
+                                    <Eye className="h-3.5 w-3.5 text-slate-400" />
+                                    Xem chi tiết
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className={debtPanelFooterClass}>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <div>Hiển thị {tableRows.length === 0 ? 0 : pageStartIndex + 1}-{pageEndIndex} / {tableRows.length} hợp đồng</div>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-400">{selectedContractIds.size} đang chọn</span>
+                </div>
+                <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <span className="px-2 tabular-nums font-medium text-slate-600">
+                        {tableRows.length === 0 ? "0-0" : `${pageStartIndex + 1}-${pageEndIndex}`} / {tableRows.length}
+                      </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={safeCurrentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>‹</Button>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled={safeCurrentPage >= pageCount} onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}>›</Button>
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </Card>
+          )}
         </div>
       </section>
     </div>

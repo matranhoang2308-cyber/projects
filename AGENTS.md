@@ -74,10 +74,14 @@ When generating or modifying UI code, prioritize decisions using the following o
 - **Follow Design System**: Adhere to Appminis Design System guidelines, colors (oklch), shadows, and radii.
 - **Read Related Documents**: Ensure all referenced design files are read before coding.
 - **Keep UI consistent**: Maintain alignment, spacing, typography, and hover states with the rest of the app.
+- **Reference Metronic Sources**: Khi làm mới hoặc phát triển UI, AI agent **bắt buộc** phải truy cập trực tiếp vào các thư mục mã nguồn Metronic 9 ở thư mục cha song song để lấy cấu trúc HTML/JSX và các Tailwind classes chuẩn:
+  - [metronic-tailwind-react-concepts](file:///Users/matranhoang/Documents/Tài liệu Design System (Appminis)/metronic-tailwind-react-concepts)
+  - [metronic-tailwind-react-demos](file:///Users/matranhoang/Documents/Tài liệu Design System (Appminis)/metronic-tailwind-react-demos)
+  - [metronic-tailwind-react-starter-kit](file:///Users/matranhoang/Documents/Tài liệu Design System (Appminis)/metronic-tailwind-react-starter-kit)
 
 ### DON'T:
 - **No hardcoded styles**: Do not write raw pixel sizes, custom hex colors, or inline styles. Use Tailwind CSS v4 variables or system design tokens.
-- **No copying Metronic**: Do not copy arbitrary styles directly from external Metronic/templates without aligning them to the design system.
+- **No copying Metronic blindly**: Luôn căn chỉnh cấu trúc code sao chép từ Metronic sao cho đồng bộ với Design System và logic dữ liệu của dự án.
 - **No style duplication**: Do not create new classes or configurations if the system defines a utility.
 - **Do NOT modify the Design System**: Never write to, modify, or add files within the `appminis-design-system` repository unless explicitly requested.
 - **No out-of-scope refactoring**: Do not refactor UI elements that are outside the scope of your assigned task.

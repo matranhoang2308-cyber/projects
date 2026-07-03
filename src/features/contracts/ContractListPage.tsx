@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  Settings,
   LayoutGrid,
   LayoutList,
   Table2,
@@ -70,7 +71,7 @@ import {
   type HdmbRecord,
 } from "@/data/hdmbImportSchema";
 import { CONTRACT_STATUS_FLOW } from "@/constants/contractStatus";
-import { CONTRACT_STATUS_CLASSES, getNextContractStatus, isFinalContractStatus, canJumpToStatus } from "@/helpers/contractStatus";
+import { CONTRACT_STATUS_CLASSES, canJumpToStatus } from "@/helpers/contractStatus";
 import { buildTransferContractDetailSections } from "./transferContractDetailSchema";
 import { TransferContractBlockView } from "./TransferContractBlockView";
 import { TransferContractTableView } from "./TransferContractTableView";
@@ -146,11 +147,21 @@ const contractTrendGroupOptions: Array<{ value: ContractTrendGroup; label: strin
   { value: "custom", label: "Khoảng thời gian" },
 ];
 
-const contractChartSelectClass = "crm-native-select h-10 min-w-[176px] rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
-const contractDateInputClass = "h-10 min-w-0 w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 outline-none focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const contractChartSelectClass = "h-9 min-w-[176px] rounded-[8px] border border-[#E5EAF3] bg-white text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition shadow-none text-left";
+const contractDateInputClass = "h-9 min-w-0 w-full rounded-[8px] border border-[#E5EAF3] bg-white px-2.5 text-xs font-medium text-slate-700 outline-none hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition";
 
 const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none";
+const detailFilterTriggerClass = "h-9 w-full rounded-[8px] border-[#E5EAF3] bg-white text-xs text-slate-700 shadow-none";
+const contractPanelClass = "max-w-full gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
+const contractPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";
+const contractPanelToolbarClass = "border-b border-[#E5EAF3] bg-[#F8FAFC] px-3 py-2.5";
+const contractPanelFooterClass = "flex min-h-11 flex-col gap-2 border-t border-[#E5EAF3] bg-[#F8FAFC] px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between";
+const contractPanelMetaClass = "inline-flex h-6 items-center rounded-md border border-[#E5EAF3] bg-[#F8FAFC] px-2.5 text-[11px] leading-none text-slate-600";
 const contractTablePageSize = 10;
+const contractTableHeaderClass = "h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
+const contractTableCellClass = "h-11 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
+const contractStickyCellClass = "bg-white transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
+const contractDetailCtaClass = "h-[34px] min-w-[150px] rounded-[10px] px-4 text-sm font-semibold";
 
 
 type CheckStatus = "passed" | "failed";
@@ -162,10 +173,44 @@ type CheckResult = {
   checkedAt: string;
 };
 
+type HandoverStatusInfo = {
+  handoverDate: string;
+  handoverBy: string;
+  receivedBy: string;
+  handoverNote: string;
+  handoverFileName: string;
+};
+
+type ReturnedStatusInfo = {
+  returnedDate: string;
+  returnedBy: string;
+  receivedBy: string;
+  returnedNote: string;
+  returnedFileName: string;
+};
+
+type ContractStatusInfo = {
+  handover?: HandoverStatusInfo;
+  returned?: ReturnedStatusInfo;
+};
+
 const checkStatusLabel: Record<CheckStatus, string> = {
   passed: "Đã kiểm tra - Đạt",
   failed: "Đã kiểm tra - Không đạt",
 };
+
+const contractBadgeBaseClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
+const contractStatusBadgeClass = (status?: string) => `${contractBadgeBaseClass} font-semibold ${CONTRACT_STATUS_CLASSES[status || "Đã cọc"]}`;
+const contractCheckBadgeClass = (status?: CheckStatus) => {
+  if (status === "passed") {
+    return `${contractBadgeBaseClass} bg-emerald-50 text-emerald-700 ring-emerald-200`;
+  }
+  if (status === "failed") {
+    return `${contractBadgeBaseClass} bg-red-50 text-red-700 ring-red-200`;
+  }
+  return `${contractBadgeBaseClass} bg-slate-50 text-slate-600 ring-slate-200`;
+};
+const contractTransferBadgeClass = `${contractBadgeBaseClass} border-violet-200 bg-violet-50 text-violet-700 ring-violet-200`;
 
 
 type TransferPerson = {
@@ -353,7 +398,7 @@ function PersonReadOnlyCard({ title, person }: { title: string; person: Transfer
 }
 
 function TransferBadge({ sequence }: { sequence: number }) {
-  return <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] text-violet-700" style={{ fontWeight: 650 }}>CN lần {sequence}</span>;
+  return <span className={contractTransferBadgeClass} style={{ fontWeight: 650 }}>CN lần {sequence}</span>;
 }
 
 function TransferHistoryBlockItem({ log, defaultOpen }: { log: TransferLog; defaultOpen: boolean }) {
@@ -692,31 +737,86 @@ const transferPersonRows = (person: TransferPerson) => [
 ];
 
 function TransferHistoryTable({ logs }: { logs: TransferLog[] }) {
-  return <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-2sm"><tbody>
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  return <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-xs"><tbody>
     {logs.flatMap((log) => {
       const summaryRows = [["Lần chuyển nhượng", String(log.sequence)], ["Ngày chuyển nhượng", log.form.signedDate || log.createdAt], ["Chủ sở hữu cũ", log.oldOwner.name], ["Chủ sở hữu mới", log.newOwner.name], ["Đồng sở hữu cũ", log.oldCoOwner.name], ["Đồng sở hữu mới", log.newCoOwner.name], ["File hợp đồng", log.form.fileName]];
-      const sectionRow = (title: string, key: string) => <tr key={key} className="bg-stone-100"><td className="w-16 border-b border-r border-stone-200 px-3 py-2 text-center text-stone-700" style={{ fontWeight: 700 }}>A</td><td className="border-b border-stone-200 px-3 py-2 text-stone-800" style={{ fontWeight: 700 }}>{title}</td><td className="w-28 border-b border-stone-200 px-3 py-2 text-right"><TransferBadge sequence={log.sequence} /></td></tr>;
-      const dataRows = (rows: string[][], prefix: string) => rows.map(([label, value], index) => <tr key={`${log.id}-${prefix}-${index}`} className="hover:bg-slate-50"><td className="border-b border-r border-slate-100 px-3 py-2 text-center text-slate-400">{index + 1}</td><td className="border-b border-r border-slate-100 px-3 py-2 text-slate-700">{label}</td><td className="border-b border-slate-100 px-3 py-2 text-right text-slate-900">{compactValue(value)}</td></tr>);
-      return [sectionRow("LỊCH SỬ CHUYỂN NHƯỢNG", `${log.id}-summary`), ...dataRows(summaryRows, "summary"), sectionRow("THÔNG TIN CHỦ SỞ HỮU CŨ", `${log.id}-owner`), ...dataRows(transferPersonRows(log.oldOwner), "owner"), ...(log.oldCoOwner.name ? [sectionRow("THÔNG TIN ĐỒNG SỞ HỮU CŨ", `${log.id}-co-owner`), ...dataRows(transferPersonRows(log.oldCoOwner), "co-owner")] : [])];
+      const sectionRow = (title: string, key: string) => {
+        const isCollapsed = collapsedSections[key];
+        return <tr key={key} className="bg-[#F6F8FB]"><td className="w-16 border-b border-r border-[#DDE5F0] px-3 py-2 text-center text-[11px] text-slate-600" style={{ fontWeight: 650 }}>A</td><td className="border-b border-[#DDE5F0] p-0 text-[11px] text-slate-700" style={{ fontWeight: 650 }}><button type="button" aria-expanded={!isCollapsed} onClick={() => toggleSection(key)} className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] leading-4 text-slate-700 transition-colors hover:bg-[#EEF3F8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300"><span className="text-[11px] leading-4">{title}</span><ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isCollapsed ? "" : "rotate-180"}`} /></button></td><td className="w-28 border-b border-[#DDE5F0] px-3 py-2 text-right"><TransferBadge sequence={log.sequence} /></td></tr>;
+      };
+      const dataRows = (rows: string[][], prefix: string) => rows.map(([label, value], index) => <tr key={`${log.id}-${prefix}-${index}`} className="hover:bg-[#F8FAFC]"><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-400">{index + 1}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{label}</td><td className="border-b border-[#E5EAF3] px-3 py-2 text-right text-xs text-slate-900" style={{ fontWeight: 600 }}>{compactValue(value)}</td></tr>);
+      const groups = [
+        { key: `${log.id}-summary`, title: "LỊCH SỬ CHUYỂN NHƯỢNG", rows: summaryRows, prefix: "summary" },
+        { key: `${log.id}-owner`, title: "THÔNG TIN CHỦ SỞ HỮU CŨ", rows: transferPersonRows(log.oldOwner), prefix: "owner" },
+        ...(log.oldCoOwner.name ? [{ key: `${log.id}-co-owner`, title: "THÔNG TIN ĐỒNG SỞ HỮU CŨ", rows: transferPersonRows(log.oldCoOwner), prefix: "co-owner" }] : []),
+      ];
+      return groups.flatMap((group) => [sectionRow(group.title, group.key), ...(collapsedSections[group.key] ? [] : dataRows(group.rows, group.prefix))]);
     })}
   </tbody></table></div></section>;
 }
 
+function parseVNCurrency(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const digits = Number(value.replace(/\D/g, ""));
+  return digits > 0 ? digits : fallback;
+}
+
+function parseVNDate(value: string | undefined, fallback: Date): Date {
+  const match = value?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return fallback;
+  const [, day, month, year] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+}
+
+type PaymentRowStatus = "paid" | "partial" | "overdue" | "upcoming" | "pending";
+
 function PaymentProgressTable({ record }: { record: HdmbRecord }) {
   const navigate = useNavigate();
-  const totalValue = Number((record.values.c93 || record.values.c87 || "3200000000").replace(/\D/g, "")) || 3200000000;
-  const depositDate = record.values.c96 || record.values.c106 || "20/02/2026";
-  const baseDate = new Date("2026-02-20T00:00:00");
+  const totalValue = parseVNCurrency(record.values.c93 || record.values.c87, 3200000000);
+  const depositRequired = parseVNCurrency(record.values.c94, 200000000);
+  const depositCollected = parseVNCurrency(record.values.c95, 200000000);
+  const depositPaidDate = record.values.c96 || "14/04/2026";
+  const signingDate = record.values.c106 || "13/07/2025";
+  const pttmContent = record.values.c104 || "Thanh toán chuẩn 18 đợt";
+  const pttmRatio = record.values.c105 || "40%";
+  const baseDate = parseVNDate(signingDate, new Date("2026-02-20T00:00:00"));
+
+  // Cọc chỉ áp dụng cho Đợt 1, đồng bộ với dạng xem block (PaymentTimelinePreview).
+  // Số tiền của Đợt 1 = tiền cọc phải thu (c94) — phần này được TRỪ RA khỏi tổng giá trị
+  // trước khi chia cho 17 đợt còn lại, để tiền cọc không bị tính lặp/trải dài qua các đợt sau.
+  const depositPct = Math.round((depositRequired / totalValue) * 100);
+  const depositStatus: PaymentRowStatus = depositCollected <= 0 ? "pending" : depositCollected >= depositRequired ? "paid" : "partial";
+  const remainingValue = Math.max(totalValue - depositRequired, 0);
+  const remainingWeightTotal = 15 * 5 + 2 * 2.5; // đợt 2-16 = 5, đợt 17-18 = 2.5
+
   const rows = Array.from({ length: 18 }, (_, index) => {
-    const pct = index === 0 ? 20 : index >= 16 ? 2.5 : 5;
+    if (index === 0) {
+      return {
+        seq: 1,
+        label: "Đợt 1 - Cọc HĐMB",
+        depositDate: depositPaidDate,
+        pct: depositPct,
+        amount: depositRequired,
+        dueDate: signingDate,
+        status: depositStatus,
+      };
+    }
+    const weight = index >= 16 ? 2.5 : 5;
+    const amount = Math.round((remainingValue * weight) / remainingWeightTotal);
+    const pct = totalValue > 0 ? Math.round((amount / totalValue) * 1000) / 10 : 0;
     const dueDate = new Date(baseDate);
     dueDate.setMonth(baseDate.getMonth() + index * 3);
-    const status = index <= 3 ? "paid" : index === 4 ? "overdue" : index === 5 ? "upcoming" : "pending";
-    const label = index === 0 ? "Đợt 1 - Ký HĐMB" : index === 16 ? "Đợt 17 - Bàn giao nhà" : index === 17 ? "Đợt 18 - Cấp sổ hồng" : `Đợt ${index + 1}`;
-    return { seq: index + 1, label, pct, amount: Math.round(totalValue * pct / 100), dueDate: dueDate.toLocaleDateString("vi-VN"), status };
+    const status: PaymentRowStatus = index <= 3 ? "paid" : index === 4 ? "overdue" : index === 5 ? "upcoming" : "pending";
+    const label = index === 16 ? "Đợt 17 - Bàn giao nhà" : index === 17 ? "Đợt 18 - Cấp sổ hồng" : `Đợt ${index + 1}`;
+    return { seq: index + 1, label, depositDate: "—", pct, amount, dueDate: dueDate.toLocaleDateString("vi-VN"), status };
   });
   const statusMeta = {
     paid: { label: "Đã thanh toán", className: "bg-emerald-50 text-emerald-700" },
+    partial: { label: "Đã thu một phần", className: "bg-amber-50 text-amber-700" },
     overdue: { label: "Quá hạn", className: "bg-red-50 text-red-700" },
     upcoming: { label: "Sắp tới hạn", className: "bg-blue-50 text-blue-700" },
     pending: { label: "Chưa tới hạn", className: "bg-slate-100 text-slate-600" },
@@ -728,27 +828,45 @@ function PaymentProgressTable({ record }: { record: HdmbRecord }) {
         <h3 className="text-sm text-slate-900" style={{ fontWeight: 700 }}>Tiến độ thanh toán - theo tiến độ chuẩn</h3>
         <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/debt/customer/5/contract/c5-1")}>Xem thanh toán</Button>
       </div>
+      <div className="grid grid-cols-2 gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 md:grid-cols-4">
+        <div>
+          <p className="text-[11px] text-slate-400">Tiền cọc phải thu</p>
+          <p className="mt-0.5 text-xs text-slate-800" style={{ fontWeight: 650 }}>{depositRequired.toLocaleString("vi-VN")} VNĐ</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-slate-400">Tiền cọc đã thu</p>
+          <p className="mt-0.5 text-xs text-slate-800" style={{ fontWeight: 650 }}>{depositCollected.toLocaleString("vi-VN")} VNĐ</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-slate-400">Nội dung PTTT</p>
+          <p className="mt-0.5 text-xs text-slate-800" style={{ fontWeight: 650 }}>{pttmContent}</p>
+        </div>
+        <div>
+          <p className="text-[11px] text-slate-400">Tỷ lệ PTTT</p>
+          <p className="mt-0.5 text-xs text-slate-800" style={{ fontWeight: 650 }}>{pttmRatio}</p>
+        </div>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-2sm">
-          <thead className="bg-slate-50 text-slate-500">
+        <table className="w-full min-w-[980px] border-separate border-spacing-0 text-xs">
+          <thead className="bg-[#F6F8FB] text-slate-600">
             <tr>
-              <th className="w-16 border-b border-r border-slate-200 px-3 py-2.5 text-center">STT</th>
-              <th className="border-b border-r border-slate-200 px-3 py-2.5 text-left">Tiến độ thanh toán</th>
-              <th className="border-b border-r border-slate-200 px-3 py-2.5 text-left">Ngày cọc</th>
-              <th className="border-b border-r border-slate-200 px-3 py-2.5 text-center">%TT</th>
-              <th className="border-b border-r border-slate-200 px-3 py-2.5 text-right">Số tiền</th>
-              <th className="border-b border-r border-slate-200 px-3 py-2.5 text-left">Ngày dự kiến TT</th>
-              <th className="border-b border-slate-200 px-3 py-2.5 text-left">Trạng thái TT</th>
+              <th className="w-16 border-b border-r border-[#DDE5F0] px-3 py-2 text-center text-[11px]" style={{ fontWeight: 650 }}>STT</th>
+              <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Tiến độ thanh toán</th>
+              <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Ngày cọc</th>
+              <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-center text-[11px]" style={{ fontWeight: 650 }}>%TT</th>
+              <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-right text-[11px]" style={{ fontWeight: 650 }}>Số tiền</th>
+              <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Ngày dự kiến TT</th>
+              <th className="border-b border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Trạng thái TT</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
               const meta = statusMeta[row.status];
-              return <tr key={row.seq} className="hover:bg-slate-50"><td className="border-b border-r border-slate-100 px-3 py-3 text-center text-slate-500">{row.seq}</td><td className="border-b border-r border-slate-100 px-3 py-3 text-slate-800">{row.label}</td><td className="border-b border-r border-slate-100 px-3 py-3 text-slate-600">{depositDate}</td><td className="border-b border-r border-slate-100 px-3 py-3 text-center text-slate-700">{row.pct}%</td><td className="border-b border-r border-slate-100 px-3 py-3 text-right text-slate-800">{row.amount.toLocaleString("vi-VN")} VNĐ</td><td className="border-b border-r border-slate-100 px-3 py-3 text-slate-600">{row.dueDate}</td><td className="border-b border-slate-100 px-3 py-3"><span className={`inline-flex rounded px-2 py-1 text-[11px] ${meta.className}`} style={{ fontWeight: 650 }}>{meta.label}</span></td></tr>;
+              return <tr key={row.seq} className="hover:bg-[#F8FAFC]"><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-500">{row.seq}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-800" style={{ fontWeight: 600 }}>{row.label}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{row.depositDate}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-700">{row.pct}%</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-right text-xs tabular-nums text-slate-900" style={{ fontWeight: 600 }}>{row.amount.toLocaleString("vi-VN")} VNĐ</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{row.dueDate}</td><td className="border-b border-[#E5EAF3] px-3 py-2"><span className={`inline-flex rounded px-2 py-1 text-[11px] ${meta.className}`} style={{ fontWeight: 650 }}>{meta.label}</span></td></tr>;
             })}
           </tbody>
-          <tfoot className="bg-slate-50 text-slate-800">
-            <tr><td className="border-r border-slate-200 px-3 py-3 text-center" style={{ fontWeight: 700 }}>Tổng</td><td className="border-r border-slate-200 px-3 py-3" style={{ fontWeight: 650 }}>18 đợt</td><td className="border-r border-slate-200" /><td className="border-r border-slate-200 px-3 py-3 text-center" style={{ fontWeight: 650 }}>100%</td><td className="border-r border-slate-200 px-3 py-3 text-right" style={{ fontWeight: 650 }}>{totalValue.toLocaleString("vi-VN")} VNĐ</td><td colSpan={2} /></tr>
+          <tfoot className="bg-[#F8FAFC] text-slate-900">
+            <tr><td className="border-r border-[#DDE5F0] px-3 py-2 text-center text-xs" style={{ fontWeight: 700 }}>Tổng</td><td className="border-r border-[#DDE5F0] px-3 py-2 text-xs" style={{ fontWeight: 650 }}>18 đợt</td><td className="border-r border-[#DDE5F0]" /><td className="border-r border-[#DDE5F0] px-3 py-2 text-center text-xs" style={{ fontWeight: 650 }}>100%</td><td className="border-r border-[#DDE5F0] px-3 py-2 text-right text-xs tabular-nums" style={{ fontWeight: 650 }}>{totalValue.toLocaleString("vi-VN")} VNĐ</td><td colSpan={2} /></tr>
           </tfoot>
         </table>
       </div>
@@ -806,42 +924,193 @@ function PaymentTimelinePreview({ record }: { record: HdmbRecord }) {
 }
 
 function AttachmentPreview({ record }: { record: HdmbRecord }) {
-  const docs = [
-    { label: "Số thỏa thuận cọc", value: record.values.c157 },
-    { label: "Số phiếu thông tin sản phẩm", value: record.values.c158 },
-    { label: "Số phiếu XNCK", value: record.values.c159 },
-  ].filter((doc) => doc.value);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [localDocs, setLocalDocs] = useState<{ id: string; label: string; value: string; url?: string; fileName?: string }[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<{ name: string; desc: string; url?: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync with record changes
+  useEffect(() => {
+    setLocalDocs([
+      { id: "c157", label: "Số thỏa thuận cọc", value: record.values.c157 },
+      { id: "c158", label: "Số phiếu thông tin sản phẩm", value: record.values.c158 },
+      { id: "c159", label: "Số phiếu XNCK", value: record.values.c159 },
+    ].filter((doc) => doc.value));
+  }, [record.id, record.values.c157, record.values.c158, record.values.c159]);
+
+  const handleDelete = (id: string, name: string) => {
+    setLocalDocs((prev) => prev.filter((doc) => doc.id !== id));
+    alert(`Đã xóa tài liệu "${name}" thành công! (Dữ liệu sẽ tự động khôi phục về ban đầu khi tải lại trang)`);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const localUrl = URL.createObjectURL(file);
+    const cleanName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+
+    const newDoc = {
+      id: "uploaded-" + Date.now(),
+      label: `Tài liệu vừa tải lên (${(file.size / 1024).toFixed(1)} KB)`,
+      value: cleanName.toUpperCase(),
+      url: localUrl,
+      fileName: file.name
+    };
+
+    setLocalDocs((prev) => [...prev, newDoc]);
+    alert(`Tải lên tài liệu "${file.name}" thành công!`);
+    e.target.value = "";
+  };
+
+  const handleDownload = (doc: typeof localDocs[0]) => {
+    // Show preview dialog
+    setPreviewDoc({
+      name: doc.value,
+      desc: doc.label,
+      url: doc.url
+    });
+
+    // Trigger download
+    if (doc.url) {
+      const link = document.createElement("a");
+      link.href = doc.url;
+      link.download = doc.fileName || `${doc.value}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // Create a mock download for default documents
+      const mockContent = `%PDF-1.4\n%...\n1 0 obj\n<< /Title (${doc.value}) /Author (Appminis) >>\nendobj\n...`;
+      const blob = new Blob([mockContent], { type: "application/pdf" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `${doc.value}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    }
+  };
 
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition-all duration-300">
+      <div 
+        className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer hover:bg-slate-100/70 transition-colors"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
         <div>
           <h3 className="text-xs text-slate-800" style={{ fontWeight: 650 }}>Tài liệu đính kèm</h3>
           <p className="mt-0.5 text-[11px] text-slate-400">Chứng từ lấy từ các trường cuối sheet</p>
         </div>
-        <ChevronDown className="h-4 w-4 text-slate-400" />
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${isCollapsed ? "-rotate-90" : ""}`} />
       </div>
-      <div className="space-y-2 p-4">
-        {docs.length > 0 ? docs.map((doc) => (
-          <div key={doc.label} className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600">
-              <FileText className="h-4 w-4" />
+
+      <div className={`transition-all duration-300 overflow-hidden ${isCollapsed ? "max-h-0 h-0 p-0 opacity-0" : "p-4 opacity-100"}`}>
+        <div className="space-y-2">
+          {localDocs.length > 0 ? localDocs.map((doc) => (
+            <div 
+              key={doc.id} 
+              className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-slate-100/50 cursor-pointer transition-colors"
+              onClick={() => handleDownload(doc)}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-slate-800" style={{ fontWeight: 600 }}>{doc.value}</p>
+                <p className="text-[11px] text-slate-400">{doc.label}</p>
+              </div>
+              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => handleDownload(doc)}
+                >
+                  Tải về
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => handleDelete(doc.id, doc.value)}
+                >
+                  Xóa
+                </Button>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs text-slate-800" style={{ fontWeight: 600 }}>{doc.value}</p>
-              <p className="text-[11px] text-slate-400">{doc.label}</p>
-            </div>
-            <Button variant="outline" size="sm" className="h-7 text-xs">Tải về</Button>
-            <Button variant="ghost" size="sm" className="h-7 text-xs">Xóa</Button>
+          )) : (
+            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Chưa có chứng từ kèm theo</p>
+          )}
+
+          <div className="pt-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 gap-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              onClick={handleUploadClick}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Tải tài liệu mới lên
+            </Button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              accept="application/pdf" 
+              style={{ display: "none" }} 
+              onChange={handleFileChange} 
+            />
           </div>
-        )) : (
-          <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Chưa có chứng từ kèm theo</p>
-        )}
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-          <Upload className="h-3.5 w-3.5" />
-          Tải tài liệu mới lên
-        </Button>
+        </div>
       </div>
+
+      {/* PDF Preview Modal */}
+      {previewDoc && (
+        <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+          <DialogContent className="max-w-3xl p-6 bg-white rounded-lg">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <h4 className="text-sm font-semibold text-slate-900">{previewDoc.name} - Xem trước PDF</h4>
+            </div>
+            <div className="bg-slate-100 rounded-lg p-4 flex justify-center items-center min-h-[450px]">
+              {previewDoc.url ? (
+                <iframe 
+                  src={previewDoc.url} 
+                  className="w-full h-[500px] border-none rounded-lg bg-white" 
+                />
+              ) : (
+                <div className="bg-white text-slate-800 p-8 rounded-lg shadow-sm border border-slate-200 w-full max-w-md relative overflow-hidden">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-30deg] text-slate-100 text-3xl font-extrabold select-none pointer-events-none tracking-widest opacity-70">
+                    APPMINIS SYSTEM
+                  </div>
+                  <div className="border-b-2 border-slate-900 pb-2 mb-4 flex justify-between text-[10px] font-bold text-slate-400">
+                    <span>HỆ THỐNG QUẢN LÝ HỢP ĐỒNG</span>
+                    <span>TÀI LIỆU PDF CHỨNG TỪ</span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-800 mb-2">{previewDoc.name}</h3>
+                  <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded border border-dashed border-slate-200 mb-4">
+                    <strong>Tên tài liệu:</strong> {previewDoc.desc}
+                  </div>
+                  <div className="space-y-2 mb-8">
+                    <div className="h-2 bg-slate-100 rounded w-full"></div>
+                    <div className="h-2 bg-slate-100 rounded w-5/6"></div>
+                    <div className="h-2 bg-slate-100 rounded w-2/3"></div>
+                  </div>
+                  <div className="border-t pt-4 flex justify-between text-[9px] text-slate-400">
+                    <span>Đã xác thực điện tử</span>
+                    <span>Trang 1/1</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </section>
   );
 }
@@ -854,6 +1123,7 @@ function DetailDrawer({
   onSaveCheck,
   onSaveTransfer,
   onUpdateStatus,
+  onEdit,
 }: {
   record: HdmbRecord | null;
   checkResult?: CheckResult;
@@ -862,12 +1132,19 @@ function DetailDrawer({
   onSaveCheck: (recordId: string, result: CheckResult) => void;
   onSaveTransfer: (recordId: string, overrides: Record<string, string>, log: TransferLog) => void;
   onUpdateStatus: (recordId: string, nextStatus: ContractStatus) => void;
+  onEdit: (recordId: string) => void;
 }) {
   const [detailView, setDetailView] = useState<"block" | "table">("block");
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [statusInfoDialogOpen, setStatusInfoDialogOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<ContractStatus | null>(null);
   const [draftStatus, setDraftStatus] = useState<CheckStatus>(checkResult?.status ?? "failed");
   const [draftReason, setDraftReason] = useState(checkResult?.reason ?? "");
+  const [statusInfoDraft, setStatusInfoDraft] = useState({ date: inputDateValue(new Date()), person: "", note: "", fileName: "" });
+  const [statusInfoResults, setStatusInfoResults] = useState<Record<string, ContractStatusInfo>>({});
+  const [statusInfoCollapsed, setStatusInfoCollapsed] = useState<Record<string, boolean>>({});
+  const statusInfoFileInputRef = useRef<HTMLInputElement>(null);
 
   if (!record) return null;
 
@@ -877,6 +1154,7 @@ function DetailDrawer({
   const seller = record.values.c154 || "Chưa phân công";
   const price = record.values.c93 || record.values.c87 || "—";
   const paid = record.values.c95 || "—";
+  const statusInfo = statusInfoResults[record.id];
 
   const dummyContract = {
     id: record.id,
@@ -944,6 +1222,170 @@ function DetailDrawer({
     setTransferDialogOpen(false);
   };
 
+  const openStatusInfoDialog = (status: ContractStatus) => {
+    setPendingStatus(status);
+    const existing = statusInfoResults[record.id];
+    const existingHandover = existing?.handover;
+    const existingReturned = existing?.returned;
+    setStatusInfoDraft({
+      date: status === "Bàn giao" ? existingHandover?.handoverDate || inputDateValue(new Date()) : existingReturned?.returnedDate || inputDateValue(new Date()),
+      person: status === "Bàn giao" ? existingHandover?.handoverBy || seller : existingReturned?.receivedBy || "",
+      note: status === "Bàn giao" ? existingHandover?.handoverNote || "" : existingReturned?.returnedNote || "",
+      fileName: status === "Bàn giao" ? existingHandover?.handoverFileName || "" : existingReturned?.returnedFileName || "",
+    });
+    setStatusInfoDialogOpen(true);
+  };
+
+  const handleStatusSelect = (status: ContractStatus) => {
+    if (!canJumpToStatus(record.status || "Đã cọc", status)) return;
+    if (status === "Bàn giao" || status === "Đã trả") {
+      openStatusInfoDialog(status);
+      return;
+    }
+    onUpdateStatus(record.id, status);
+  };
+
+  const handleStatusInfoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setStatusInfoDraft((prev) => ({ ...prev, fileName: file.name }));
+    event.target.value = "";
+  };
+
+  const saveStatusInfo = () => {
+    if (!pendingStatus) return;
+    const isHandover = pendingStatus === "Bàn giao";
+    setStatusInfoResults((prev) => ({
+      ...prev,
+      [record.id]: isHandover
+        ? {
+            ...(prev[record.id] ?? {}),
+            handover: {
+              handoverDate: statusInfoDraft.date,
+              handoverBy: statusInfoDraft.person.trim() || seller,
+              receivedBy: ownerName,
+              handoverNote: statusInfoDraft.note.trim() || "—",
+              handoverFileName: statusInfoDraft.fileName || "—",
+            },
+          }
+        : {
+            ...(prev[record.id] ?? {}),
+            returned: {
+              returnedDate: statusInfoDraft.date,
+              returnedBy: ownerName,
+              receivedBy: statusInfoDraft.person.trim() || "Chưa cập nhật",
+              returnedNote: statusInfoDraft.note.trim() || "—",
+              returnedFileName: statusInfoDraft.fileName || "—",
+            },
+          },
+    }));
+    onUpdateStatus(record.id, pendingStatus);
+    setStatusInfoDialogOpen(false);
+    setPendingStatus(null);
+  };
+
+  const downloadStatusInfoFile = (fileName: string) => {
+    if (!fileName || fileName === "—") return;
+    const mockContent = `%PDF-1.4\n%...\n1 0 obj\n<< /Title (${fileName}) /Author (Appminis) >>\nendobj\n...`;
+    const url = URL.createObjectURL(new Blob([mockContent], { type: "application/pdf" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const renderStatusInfoFileLink = (fileName: string) => {
+    if (!fileName || fileName === "—") {
+      return <span className="text-sm text-slate-900" style={{ fontWeight: 500 }}>—</span>;
+    }
+    return (
+      <button
+        type="button"
+        className="truncate text-sm text-blue-600 hover:text-blue-700 hover:underline"
+        style={{ fontWeight: 500 }}
+        onClick={() => downloadStatusInfoFile(fileName)}
+      >
+        {fileName}
+      </button>
+    );
+  };
+
+  const renderStatusInfoTable = () => {
+    if (!statusInfo?.handover && !statusInfo?.returned) return null;
+
+    const tableSections = [
+      ...(statusInfo.handover ? [{
+        key: "handover",
+        marker: "BG",
+        title: "THÔNG TIN BÀN GIAO",
+        fileLabel: "Tài liệu bàn giao PDF",
+        rows: [
+          ["Ngày giao", statusInfo.handover.handoverDate ? new Date(`${statusInfo.handover.handoverDate}T00:00:00`).toLocaleDateString("vi-VN") : "—"],
+          ["Người giao", statusInfo.handover.handoverBy],
+          ["Người nhận", statusInfo.handover.receivedBy],
+          ["Ghi chú", statusInfo.handover.handoverNote],
+          ["Tài liệu bàn giao PDF", statusInfo.handover.handoverFileName],
+        ],
+      }] : []),
+      ...(statusInfo.returned ? [{
+        key: "returned",
+        marker: "TH",
+        title: "THÔNG TIN TRẢ HỢP ĐỒNG",
+        fileLabel: "Tài liệu trả hợp đồng PDF",
+        rows: [
+          ["Ngày trả", statusInfo.returned.returnedDate ? new Date(`${statusInfo.returned.returnedDate}T00:00:00`).toLocaleDateString("vi-VN") : "—"],
+          ["Người trả", statusInfo.returned.returnedBy],
+          ["Người nhận", statusInfo.returned.receivedBy],
+          ["Ghi chú", statusInfo.returned.returnedNote],
+          ["Tài liệu trả hợp đồng PDF", statusInfo.returned.returnedFileName],
+        ],
+      }] : []),
+    ];
+
+    return (
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-xs">
+            <tbody>
+              {tableSections.flatMap((section) => {
+                const isCollapsed = statusInfoCollapsed[section.key];
+                return [
+                  <tr key={`${section.key}-header`} className="bg-[#F6F8FB]">
+                    <td className="w-16 border-b border-r border-[#DDE5F0] px-3 py-2 text-center text-[11px] text-slate-600" style={{ fontWeight: 650 }}>{section.marker}</td>
+                    <td className="border-b border-[#DDE5F0] p-0 text-[11px] text-slate-700" style={{ fontWeight: 650 }}>
+                      <button
+                        type="button"
+                        aria-expanded={!isCollapsed}
+                        onClick={() => setStatusInfoCollapsed((prev) => ({ ...prev, [section.key]: !prev[section.key] }))}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-[11px] leading-4 text-slate-700 transition-colors hover:bg-[#EEF3F8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-300"
+                      >
+                        <span className="text-[11px] leading-4">{section.title}</span>
+                        <span className="text-lg leading-none text-slate-400">{isCollapsed ? "+" : "−"}</span>
+                      </button>
+                    </td>
+                    <td className="w-40 border-b border-[#DDE5F0] px-3 py-2 text-right text-[11px] text-slate-500">{section.fileLabel}</td>
+                  </tr>,
+                  ...(isCollapsed ? [] : section.rows.map(([label, value], index) => (
+                    <tr key={`${section.key}-${label}`} className="hover:bg-[#F8FAFC]">
+                      <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-400">{index + 1}</td>
+                      <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{label}</td>
+                      <td className="border-b border-[#E5EAF3] px-3 py-2 text-right text-xs text-slate-900" style={{ fontWeight: 600 }}>
+                        {label.includes("PDF") ? renderStatusInfoFileLink(value) : value}
+                      </td>
+                    </tr>
+                  ))),
+                ];
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  };
+
   const exportExcel = () => {
     const escapeCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
     const rows = [["Nhóm thông tin", "Trường thông tin", "Giá trị"], ...contractDetailFields.map((field) => [getContractDetailSection(field), field.label, record.values[field.key] || ""])];
@@ -968,8 +1410,8 @@ function DetailDrawer({
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-slate-900" style={{ fontWeight: 500 }}>Mã hợp đồng:</span>
                 <span className="text-sm text-blue-600" style={{ fontWeight: 500 }}>{record.values.c157 || unitCode}</span>
-                <span className={`rounded-md px-2 py-1 text-[11px] ${checkResult ? (checkResult.status === "passed" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700") : "bg-indigo-50 text-indigo-700"}`}>{checkResult ? checkStatusLabel[checkResult.status] : "Đang kiểm tra"}</span>
-                <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
+                <span className={contractCheckBadgeClass(checkResult?.status)} style={{ fontWeight: 650 }}>{checkResult ? checkStatusLabel[checkResult.status] : "Đang kiểm tra"}</span>
+                <span className={contractStatusBadgeClass(record.status)}>
                   {record.status || "Đã cọc"}
                 </span>
                 {transferLogs.length > 0 && <TransferBadge sequence={transferLogs.length} />}
@@ -1008,12 +1450,15 @@ function DetailDrawer({
                   <Table2 className="h-4 w-4" />
                 </button>
               </div>
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setTransferDialogOpen(true)}>Chuyển nhượng HĐ</Button>
-              <Button size="sm" className="h-8 bg-blue-600 text-xs hover:bg-blue-700" onClick={openCheckDialog}>Xác nhận kiểm tra</Button>
+              <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-slate-950 text-white hover:bg-slate-800`} onClick={() => onEdit(record.id)}>
+                <Pencil className="h-4 w-4" />
+                Chỉnh sửa
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="h-8 bg-slate-900 text-xs hover:bg-slate-800 flex items-center gap-1">
-                    Cập nhật trạng thái <ChevronDown className="h-3.5 w-3.5" />
+                  <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-blue-600 hover:bg-blue-700`}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Cập nhật trạng thái <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 max-h-72 overflow-y-auto bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
@@ -1021,16 +1466,37 @@ function DetailDrawer({
                     <DropdownMenuItem
                       key={status}
                       className="flex items-center justify-between px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
-                      onClick={() => {
-                        if (canJumpToStatus(record.status || "Đã cọc", status)) {
-                          onUpdateStatus(record.id, status);
-                        }
-                      }}
+                      onClick={() => handleStatusSelect(status)}
                     >
                       <span>{status}</span>
                       {(record.status || "Đã cọc") === status && <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />}
                     </DropdownMenuItem>
                   ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className={`${contractDetailCtaClass} gap-2 border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}>
+                    <Settings className="h-4 w-4" />
+                    Thao tác <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                  <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Thao tác</div>
+                  <DropdownMenuItem
+                    className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                    onClick={openCheckDialog}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                    Xác nhận kiểm tra
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                    onClick={() => setTransferDialogOpen(true)}
+                  >
+                    <ArrowRightLeft className="h-3.5 w-3.5 text-slate-400" />
+                    Chuyển nhượng HĐ
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}><X className="h-4 w-4" /></Button>
@@ -1092,6 +1558,84 @@ function DetailDrawer({
               </section>
             )}
 
+            {detailView === "table" && renderStatusInfoTable()}
+
+            {detailView !== "table" && statusInfo?.handover && (
+              <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-100/70"
+                  aria-expanded={!statusInfoCollapsed.handover}
+                  onClick={() => setStatusInfoCollapsed((prev) => ({ ...prev, handover: !prev.handover }))}
+                >
+                  <h3 className="text-xs text-slate-900" style={{ fontWeight: 500 }}>Thông tin bàn giao</h3>
+                  <span className="text-lg leading-none text-slate-400">{statusInfoCollapsed.handover ? "+" : "−"}</span>
+                </button>
+                {!statusInfoCollapsed.handover && (
+                  <div className="grid grid-cols-1 gap-x-12 gap-y-5 px-4 py-5 md:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-slate-400">Ngày giao</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.handover.handoverDate ? new Date(`${statusInfo.handover.handoverDate}T00:00:00`).toLocaleDateString("vi-VN") : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Người giao</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.handover.handoverBy}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Người nhận</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.handover.receivedBy}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Ghi chú</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.handover.handoverNote}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Tài liệu bàn giao PDF</p>
+                      <div className="mt-2">{renderStatusInfoFileLink(statusInfo.handover.handoverFileName)}</div>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {detailView !== "table" && statusInfo?.returned && (
+              <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 text-left transition-colors hover:bg-slate-100/70"
+                  aria-expanded={!statusInfoCollapsed.returned}
+                  onClick={() => setStatusInfoCollapsed((prev) => ({ ...prev, returned: !prev.returned }))}
+                >
+                  <h3 className="text-xs text-slate-900" style={{ fontWeight: 500 }}>Thông tin trả hợp đồng</h3>
+                  <span className="text-lg leading-none text-slate-400">{statusInfoCollapsed.returned ? "+" : "−"}</span>
+                </button>
+                {!statusInfoCollapsed.returned && (
+                  <div className="grid grid-cols-1 gap-x-12 gap-y-5 px-4 py-5 md:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-slate-400">Ngày trả</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.returned.returnedDate ? new Date(`${statusInfo.returned.returnedDate}T00:00:00`).toLocaleDateString("vi-VN") : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Người trả</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.returned.returnedBy}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Người nhận</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.returned.receivedBy}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Ghi chú</p>
+                      <p className="mt-2 text-sm text-slate-900" style={{ fontWeight: 500 }}>{statusInfo.returned.returnedNote}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Tài liệu trả hợp đồng PDF</p>
+                      <div className="mt-2">{renderStatusInfoFileLink(statusInfo.returned.returnedFileName)}</div>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-slate-700" style={{ fontWeight: 500 }}>{detailView === "block" ? "Xem dạng block" : "Xem dạng table"}</p>
               <div className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -1105,19 +1649,26 @@ function DetailDrawer({
               <TransferContractBlockView sections={sections} />
               <PaymentTimelinePreview record={record} />
               <AttachmentPreview record={record} />
-            </> : <><TransferContractTableView sections={sections} contract={dummyContract} /><PaymentProgressTable record={record} /></>}
+            </> : <>
+              {transferLogs.length > 0 && <TransferHistoryTable logs={transferLogs} />}
+              <TransferContractTableView sections={sections} contract={dummyContract} />
+              <PaymentProgressTable record={record} />
+            </>}
           </div>
         </main>
 
         <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3">
           <div className="mx-auto flex max-w-6xl justify-end gap-2">
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>Đóng</Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setTransferDialogOpen(true)}>Chuyển nhượng HĐ</Button>
-            <Button size="sm" className="h-8 bg-blue-600 text-xs hover:bg-blue-700" onClick={openCheckDialog}>Xác nhận kiểm tra</Button>
+            <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-slate-950 text-white hover:bg-slate-800`} onClick={() => onEdit(record.id)}>
+              <Pencil className="h-4 w-4" />
+              Chỉnh sửa
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" className="h-8 bg-slate-900 text-xs hover:bg-slate-800 flex items-center gap-1">
-                  Cập nhật trạng thái <ChevronDown className="h-3.5 w-3.5" />
+                <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-blue-600 hover:bg-blue-700`}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Cập nhật trạng thái <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="w-56 max-h-72 overflow-y-auto bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
@@ -1125,16 +1676,37 @@ function DetailDrawer({
                   <DropdownMenuItem
                     key={status}
                     className="flex items-center justify-between px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
-                    onClick={() => {
-                      if (canJumpToStatus(record.status || "Đã cọc", status)) {
-                        onUpdateStatus(record.id, status);
-                      }
-                    }}
+                    onClick={() => handleStatusSelect(status)}
                   >
                     <span>{status}</span>
                     {(record.status || "Đã cọc") === status && <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />}
                   </DropdownMenuItem>
                 ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className={`${contractDetailCtaClass} gap-2 border-slate-200 bg-white text-slate-900 hover:bg-slate-50`}>
+                  <Settings className="h-4 w-4" />
+                  Thao tác <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="end" className="w-52 bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Thao tác</div>
+                <DropdownMenuItem
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                  onClick={openCheckDialog}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                  Xác nhận kiểm tra
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                  onClick={() => setTransferDialogOpen(true)}
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-slate-400" />
+                  Chuyển nhượng HĐ
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1204,6 +1776,81 @@ function DetailDrawer({
           </div>
         </div>
       )}
+
+      {statusInfoDialogOpen && pendingStatus && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h3 className="text-sm text-slate-900" style={{ fontWeight: 650 }}>
+                {pendingStatus === "Bàn giao" ? "Thông tin bàn giao hợp đồng" : "Thông tin trả hợp đồng"}
+              </h3>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setStatusInfoDialogOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-6 px-5 py-5">
+              <div className="grid grid-cols-[160px_1fr] items-center gap-4">
+                <p className="text-sm text-slate-700">{pendingStatus === "Bàn giao" ? "Ngày giao" : "Ngày trả"}</p>
+                <input
+                  type="date"
+                  value={statusInfoDraft.date}
+                  onChange={(event) => setStatusInfoDraft((prev) => ({ ...prev, date: event.target.value }))}
+                  className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-[160px_1fr] items-center gap-4">
+                <p className="text-sm text-slate-700">{pendingStatus === "Bàn giao" ? "Người giao" : "Người nhận"}</p>
+                <input
+                  value={statusInfoDraft.person}
+                  onChange={(event) => setStatusInfoDraft((prev) => ({ ...prev, person: event.target.value }))}
+                  placeholder={pendingStatus === "Bàn giao" ? "Nhập người giao" : "Nhập người nhận"}
+                  className="h-10 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-[160px_1fr] gap-4">
+                <p className="pt-2 text-sm text-slate-700">Ghi chú</p>
+                <textarea
+                  value={statusInfoDraft.note}
+                  onChange={(event) => setStatusInfoDraft((prev) => ({ ...prev, note: event.target.value }))}
+                  placeholder="Nhập ghi chú"
+                  className="min-h-28 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-[160px_1fr] items-center gap-4">
+                <p className="text-sm text-slate-700">Upload tài liệu PDF</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 text-xs"
+                    onClick={() => statusInfoFileInputRef.current?.click()}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Chọn PDF
+                  </Button>
+                  <span className="truncate text-xs text-slate-500">{statusInfoDraft.fileName || "Chưa chọn tài liệu"}</span>
+                  <input
+                    ref={statusInfoFileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={handleStatusInfoFileChange}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4">
+              <Button className="h-10 w-full bg-slate-950 text-sm hover:bg-slate-800" onClick={saveStatusInfo}>
+                Xác nhận
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1263,17 +1910,16 @@ function ContractChartTimeControl({
 }) {
   return (
     <div className="grid gap-2">
-      <label className="grid gap-1.5">
-        <span className="text-[11px] font-medium leading-none text-slate-500">Thời gian</span>
-        <select
-          aria-label={`Thời gian - ${chartName}`}
-          className={contractChartSelectClass}
-          value={group}
-          onChange={(event) => onGroupChange(event.target.value as ContractTrendGroup)}
-        >
-          {contractTrendGroupOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </label>
+      <Select value={group} onValueChange={(val) => onGroupChange(val as ContractTrendGroup)}>
+        <SelectTrigger aria-label={`Thời gian - ${chartName}`} className={contractChartSelectClass}>
+          <SelectValue placeholder="Thời gian" />
+        </SelectTrigger>
+        <SelectContent>
+          {contractTrendGroupOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {group === "custom" && (
         <div className="grid grid-cols-2 gap-2">
           <label>
@@ -1306,7 +1952,7 @@ function ContractChartTimeControl({
 
 function ContractChartCard({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <Card className="min-w-0 rounded-[12px] border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
+    <Card className="min-w-0 gap-0 rounded-lg border border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
       <CardContent className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className="min-w-0 text-sm leading-5 text-slate-950" style={{ fontWeight: 700 }}>{title}</h2>
@@ -1467,7 +2113,7 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
   }, [allSteps]);
 
   return (
-    <Card className="min-h-[292px] rounded-[12px] border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
+    <Card className="min-h-[292px] gap-0 rounded-lg border border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
       <CardContent className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -1477,15 +2123,17 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
           <div className="flex flex-wrap items-center gap-2">
             <label className="grid gap-1.5">
               <span className="text-[11px] font-medium leading-none text-slate-500">Trạng thái</span>
-              <select
-                aria-label="Trạng thái - Phễu xử lý hợp đồng"
-                className={contractChartSelectClass}
-                value={selectedStatus}
-                onChange={(event) => setSelectedStatus(event.target.value)}
-              >
-                <option value="all">Tất cả trạng thái</option>
-                {CONTRACT_STATUS_FLOW.map((status) => <option key={status} value={status}>{status}</option>)}
-              </select>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger aria-label="Trạng thái - Phễu xử lý hợp đồng" className={contractChartSelectClass}>
+                  <SelectValue placeholder="Tất cả trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  {CONTRACT_STATUS_FLOW.map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <ContractChartTimeControl
               chartName="Phễu xử lý hợp đồng"
@@ -1886,7 +2534,7 @@ export function ContractListPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ContractScoreCard
           icon={FileSpreadsheet}
           label="Tổng giá trị hợp đồng"
@@ -1924,8 +2572,8 @@ export function ContractListPage() {
 
       <ContractPipelineFunnelCard filteredRecords={filteredRecords} />
 
-      <Card className="max-w-full overflow-hidden border-[#E5EAF3] bg-white shadow-sm shadow-slate-200/40">
-        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+      <Card className={contractPanelClass}>
+        <div className={contractPanelHeaderClass}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-slate-900">Danh sách hợp đồng</h2>
@@ -1933,14 +2581,21 @@ export function ContractListPage() {
                 {filteredRecords.length} hợp đồng phù hợp · {selectedRecordIds.size} đang chọn · {visibleFields.length} cột đang hiển thị
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
-              <span className="hidden sm:inline">Bấm vào dòng để xem chi tiết hợp đồng</span>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <span className={contractPanelMetaClass}>{filteredRecords.length} kết quả</span>
+              {selectedRecordIds.size > 0 && (
+                <span className={`${contractPanelMetaClass} border-blue-200 bg-blue-50 text-blue-700`}>
+                  {selectedRecordIds.size} đang chọn
+                </span>
+              )}
+              <span className={contractPanelMetaClass}>{visibleFields.length} cột</span>
+              <span className="hidden text-xs text-slate-500 xl:inline">Bấm vào dòng để xem chi tiết hợp đồng</span>
             </div>
           </div>
         </div>
 
-        <div className="border-b border-[#E5EAF3] bg-slate-50/60 px-3 pb-3 pt-0">
-          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
+        <div className={contractPanelToolbarClass}>
+          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 scrollbar-none whitespace-nowrap">
             <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -1953,7 +2608,7 @@ export function ContractListPage() {
             </div>
 
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger aria-label="Lọc theo dự án" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Dự án" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo dự án" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Dự án" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Dự án</SelectItem><SelectItem value="iki-village">Iki village</SelectItem></SelectContent>
             </Select>
             <Select value={towerFilter} onValueChange={setTowerFilter}>
@@ -1961,15 +2616,15 @@ export function ContractListPage() {
               <SelectContent><SelectItem value="all">Block</SelectItem>{towerOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger aria-label="Lọc theo thời gian" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Thời gian" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo thời gian" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Thời gian" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Thời gian</SelectItem><SelectItem value="2025">2025</SelectItem><SelectItem value="2026">2026</SelectItem></SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái kiểm tra" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`}><SelectValue placeholder="Kiểm tra hồ sơ" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo trạng thái kiểm tra" className={`${compactFilterTriggerClass} w-40 flex-shrink-0`}><SelectValue placeholder="Kiểm tra hồ sơ" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Kiểm tra hồ sơ</SelectItem><SelectItem value="pending">Chờ kiểm tra</SelectItem><SelectItem value="passed">Đạt</SelectItem><SelectItem value="failed">Không đạt</SelectItem></SelectContent>
             </Select>
             <Select value={contractStatusFilter} onValueChange={setContractStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}><SelectValue placeholder="Trạng thái hợp đồng" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-48 flex-shrink-0`}><SelectValue placeholder="Trạng thái hợp đồng" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Trạng thái hợp đồng</SelectItem>
                 {CONTRACT_STATUS_FLOW.map((status) => (
@@ -1978,17 +2633,17 @@ export function ContractListPage() {
               </SelectContent>
             </Select>
             <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
-              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-24 flex-shrink-0`}><SelectValue placeholder="MQH" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="MQH" /></SelectTrigger>
               <SelectContent><SelectItem value="all">MQH</SelectItem>{customerTypeOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={salesFilter} onValueChange={setSalesFilter}>
-              <SelectTrigger aria-label="Lọc theo phụ trách" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Phụ trách" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo phụ trách" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Phụ trách" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Phụ trách</SelectItem>{salesOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
 
             <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
               <PopoverTrigger asChild>
-                <Button type="button" aria-expanded={filtersOpen} variant="outline" className="h-9 w-28 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none hover:bg-slate-50">
+                <Button type="button" aria-expanded={filtersOpen} variant="outline" className="h-9 w-32 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none">
                   <Filter className="h-3.5 w-3.5 text-slate-500" />
                   Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
                 </Button>
@@ -2000,23 +2655,23 @@ export function ContractListPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Select value={customerFilter} onValueChange={setCustomerFilter}>
-                    <SelectTrigger className="h-9 w-full rounded-[8px] border-[#E5EAF3] text-xs"><SelectValue placeholder="Khách hàng" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Khách hàng" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả khách hàng</SelectItem>{customerOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={apartmentFilter} onValueChange={setApartmentFilter}>
-                    <SelectTrigger className="h-9 w-full rounded-[8px] border-[#E5EAF3] text-xs"><SelectValue placeholder="Mã căn hộ" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Mã căn hộ" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả mã căn hộ</SelectItem>{apartmentOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={apartmentTypeFilter} onValueChange={setApartmentTypeFilter}>
-                    <SelectTrigger className="h-9 w-full rounded-[8px] border-[#E5EAF3] text-xs"><SelectValue placeholder="Loại căn hộ" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Loại căn hộ" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả loại căn hộ</SelectItem>{apartmentTypeOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                    <SelectTrigger className="h-9 w-full rounded-[8px] border-[#E5EAF3] text-xs"><SelectValue placeholder="PTTT" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="PTTT" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả PTTT</SelectItem>{paymentMethodOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={salesUnitFilter} onValueChange={setSalesUnitFilter}>
-                    <SelectTrigger className="h-9 w-full rounded-[8px] border-[#E5EAF3] text-xs"><SelectValue placeholder="Đơn vị bán hàng" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Đơn vị bán hàng" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Mọi đơn vị bán hàng</SelectItem>{salesUnitOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
@@ -2024,39 +2679,39 @@ export function ContractListPage() {
             </Popover>
 
             <Select value={showAllColumns ? "all" : "default"} onValueChange={(value) => setShowAllColumns(value === "all")}>
-              <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="Hiển thị" /></SelectTrigger>
+              <SelectTrigger aria-label="Chọn chế độ hiển thị" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Hiển thị" /></SelectTrigger>
               <SelectContent><SelectItem value="default">Hiển thị</SelectItem><SelectItem value="all">Tất cả cột</SelectItem></SelectContent>
             </Select>
 
           </div>
         </div>
 
-        <div className="max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full overflow-auto">
+        <div className="max-h-[calc(100dvh-320px)] min-h-[420px] max-w-full overflow-auto bg-white">
           <Table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
             <TableHeader className="sticky top-0 z-20">
               <TableRow>
-                <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#24344f] bg-[#0F2747] px-2 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>
+                <TableHead className="sticky left-0 z-40 w-12 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-2 py-2 text-center text-[11px] text-slate-600 shadow-[6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>
                   <button
                     type="button"
                     aria-label="Chọn tất cả dòng trong trang"
                     aria-pressed={currentPageSelected}
-                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0F2747] ${currentPageSelected ? "border-white bg-white text-[#0F2747]" : "border-white/60 bg-white/10 text-transparent"}`}
+                    className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${currentPageSelected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-transparent hover:border-slate-500"}`}
                     onClick={toggleCurrentPageSelection}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                   </button>
                 </TableHead>
                 {visibleFields.map((field) => (
-                  <TableHead key={field.key} className="h-11 w-52 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle">
-                    <p className="line-clamp-2 text-[11px] leading-4 text-white" title={`Cột ${field.column}: ${field.label}`} style={{ fontWeight: 650 }}>
+                  <TableHead key={field.key} className={`${contractTableHeaderClass} w-52`}>
+                    <p className="line-clamp-2" title={`Cột ${field.column}: ${field.label}`} style={{ fontWeight: 650 }}>
                       {field.label}
                     </p>
                   </TableHead>
                 ))}
-                <TableHead className="h-11 w-44 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái kiểm tra</TableHead>
-                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Người kiểm tra</TableHead>
-                <TableHead className="h-11 w-40 border-b border-r border-[#24344f] bg-[#0F2747] px-3 py-2 text-left align-middle text-[11px] text-white" style={{ fontWeight: 650 }}>Trạng thái</TableHead>
-                <TableHead className="sticky right-0 z-40 h-11 w-14 border-b border-l border-[#24344f] bg-[#0F2747] px-0 py-2 text-center text-[11px] text-white" style={{ fontWeight: 650 }}>...</TableHead>
+                <TableHead className={`${contractTableHeaderClass} w-44`} style={{ fontWeight: 650 }}>Trạng thái kiểm tra</TableHead>
+                <TableHead className={`${contractTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Người kiểm tra</TableHead>
+                <TableHead className={`${contractTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Trạng thái</TableHead>
+                <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center text-[11px] text-slate-600 shadow-[-6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>...</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2067,11 +2722,6 @@ export function ContractListPage() {
                   : checkResult?.status === "failed"
                     ? "Đã kiểm tra - Chưa đạt"
                     : "Chưa kiểm tra";
-                const checkClass = checkResult?.status === "passed"
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-                  : checkResult?.status === "failed"
-                    ? "bg-red-50 text-red-700 ring-red-100"
-                    : "bg-slate-100 text-slate-600 ring-slate-200";
                 const checker = checkResult?.checkedBy || record.values.c154 || "Lâm Trà My";
                 const isSelected = selectedRecordIds.has(record.id);
                 return (
@@ -2081,7 +2731,7 @@ export function ContractListPage() {
                   tabIndex={0}
                   aria-label={`Mở chi tiết hợp đồng ${record.values.c2 || pageStartIndex + index + 1}`}
                   data-state={isSelected ? "selected" : undefined}
-                  className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                  className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300"
                   onClick={(event) => {
                     const target = event.target as HTMLElement;
                     if (target.closest(".td-actions") || target.closest(".td-select")) {
@@ -2100,10 +2750,10 @@ export function ContractListPage() {
                     }
                   }}
                 >
-                  <TableCell className="td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] bg-white px-2 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                  <TableCell className={`td-select sticky left-0 z-10 h-11 w-12 border-b border-r border-[#E5EAF3] px-2 py-1.5 text-center shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)] ${contractStickyCellClass}`}>
                     <button
                       type="button"
-                      className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-[#0F2747] bg-[#0F2747] text-white" : "border-[#E5EAF3] bg-white text-transparent hover:border-slate-400"}`}
+                      className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${isSelected ? "border-slate-900 bg-slate-900 text-white" : "border-[#DDE5F0] bg-white text-transparent hover:border-slate-500"}`}
                       title="Chọn dòng"
                       aria-label={`Chọn dòng ${pageStartIndex + index + 1}`}
                       aria-pressed={isSelected}
@@ -2119,28 +2769,28 @@ export function ContractListPage() {
                     const value = record.values[field.key];
                     const isPrimary = ["c2", "c3", "c30", "c51", "c54", "c106"].includes(field.key);
                     return (
-                      <TableCell key={field.key} className="h-11 w-52 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
-                        <p className={`line-clamp-2 text-xs ${value ? "text-slate-700" : "text-slate-300"}`} style={{ fontWeight: isPrimary && value ? 600 : 400 }} title={compactValue(value)}>
+                      <TableCell key={field.key} className={`${contractTableCellClass} w-52`}>
+                        <p className={`line-clamp-2 text-xs leading-5 ${value ? (isPrimary ? "text-slate-900" : "text-slate-700") : "text-slate-300"}`} style={{ fontWeight: isPrimary && value ? 600 : 400 }} title={compactValue(value)}>
                           {compactValue(value)}
                         </p>
                       </TableCell>
                     );
                   })}
-                  <TableCell className="h-11 w-44 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
-                    <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] ring-1 ${checkClass}`} style={{ fontWeight: 650 }}>{checkLabel}</Badge>
+                  <TableCell className={`${contractTableCellClass} w-44`}>
+                    <Badge variant="outline" className={contractCheckBadgeClass(checkResult?.status)} style={{ fontWeight: 650 }}>{checkLabel}</Badge>
                   </TableCell>
-                  <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
-                    <p className="truncate text-xs text-slate-700" style={{ fontWeight: 600 }}>{checker}</p>
+                  <TableCell className={`${contractTableCellClass} w-40`}>
+                    <p className="truncate text-xs leading-5 text-slate-800" style={{ fontWeight: 600 }}>{checker}</p>
                   </TableCell>
-                  <TableCell className="h-11 w-40 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
-                    <Badge variant="outline" className={`rounded-full border-transparent px-2.5 py-1 text-[11px] font-semibold ring-1 ${CONTRACT_STATUS_CLASSES[record.status || "Đã cọc"]}`}>
+                  <TableCell className={`${contractTableCellClass} w-40`}>
+                    <Badge variant="outline" className={contractStatusBadgeClass(record.status)}>
                       {record.status || "Đã cọc"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] bg-white px-0 py-1.5 text-center group-hover:bg-slate-50 group-data-[state=selected]:bg-slate-50">
+                  <TableCell className={`td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] px-0 py-1.5 text-center shadow-[-6px_0_12px_-12px_rgba(15,23,42,0.45)] ${contractStickyCellClass}`}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" aria-label={`Mở menu bản ghi ${pageStartIndex + index + 1}`} className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300" onClick={(event) => event.stopPropagation()}>
+                        <Button variant="ghost" size="sm" aria-label={`Mở menu bản ghi ${pageStartIndex + index + 1}`} className="h-8 w-8 rounded-md p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-300" onClick={(event) => event.stopPropagation()}>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -2210,13 +2860,13 @@ export function ContractListPage() {
             </TableBody>
           </Table>
         </div>
-        <div className="flex min-h-12 flex-col gap-2 border-t border-[#E5EAF3] bg-white px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <div>10 dòng/trang</div>
+        <div className={contractPanelFooterClass}>
+          <div className="text-slate-500">10 dòng/trang</div>
           <Pagination className="mx-0 w-auto justify-start sm:justify-end">
             <PaginationContent>
               <PaginationItem>
                 <span className="px-2 tabular-nums">
-                  {filteredRecords.length === 0 ? "0-0" : `${pageStartIndex + 1}-${pageEndIndex}`} of {filteredRecords.length}
+                  {filteredRecords.length === 0 ? "0-0" : `${pageStartIndex + 1}-${pageEndIndex}`} / {filteredRecords.length}
                 </span>
               </PaginationItem>
               <PaginationItem>
@@ -2242,6 +2892,10 @@ export function ContractListPage() {
         }}
         onUpdateStatus={(recordId, nextStatus) => {
           setStatusOverrides((prev) => ({ ...prev, [recordId]: nextStatus }));
+        }}
+        onEdit={(recordId) => {
+          setEditContractId(recordId);
+          setCreateContractOpen(true);
         }}
       />
 

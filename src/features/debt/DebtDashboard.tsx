@@ -9,8 +9,6 @@ import {
   Wallet,
   Users,
   Eye,
-  ArrowUpDown,
-  ChevronDown,
   Info,
   FileText,
   FileSpreadsheet,
@@ -29,7 +27,7 @@ import {
 } from "@/data/mockDataCongNo";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -65,6 +63,15 @@ import {
 import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
 
 const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none hover:bg-slate-50";
+const debtPanelClass = "max-w-full gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
+const debtPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";
+const debtPanelToolbarClass = "border-b border-[#E5EAF3] bg-[#F8FAFC] px-3 py-2.5";
+const debtPanelFooterClass = "flex min-h-11 flex-col gap-2 border-t border-[#E5EAF3] bg-[#F8FAFC] px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between";
+const debtPanelMetaClass = "inline-flex h-6 items-center rounded-md border border-[#E5EAF3] bg-[#F8FAFC] px-2.5 text-[11px] leading-none text-slate-600";
+const debtTableHeaderClass = "h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
+const debtTableCellClass = "h-11 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle transition-colors group-hover:bg-[#F8FAFC]";
+const debtStickyActionClass = "bg-white transition-colors group-hover:bg-[#F8FAFC]";
+const debtStatusBadgeBaseClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
 
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -72,39 +79,39 @@ const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white p
 const statusConfig: Record<PaymentStatus, { label: string; className: string }> = {
   "not-due": {
     label: "Chưa đến hạn",
-    className: "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50",
+    className: "bg-slate-50 text-slate-600 ring-slate-200 hover:bg-slate-50",
   },
   upcoming: {
     label: "Sắp đến hạn",
-    className: "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50",
+    className: "bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-50",
   },
   paid: {
     label: "Đã thanh toán",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50",
+    className: "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-50",
   },
   partial: {
     label: "Thanh toán một phần",
-    className: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50",
+    className: "bg-cyan-50 text-cyan-700 ring-cyan-200 hover:bg-cyan-50",
   },
   overpaid: {
-    label: "Thanh toán dư",
-    className: "border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-50",
+    label: "Đã thanh toán",
+    className: "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-50",
   },
   overdue: {
     label: "Quá hạn",
-    className: "border-red-200 bg-red-50 text-red-700 hover:bg-red-50",
+    className: "bg-red-50 text-red-700 ring-red-200 hover:bg-red-50",
   },
   "grace-period": {
     label: "Trong thời gian ân hạn",
-    className: "border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50",
+    className: "bg-orange-50 text-orange-700 ring-orange-200 hover:bg-orange-50",
   },
   "deposit-forfeited": {
     label: "Mất cọc",
-    className: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-50",
+    className: "bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-50",
   },
   extended: {
     label: "Đã gia hạn",
-    className: "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-50",
+    className: "bg-purple-50 text-purple-700 ring-purple-200 hover:bg-purple-50",
   },
 };
 
@@ -154,11 +161,12 @@ function StatusBadgeGroup({
   const multi = active.length > 1;
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       {active.map((s) => (
         <Badge
           key={s}
-          className={`text-[10px] px-1.5 py-0 h-5 w-fit whitespace-nowrap ${statusConfig[s].className}`}
+          className={`${debtStatusBadgeBaseClass} w-fit whitespace-nowrap ${statusConfig[s].className}`}
+          style={{ fontWeight: 650 }}
         >
           {multi && (
             <span className="mr-0.5 opacity-75">{counts[s]}</span>
@@ -273,7 +281,7 @@ export function DebtDashboard() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <CoreMetricCard
             icon={Users}
             label="Tổng khách hàng"
@@ -307,20 +315,25 @@ export function DebtDashboard() {
         </div>
 
           {/* Customer Table */}
-          <Card className="max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
-            <div className="border-b border-slate-200 bg-white px-4 py-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Card className={debtPanelClass}>
+            <div className={debtPanelHeaderClass}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <h2 className="text-sm font-semibold text-slate-900">Danh sách công nợ</h2>
                   <p className="mt-0.5 text-xs leading-5 text-slate-500">
                     {filtered.length} khách hàng phù hợp · Bấm vào dòng để xem chi tiết
                   </p>
                 </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <span className={debtPanelMetaClass}>{filtered.length} kết quả</span>
+                  <span className={debtPanelMetaClass}>{allContracts.length} hợp đồng</span>
+                  <span className="hidden text-xs text-slate-500 lg:inline">Bấm vào dòng để xem chi tiết công nợ</span>
+                </div>
               </div>
             </div>
 
-            <div className="border-b border-slate-200 bg-slate-50/60 px-3 pb-3 pt-0">
-              <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none whitespace-nowrap">
+            <div className={debtPanelToolbarClass}>
+              <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 scrollbar-none whitespace-nowrap">
                 <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
@@ -384,29 +397,29 @@ export function DebtDashboard() {
               })}
             </div>
 
-            <div className="hidden max-h-[calc(100dvh-336px)] min-h-[420px] max-w-full overflow-x-auto overflow-y-auto sm:block">
-              <Table className="min-w-[1120px] w-full table-fixed border-collapse text-2sm">
+            <div className="hidden max-h-[calc(100dvh-320px)] min-h-[420px] max-w-full overflow-x-auto overflow-y-auto bg-white sm:block">
+              <Table className="min-w-[1120px] w-full table-fixed border-separate border-spacing-0 text-2sm">
                 <TableHeader className="sticky top-0 z-20">
                   <TableRow>
-                    <TableHead className="h-10 w-52 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
+                    <TableHead className={`${debtTableHeaderClass} w-52`} style={{ fontWeight: 650 }}>
                       Khách hàng
                     </TableHead>
-                    <TableHead className="h-10 w-44 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
+                    <TableHead className={`${debtTableHeaderClass} w-44`} style={{ fontWeight: 650 }}>
                       Hợp đồng
                     </TableHead>
-                    <TableHead className="h-10 w-44 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-right align-middle text-[11px] font-medium text-slate-600">
+                    <TableHead className={`${debtTableHeaderClass} w-44 text-right`} style={{ fontWeight: 650 }}>
                       Tổng giá trị
                     </TableHead>
-                    <TableHead className="h-10 w-52 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
+                    <TableHead className={`${debtTableHeaderClass} w-52`} style={{ fontWeight: 650 }}>
                       Tiến độ thanh toán
                     </TableHead>
-                    <TableHead className="h-10 w-40 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
+                    <TableHead className={`${debtTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>
                       Hạn gần nhất
                     </TableHead>
-                    <TableHead className="h-10 w-40 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-left align-middle text-[11px] font-medium text-slate-600">
+                    <TableHead className={`${debtTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>
                       Trạng thái
                     </TableHead>
-                    <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-slate-200 bg-slate-50 px-0 py-2 text-center text-[11px] font-medium text-slate-600">...</TableHead>
+                    <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center text-[11px] text-slate-600 shadow-[-6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>...</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -433,17 +446,17 @@ export function DebtDashboard() {
                       return (
                         <TableRow
                           key={customer.id}
-                          className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
+                          className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300"
                           onClick={() => navigate(`/debt/customer/${customer.id}`)}
                         >
                           {/* Customer */}
-                          <TableCell className="h-11 w-52 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className={`${debtTableCellClass} w-52`}>
                             <div className="flex items-center gap-3">
                               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white ${customer.avatarColor}`} style={{ fontWeight: 750 }}>
                                 {customer.initials}
                               </div>
                               <div className="min-w-0">
-                                <p className="truncate text-xs font-medium text-slate-800 group-hover:text-indigo-700">
+                                <p className="truncate text-xs leading-5 text-slate-900 group-hover:text-blue-700" style={{ fontWeight: 600 }}>
                                   {customer.name}
                                 </p>
                                 <p className="truncate text-[11px] text-slate-400">
@@ -454,10 +467,10 @@ export function DebtDashboard() {
                           </TableCell>
 
                           {/* Contracts */}
-                          <TableCell className="h-11 w-44 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className={`${debtTableCellClass} w-44`}>
                             {contractCount === 1 ? (
                               <>
-                                <p className="truncate text-xs font-medium text-slate-700">
+                                <p className="truncate text-xs leading-5 text-slate-800" style={{ fontWeight: 600 }}>
                                   {customer.contracts[0].projectName}
                                 </p>
                                 <p className="truncate text-[11px] text-slate-400">
@@ -468,7 +481,7 @@ export function DebtDashboard() {
                               <>
                                 <div className="flex items-center gap-1.5">
                                   <FileText className="size-3.5 text-slate-400 shrink-0" />
-                                  <span className="text-xs font-medium text-slate-700">
+                                  <span className="text-xs leading-5 text-slate-800" style={{ fontWeight: 600 }}>
                                     {contractCount} hợp đồng
                                   </span>
                                 </div>
@@ -482,8 +495,8 @@ export function DebtDashboard() {
                           </TableCell>
 
                           {/* Total Value */}
-                          <TableCell className="h-11 w-44 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle text-right group-hover:bg-slate-50">
-                            <p className="text-xs font-medium text-slate-800">
+                          <TableCell className={`${debtTableCellClass} w-44 text-right`}>
+                            <p className="text-xs leading-5 tabular-nums text-slate-900" style={{ fontWeight: 600 }}>
                               {formatVND(totalVal)}
                             </p>
                             <p className="text-[11px] text-slate-400">
@@ -492,7 +505,7 @@ export function DebtDashboard() {
                           </TableCell>
 
                           {/* Progress */}
-                          <TableCell className="h-11 w-52 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className={`${debtTableCellClass} w-52`}>
                             <div className="space-y-1">
                               <div className="flex items-center justify-between text-[11px] text-slate-500">
                                 <span>{progress}%</span>
@@ -538,10 +551,10 @@ export function DebtDashboard() {
                           </TableCell>
 
                           {/* Next Due */}
-                          <TableCell className="h-11 w-40 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className={`${debtTableCellClass} w-40`}>
                             {nextDue ? (
                               <>
-                                <p className={`text-xs ${isOverdue ? "font-medium text-red-600" : "font-medium text-slate-700"}`}>
+                                <p className={`text-xs leading-5 ${isOverdue ? "text-red-600" : "text-slate-800"}`} style={{ fontWeight: 600 }}>
                                   {fmtDate(nextDue.date)}
                                 </p>
                                 {isOverdue && nextDue.contract.daysOverdue != null && (
@@ -558,22 +571,22 @@ export function DebtDashboard() {
                           </TableCell>
 
                           {/* Status Badge Group */}
-                          <TableCell className="h-11 w-40 border-b border-r border-slate-200 bg-white px-3 py-1.5 align-middle group-hover:bg-slate-50">
+                          <TableCell className={`${debtTableCellClass} w-40`}>
                             <StatusBadgeGroup contracts={customer.contracts} />
                           </TableCell>
 
                           {/* Action Button */}
-                          <TableCell className="td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-slate-200 bg-white px-0 py-1.5 text-center group-hover:bg-slate-50" onClick={(e) => e.stopPropagation()}>
+                          <TableCell className={`td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] px-0 py-1.5 text-center shadow-[-6px_0_12px_-12px_rgba(15,23,42,0.45)] ${debtStickyActionClass}`} onClick={(e) => e.stopPropagation()}>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   aria-label={`Xem công nợ của ${customer.name}`}
-                                  className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100"
+                                  className="h-8 w-8 rounded-md p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-300"
                                   onClick={() => navigate(`/debt/customer/${customer.id}`)}
                                 >
-                                  <Eye className="h-4 w-4 text-slate-400 hover:text-slate-700" />
+                                  <Eye className="h-4 w-4 text-slate-400" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent side="left" className="text-xs bg-slate-900 text-white p-1 px-2 rounded shadow-md z-50">
@@ -589,15 +602,15 @@ export function DebtDashboard() {
               </Table>
             </div>
 
-            <div className="flex h-12 items-center justify-between border-t border-slate-200 bg-white px-4 text-xs text-slate-500">
-              <div className="flex items-center gap-4">
+            <div className={debtPanelFooterClass}>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <div>Hiển thị {filtered.length} / {customers.length} khách hàng</div>
                 <span className="text-slate-300">|</span>
                 <span className="text-slate-400">Cập nhật lần cuối: 20/04/2026</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="tabular-nums font-medium text-slate-600">
-                  {filtered.length === 0 ? "0-0" : `1-${filtered.length}`} of {filtered.length}
+                  {filtered.length === 0 ? "0-0" : `1-${filtered.length}`} / {filtered.length}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>

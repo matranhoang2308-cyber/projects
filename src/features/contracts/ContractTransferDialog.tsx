@@ -43,6 +43,9 @@ const STEPS = [
   { id: 3, label: "Xác nhận" },
 ];
 
+const transferInputClass = "text-sm h-8";
+const transferTextareaClass = "text-sm resize-none";
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 function FF({ label, required, children, error }: {
   label: string; required?: boolean; children: React.ReactNode; error?: string;
@@ -347,37 +350,37 @@ export function ContractTransferDialog({ open, onClose, contract, onSuccess }: P
                     SAU CHUYỂN NHƯỢNG
                   </p>
                   <FF label="Chủ sở hữu mới" required error={errors.name}>
-                    <Input value={newOwner.name} onChange={(e) => updateOwner("name", e.target.value)} className="text-sm h-8" placeholder="Họ và tên đầy đủ" />
+                    <Input value={newOwner.name} onChange={(e) => updateOwner("name", e.target.value)} className={transferInputClass} placeholder="Họ và tên đầy đủ" />
                   </FF>
                   <FF label="CCCD" required error={errors.cccd}>
-                    <Input value={newOwner.cccd} onChange={(e) => updateOwner("cccd", e.target.value)} className="text-sm h-8" placeholder="12 chữ số" />
+                    <Input value={newOwner.cccd} onChange={(e) => updateOwner("cccd", e.target.value)} className={transferInputClass} placeholder="12 chữ số" />
                   </FF>
                   <div className="grid grid-cols-2 gap-2">
                     <FF label="Ngày sinh">
-                      <Input type="date" value={newOwner.dob} onChange={(e) => updateOwner("dob", e.target.value)} className="text-sm h-8" />
+                      <Input type="date" value={newOwner.dob} onChange={(e) => updateOwner("dob", e.target.value)} className={transferInputClass} />
                     </FF>
                     <FF label="Ngày cấp CCCD">
-                      <Input type="date" value={newOwner.cccdDate} onChange={(e) => updateOwner("cccdDate", e.target.value)} className="text-sm h-8" />
+                      <Input type="date" value={newOwner.cccdDate} onChange={(e) => updateOwner("cccdDate", e.target.value)} className={transferInputClass} />
                     </FF>
                   </div>
                   <FF label="Số điện thoại">
-                    <Input value={newOwner.phone} onChange={(e) => updateOwner("phone", e.target.value)} className="text-sm h-8" placeholder="09xx xxx xxx" />
+                    <Input value={newOwner.phone} onChange={(e) => updateOwner("phone", e.target.value)} className={transferInputClass} placeholder="09xx xxx xxx" />
                   </FF>
                   <FF label="Email">
-                    <Input type="email" value={newOwner.email} onChange={(e) => updateOwner("email", e.target.value)} className="text-sm h-8" placeholder="email@example.com" />
+                    <Input type="email" value={newOwner.email} onChange={(e) => updateOwner("email", e.target.value)} className={transferInputClass} placeholder="email@example.com" />
                   </FF>
                   <FF label="Địa chỉ thường trú">
-                    <Input value={newOwner.permanentAddress} onChange={(e) => updateOwner("permanentAddress", e.target.value)} className="text-sm h-8" />
+                    <Input value={newOwner.permanentAddress} onChange={(e) => updateOwner("permanentAddress", e.target.value)} className={transferInputClass} />
                   </FF>
                   <FF label="Địa chỉ liên hệ">
-                    <Input value={newOwner.contactAddress} onChange={(e) => updateOwner("contactAddress", e.target.value)} className="text-sm h-8" />
+                    <Input value={newOwner.contactAddress} onChange={(e) => updateOwner("contactAddress", e.target.value)} className={transferInputClass} />
                   </FF>
                   <div className="grid grid-cols-2 gap-2">
                     <FF label="Số tài khoản">
-                      <Input value={newOwner.bankAccount} onChange={(e) => updateOwner("bankAccount", e.target.value)} className="text-sm h-8" />
+                      <Input value={newOwner.bankAccount} onChange={(e) => updateOwner("bankAccount", e.target.value)} className={transferInputClass} />
                     </FF>
                     <FF label="Ngân hàng">
-                      <Input value={newOwner.bank} onChange={(e) => updateOwner("bank", e.target.value)} className="text-sm h-8" placeholder="Vietcombank" />
+                      <Input value={newOwner.bank} onChange={(e) => updateOwner("bank", e.target.value)} className={transferInputClass} placeholder="Vietcombank" />
                     </FF>
                   </div>
                 </div>
@@ -451,22 +454,22 @@ export function ContractTransferDialog({ open, onClose, contract, onSuccess }: P
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
                         <FF label="Họ và tên" required>
-                          <Input value={co.name} onChange={(e) => updateCoOwner(co.id, "name", e.target.value)} className="text-sm h-8" />
+                          <Input value={co.name} onChange={(e) => updateCoOwner(co.id, "name", e.target.value)} className={transferInputClass} />
                         </FF>
                         <FF label="CCCD">
-                          <Input value={co.cccd} onChange={(e) => updateCoOwner(co.id, "cccd", e.target.value)} className="text-sm h-8" />
+                          <Input value={co.cccd} onChange={(e) => updateCoOwner(co.id, "cccd", e.target.value)} className={transferInputClass} />
                         </FF>
                         <FF label="Ngày sinh">
-                          <Input type="date" value={co.dob} onChange={(e) => updateCoOwner(co.id, "dob", e.target.value)} className="text-sm h-8" />
+                          <Input type="date" value={co.dob} onChange={(e) => updateCoOwner(co.id, "dob", e.target.value)} className={transferInputClass} />
                         </FF>
                         <FF label="Số điện thoại">
-                          <Input value={co.phone} onChange={(e) => updateCoOwner(co.id, "phone", e.target.value)} className="text-sm h-8" />
+                          <Input value={co.phone} onChange={(e) => updateCoOwner(co.id, "phone", e.target.value)} className={transferInputClass} />
                         </FF>
                         <FF label="Email">
-                          <Input value={co.email} onChange={(e) => updateCoOwner(co.id, "email", e.target.value)} className="text-sm h-8" />
+                          <Input value={co.email} onChange={(e) => updateCoOwner(co.id, "email", e.target.value)} className={transferInputClass} />
                         </FF>
                         <FF label="Địa chỉ liên hệ">
-                          <Input value={co.contactAddress} onChange={(e) => updateCoOwner(co.id, "contactAddress", e.target.value)} className="text-sm h-8" />
+                          <Input value={co.contactAddress} onChange={(e) => updateCoOwner(co.id, "contactAddress", e.target.value)} className={transferInputClass} />
                         </FF>
                       </div>
                     </div>
@@ -481,7 +484,7 @@ export function ContractTransferDialog({ open, onClose, contract, onSuccess }: P
                 </p>
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <FF label="Ngày hiệu lực chuyển nhượng" required error={errors.effectiveDate}>
-                    <Input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="text-sm h-8" />
+                    <Input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className={transferInputClass} />
                   </FF>
                   <div />
                 </div>
@@ -517,7 +520,7 @@ export function ContractTransferDialog({ open, onClose, contract, onSuccess }: P
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                       rows={2}
-                      className="text-sm resize-none"
+                      className={transferTextareaClass}
                       placeholder="Ghi chú về lý do chuyển nhượng, điều kiện thỏa thuận..."
                     />
                   </FF>

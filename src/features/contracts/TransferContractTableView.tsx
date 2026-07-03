@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { DetailSection, DetailField } from "./transferContractDetailSchema";
 
@@ -7,23 +7,8 @@ interface TransferContractTableViewProps {
   contract?: any;
 }
 
-const fieldCellStyle: CSSProperties = {
-  color: "#5a6175",
-  width: "220px",
-  minWidth: "180px",
-  padding: "9px 14px",
-  fontSize: "12px",
-  borderBottom: "1px solid #e0e0e0",
-  borderRight: "1px solid #e0e0e0",
-};
-
-const valueCellStyle: CSSProperties = {
-  color: "#1a2035",
-  fontWeight: 500,
-  padding: "9px 14px",
-  fontSize: "12px",
-  borderBottom: "1px solid #e0e0e0",
-};
+const detailTableHeadClass = "border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-[11px] leading-4 text-slate-600";
+const detailTableCellClass = "border-b border-r border-[#E5EAF3] bg-white px-3 py-2 text-xs leading-5 text-slate-700 transition-colors";
 
 interface FlatField {
   field: DetailField;
@@ -51,27 +36,14 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
     }));
   };
 
-  function rowBg(idx: number) {
-    return idx % 2 === 0 ? "#ffffff" : "#f8f9fa";
-  }
-
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Scrollable table area */}
       <div className="overflow-auto flex-1" style={{ maxHeight: "calc(100vh - 260px)" }}>
         
         {/* Render 8 Schema Sections */}
-        <div className="overflow-hidden rounded-lg border border-slate-200 shadow-sm mb-6">
-          <table
-            style={{
-              borderCollapse: "collapse",
-              width: "100%",
-              minWidth: "520px",
-              fontSize: "12px",
-              display: "table",
-              marginBottom: 0,
-            }}
-          >
+        <div className="mb-6 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50">
+          <table className="w-full min-w-[520px] border-separate border-spacing-0 text-xs">
             <colgroup>
               <col style={{ width: "50px" }} />
               <col style={{ width: "45%" }} />
@@ -79,10 +51,10 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
             </colgroup>
 
             <thead>
-              <tr style={{ background: "#f8f9fa", borderBottom: "1px solid #e0e0e0" }}>
-                <th style={{ padding: "10px 14px", fontWeight: 600, color: "#475467", textAlign: "center", borderRight: "1px solid #e0e0e0" }}>STT</th>
-                <th style={{ padding: "10px 14px", fontWeight: 600, color: "#475467", textAlign: "left" }}>Trường thông tin</th>
-                <th style={{ padding: "10px 14px", fontWeight: 600, color: "#475467", textAlign: "left" }}>Giá trị</th>
+              <tr>
+                <th className={`${detailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>STT</th>
+                <th className={`${detailTableHeadClass} text-left`} style={{ fontWeight: 650 }}>Trường thông tin</th>
+                <th className="border-b border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left text-[11px] leading-4 text-slate-600" style={{ fontWeight: 650 }}>Giá trị</th>
               </tr>
             </thead>
 
@@ -94,36 +66,20 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
               return (
                 <tbody key={section.id}>
                   {/* Section Header Row */}
-                  <tr style={{ background: "#f0fdf4" }}>
-                    <td
-                      style={{
-                        color: "#15803d",
-                        fontWeight: 500,
-                        textAlign: "center",
-                        borderBottom: "1px solid #bbf7d0",
-                        borderRight: "1px solid #bbf7d0",
-                        padding: "10px 14px",
-                        fontSize: "12px",
-                      }}
-                    >
+                  <tr className="bg-emerald-50">
+                    <td className="border-b border-r border-emerald-100 px-3 py-2 text-center text-xs text-emerald-700" style={{ fontWeight: 650 }}>
                       {sectionIdx + 1}
                     </td>
                     <td
                       colSpan={2}
-                      style={{
-                        color: "#15803d",
-                        fontWeight: 500,
-                        borderBottom: "1px solid #bbf7d0",
-                        padding: 0,
-                        fontSize: "12px",
-                      }}
+                      className="border-b border-emerald-100 p-0 text-xs text-emerald-700"
                     >
                       <button
                         type="button"
                         onClick={() => toggleSection(section.id)}
-                        className="w-full flex items-center justify-between text-left focus:outline-none hover:bg-emerald-100/30 transition-colors px-3.5 py-2.5"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-emerald-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-300"
                       >
-                        <span className="font-medium text-emerald-800 uppercase tracking-wide">
+                        <span className="text-xs text-emerald-800" style={{ fontWeight: 650 }}>
                           {section.title}
                         </span>
                         <ChevronDown
@@ -141,33 +97,17 @@ export function TransferContractTableView({ sections }: TransferContractTableVie
                     const isLastRow = sectionIdx === sections.length - 1 && idx === flatFields.length - 1;
 
                     return (
-                      <tr key={field.id} style={{ background: rowBg(idx) }} className="hover:bg-slate-50 transition-colors">
-                        <td
-                          style={{
-                            color: "#64748b",
-                            fontWeight: 500,
-                            textAlign: "center",
-                            borderBottom: isLastRow ? "none" : "1px solid #e0e0e0",
-                            borderRight: "1px solid #e0e0e0",
-                            padding: "9px 14px",
-                            fontSize: "12px",
-                          }}
-                        >
+                      <tr key={field.id} className="group hover:bg-[#F8FAFC]">
+                        <td className={`border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-400 group-hover:bg-[#F8FAFC] ${isLastRow ? "" : "border-b"}`} style={{ fontWeight: 600 }}>
                           {idx + 1}
                         </td>
                         <td
-                          style={{
-                            ...fieldCellStyle,
-                            paddingLeft: `${14 + level * 16}px`,
-                            fontWeight: isParent ? 500 : 400,
-                            color: isParent ? "#1a2035" : "#475467",
-                            borderRight: "none",
-                            borderBottom: isLastRow ? "none" : "1px solid #e0e0e0",
-                          }}
+                          className={`${detailTableCellClass} ${isParent ? "text-slate-900" : "text-slate-600"} ${isLastRow ? "border-b-0" : ""} group-hover:bg-[#F8FAFC]`}
+                          style={{ paddingLeft: `${12 + level * 16}px`, fontWeight: isParent ? 650 : 400 }}
                         >
                           {field.label}
                         </td>
-                        <td style={{ ...valueCellStyle, textAlign: "right", borderBottom: isLastRow ? "none" : "1px solid #e0e0e0" }}>
+                        <td className={`px-3 py-2 text-right text-xs leading-5 text-slate-900 group-hover:bg-[#F8FAFC] ${isLastRow ? "" : "border-b border-[#E5EAF3]"}`} style={{ fontWeight: 600 }}>
                           {isParent ? "" : (field.value || "—")}
                         </td>
                       </tr>

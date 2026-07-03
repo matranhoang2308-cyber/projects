@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Funnel, FunnelChart, LabelList, Lin
 import { Card } from "@/components/ui/card";
 import { DashboardFilters, type TrendGroup } from "./dashboardApi";
 import { customers, type Contract, type Customer, type PaymentRecord } from "@/data/mockDataCongNo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type DebtRow = {
   customer: Customer;
@@ -40,8 +41,8 @@ type OverdueDebtBreakdownType = "stage" | "product";
 
 const number = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
 const axisStyle = { fontSize: 11, fill: "#64748b" };
-const chartSelectClass = "crm-native-select h-9 min-w-[164px] rounded-lg border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
-const dateInputClass = "h-9 min-w-0 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-700 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100";
+const chartSelectClass = "h-9 min-w-[164px] rounded-[8px] border border-[#E5EAF3] bg-white text-xs font-medium text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition shadow-none text-left";
+const dateInputClass = "h-9 min-w-0 w-full rounded-[8px] border border-[#E5EAF3] bg-white px-2.5 text-xs font-medium text-slate-700 outline-none hover:border-slate-300 hover:bg-slate-50 focus:ring-2 focus:ring-slate-100 transition";
 const trendOptions: Array<{ value: TrendGroup; label: string }> = [
   { value: "day", label: "Ngày" },
   { value: "week", label: "Tuần" },
@@ -51,6 +52,21 @@ const trendOptions: Array<{ value: TrendGroup; label: string }> = [
 ];
 const chartColors = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#475569"];
 const heatmapColor = "#2563eb";
+type MetricTone = "blue" | "green" | "red" | "amber" | "slate";
+const metricToneClass: Record<MetricTone, string> = {
+  blue: "border-blue-100 bg-blue-50 text-blue-700",
+  green: "border-emerald-100 bg-emerald-50 text-emerald-700",
+  red: "border-red-100 bg-red-50 text-red-700",
+  amber: "border-amber-100 bg-amber-50 text-amber-700",
+  slate: "border-slate-100 bg-slate-50 text-slate-700",
+};
+const metricAccentClass: Record<MetricTone, string> = {
+  blue: "bg-blue-600",
+  green: "bg-emerald-600",
+  red: "bg-red-600",
+  amber: "bg-amber-500",
+  slate: "bg-slate-500",
+};
 const riskConfig = [
   { key: "A", label: "A - Đúng hạn", color: "#16a34a", className: "border-t-4 border-t-emerald-500" },
   { key: "B", label: "B - Trễ <15 ngày", color: "#f59e0b", className: "border-t-4 border-t-amber-500" },
@@ -335,15 +351,8 @@ function applyFilters(rows: DebtRow[], filters: DashboardFilters) {
   });
 }
 
-function MetricCard({ label, value, hint, icon: Icon, tone = "blue" }: { label: string; value: string; hint: string; icon: React.ElementType; tone?: "blue" | "green" | "red" | "amber" | "slate" }) {
-  const toneClass = {
-    blue: "border-blue-100 bg-blue-50 text-blue-700",
-    green: "border-emerald-100 bg-emerald-50 text-emerald-700",
-    red: "border-red-100 bg-red-50 text-red-700",
-    amber: "border-amber-100 bg-amber-50 text-amber-700",
-    slate: "border-slate-100 bg-slate-50 text-slate-700",
-  }[tone];
-  return <Card className="relative gap-0 overflow-hidden rounded-xl border-slate-200 bg-white p-5 shadow-sm"><span className="absolute inset-x-0 top-0 h-0.5 bg-blue-600" /><p className="min-h-5 pr-12 text-xs font-medium leading-5 text-slate-500">{label}</p><p className="mt-3 whitespace-nowrap text-xl font-semibold leading-7 tabular-nums text-slate-950">{value}</p><p className="mt-1.5 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-lg border ${toneClass}`}><Icon className="size-5" /></div></Card>;
+function MetricCard({ label, value, hint, icon: Icon, tone = "blue" }: { label: string; value: string; hint: string; icon: React.ElementType; tone?: MetricTone }) {
+  return <Card className="relative min-h-[112px] gap-0 overflow-hidden rounded-lg border-[#E5EAF3] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"><span className={`absolute inset-x-0 top-0 h-0.5 ${metricAccentClass[tone]}`} /><p className="min-h-4 pr-11 text-[11px] font-medium leading-4 text-slate-500">{label}</p><p className="mt-1 break-words text-lg font-semibold leading-6 tracking-[-0.01em] tabular-nums text-slate-950">{value}</p><p className="mt-1 text-[11px] leading-4 text-slate-400">{hint}</p><div className={`absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-md border ${metricToneClass[tone]}`}><Icon className="size-4.5" /></div></Card>;
 }
 
 function CardSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
@@ -351,7 +360,26 @@ function CardSection({ title, description, children }: { title: string; descript
 }
 
 function ChartTimeControl({ label, group, setGroup, from, setFrom, to, setTo }: { label: string; group: TrendGroup; setGroup: (value: TrendGroup) => void; from: string; setFrom: (value: string) => void; to: string; setTo: (value: string) => void }) {
-  return <div className="grid gap-2"><select aria-label={`Thời gian - ${label}`} className={chartSelectClass} value={group} onChange={(event) => setGroup(event.target.value as TrendGroup)}>{trendOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>{group === "custom" && <div className="grid grid-cols-2 gap-2"><input aria-label={`Từ ngày - ${label}`} className={dateInputClass} type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} /><input aria-label={`Đến ngày - ${label}`} className={dateInputClass} type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} /></div>}</div>;
+  return (
+    <div className="grid gap-2">
+      <Select value={group} onValueChange={(val) => setGroup(val as TrendGroup)}>
+        <SelectTrigger aria-label={`Thời gian - ${label}`} className={chartSelectClass}>
+          <SelectValue placeholder="Thời gian" />
+        </SelectTrigger>
+        <SelectContent>
+          {trendOptions.map((item) => (
+            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {group === "custom" && (
+        <div className="grid grid-cols-2 gap-2">
+          <input aria-label={`Từ ngày - ${label}`} className={dateInputClass} type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} />
+          <input aria-label={`Đến ngày - ${label}`} className={dateInputClass} type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ChartCard({ title, description, action, children }: { title: string; description: string; action: React.ReactNode; children: React.ReactNode }) {
@@ -749,7 +777,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
     <div className="space-y-7">
       <CardSection title="Công nợ" description="Tổng quan phải thu, đã thu và các khoản còn thiếu theo bộ lọc.">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
             <MetricCard label="Tổng số HDMB" value={number(filteredContracts.length)} hint="Hợp đồng mua bán phát sinh" icon={FileText} />
             <MetricCard label="Tổng giá trị HDMB" value={money(totalContractValue)} hint="Tổng giá trị hợp đồng" icon={Wallet} tone="blue" />
             <MetricCard label="Tổng phải thu" value={money(totalDue)} hint={`${number(rows.length)} đợt thanh toán`} icon={Wallet} />
@@ -771,7 +799,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
       </CardSection>
 
       <CardSection title="Hóa đơn điện tử" description="Tổng quan hóa đơn phải xuất, đã xuất, chưa xuất, điều chỉnh và hủy theo bộ lọc.">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <MetricCard label="Tổng hóa đơn phải xuất" value={number(invoiceRows.length)} hint="Theo đợt có phát sinh phải thu" icon={FileClock} />
           <MetricCard label="Tổng hóa đơn đã xuất" value={number(issuedInvoices)} hint="Invoice status: issued" icon={FileCheck} tone="green" />
           <MetricCard label="Tổng hóa đơn chưa xuất" value={number(pendingInvoices)} hint="Chưa có hóa đơn phát hành" icon={FileMinus2} tone="amber" />
@@ -781,7 +809,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
       </CardSection>
 
       <CardSection title="Thanh toán CPAY" description="Tổng quan giao dịch CPAY trong phạm vi dữ liệu hiện tại.">
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard label="Tổng giao dịch CPAY" value={number(paidRows.length + failedCpay + pendingReconcile)} hint="Giao dịch ghi nhận" icon={Receipt} />
           <MetricCard label="Tổng tiền nhận từ CPAY" value={money(totalPaid)} hint="Từ giao dịch đã thu" icon={Banknote} tone="green" />
           <MetricCard label="Giao dịch lỗi" value={number(failedCpay)} hint="Thanh toán lỗi/chưa đủ" icon={XCircle} tone="red" />
@@ -845,7 +873,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
           <ChartCard title="Tuổi nợ" description="Tỷ trọng công nợ còn thiếu theo nhóm ngày quá hạn." action={chartAction("Tuổi nợ", "agingDonut")}>
             {agingTotal === 0 ? <EmptyChart>Không có dữ liệu tuổi nợ theo bộ lọc hiện tại.</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Tooltip formatter={(value, _name, item) => { const pct = agingTotal ? Number(value) / agingTotal * 100 : 0; return [`${money(Number(value))} (${pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%)`, item.payload.name]; }} /><Pie data={agingDonutData} dataKey="amount" nameKey="name" cx="50%" cy="48%" innerRadius={62} outerRadius={98} paddingAngle={2} stroke="#ffffff" strokeWidth={3} isAnimationActive={false}>{agingDonutData.map((item) => <Cell key={item.name} fill={item.fill} />)}</Pie><text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" fill="#0f172a" fontSize="20" fontWeight="700">{money(agingTotal)}</text><text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="11">còn nợ</text></PieChart></ResponsiveContainer><ChartLegendList items={agingDonutData} valueLabel="amount" /></div>}
           </ChartCard>
-          <ChartCard title="Công nợ theo Sale / Đại lý / Sàn liên kết" description={`Tổng còn nợ được nhóm theo ${salesDebtGroupLabels[salesDebtGroupType]}.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Công nợ theo đơn vị bán hàng" group={getChartFilter("salesDebt").group} setGroup={(val) => setChartFilter("salesDebt", { group: val })} from={getChartFilter("salesDebt").from} setFrom={(val) => setChartFilter("salesDebt", { from: val })} to={getChartFilter("salesDebt").to} setTo={(val) => setChartFilter("salesDebt", { to: val })} /><select aria-label="Nhóm đơn vị bán hàng" className={chartSelectClass} value={salesDebtGroupType} onChange={(event) => setSalesDebtGroupType(event.target.value as SalesDebtGroupType)}><option value="sale">Sale</option><option value="agency">Đại lý</option><option value="partner">Sàn liên kết</option></select></div>}>
+          <ChartCard title="Công nợ theo Sale / Đại lý / Sàn liên kết" description={`Tổng còn nợ được nhóm theo ${salesDebtGroupLabels[salesDebtGroupType]}.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Công nợ theo đơn vị bán hàng" group={getChartFilter("salesDebt").group} setGroup={(val) => setChartFilter("salesDebt", { group: val })} from={getChartFilter("salesDebt").from} setFrom={(val) => setChartFilter("salesDebt", { from: val })} to={getChartFilter("salesDebt").to} setTo={(val) => setChartFilter("salesDebt", { to: val })} /><Select value={salesDebtGroupType} onValueChange={(val) => setSalesDebtGroupType(val as SalesDebtGroupType)}><SelectTrigger aria-label="Nhóm đơn vị bán hàng" className={chartSelectClass}><SelectValue placeholder="Chọn nhóm" /></SelectTrigger><SelectContent><SelectItem value="sale">Sale</SelectItem><SelectItem value="agency">Đại lý</SelectItem><SelectItem value="partner">Sàn liên kết</SelectItem></SelectContent></Select></div>}>
             {salesDebtData.length === 0 ? <EmptyChart>{`Không có dữ liệu ${salesDebtGroupLabels[salesDebtGroupType]}.`}</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={salesDebtData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={96} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Còn nợ"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{salesDebtData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={salesDebtData} valueLabel="amount" /></div>}
           </ChartCard>
           <ChartCard title="Công nợ theo đợt thanh toán" description="Tổng còn nợ theo mã đợt thanh toán trong các hợp đồng." action={chartAction("Công nợ theo đợt thanh toán", "paymentStageDebt")}>
@@ -885,7 +913,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
           <ChartCard title="Lãi phạt theo tháng" description="Tổng lãi phạt/lãi trễ hạn phát sinh theo tháng đến hạn." action={chartAction("Lãi phạt theo tháng", "lateInterest")}>
             {lateInterestByMonth.every((item) => item.amount === 0) ? <EmptyChart>Không có dữ liệu lãi phạt theo tháng.</EmptyChart> : <ResponsiveContainer width="100%" height="100%"><BarChart data={lateInterestByMonth} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" tick={axisStyle} tickLine={false} axisLine={false} minTickGap={12} /><YAxis width={46} tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} tỷ`} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Lãi phạt"]} /><Bar dataKey="amount" fill="#dc2626" radius={[6, 6, 0, 0]} maxBarSize={42} isAnimationActive={false} /></BarChart></ResponsiveContainer>}
           </ChartCard>
-          <ChartCard title="Nợ quá hạn theo tháng / đợt / sản phẩm" description={`Tổng nợ quá hạn được nhóm theo ${overdueDebtBreakdownLabels[overdueDebtBreakdownType]}.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Nợ quá hạn" group={getChartFilter("overdueDebtBreakdown").group} setGroup={(val) => setChartFilter("overdueDebtBreakdown", { group: val })} from={getChartFilter("overdueDebtBreakdown").from} setFrom={(val) => setChartFilter("overdueDebtBreakdown", { from: val })} to={getChartFilter("overdueDebtBreakdown").to} setTo={(val) => setChartFilter("overdueDebtBreakdown", { to: val })} /><select aria-label="Loại nợ quá hạn" className={chartSelectClass} value={overdueDebtBreakdownType} onChange={(event) => setOverdueDebtBreakdownType(event.target.value as OverdueDebtBreakdownType)}><option value="stage">Theo Đợt</option><option value="product">Theo Sản phẩm</option></select></div>}>
+          <ChartCard title="Nợ quá hạn theo tháng / đợt / sản phẩm" description={`Tổng nợ quá hạn được nhóm theo ${overdueDebtBreakdownLabels[overdueDebtBreakdownType]}.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Nợ quá hạn" group={getChartFilter("overdueDebtBreakdown").group} setGroup={(val) => setChartFilter("overdueDebtBreakdown", { group: val })} from={getChartFilter("overdueDebtBreakdown").from} setFrom={(val) => setChartFilter("overdueDebtBreakdown", { from: val })} to={getChartFilter("overdueDebtBreakdown").to} setTo={(val) => setChartFilter("overdueDebtBreakdown", { to: val })} /><Select value={overdueDebtBreakdownType} onValueChange={(val) => setOverdueDebtBreakdownType(val as OverdueDebtBreakdownType)}><SelectTrigger aria-label="Loại nợ quá hạn" className={chartSelectClass}><SelectValue placeholder="Chọn loại" /></SelectTrigger><SelectContent><SelectItem value="stage">Theo Đợt</SelectItem><SelectItem value="product">Theo Sản phẩm</SelectItem></SelectContent></Select></div>}>
             {overdueDebtBreakdownData.length === 0 ? <EmptyChart>{`Không có dữ liệu nợ quá hạn theo ${overdueDebtBreakdownLabels[overdueDebtBreakdownType]}.`}</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={overdueDebtBreakdownData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={112} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Nợ quá hạn"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{overdueDebtBreakdownData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={overdueDebtBreakdownData} valueLabel="amount" /></div>}
           </ChartCard>
         </div>
@@ -893,7 +921,7 @@ export function DebtDashboardReport({ filters }: { filters: DashboardFilters }) 
 
       <CardSection title="Phân tích công nợ" description="So sánh công nợ theo sản phẩm, khách hàng, đơn vị phân phối và mức hoàn thành kế hoạch thu.">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <ChartCard title="Công nợ theo sản phẩm / khách hàng / đơn vị phân phối" description={`Tổng còn nợ theo ${selectedAnalysisDebtLabel} trong phạm vi bộ lọc.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Phân tích công nợ" group={getChartFilter("analysisDebt").group} setGroup={(val) => setChartFilter("analysisDebt", { group: val })} from={getChartFilter("analysisDebt").from} setFrom={(val) => setChartFilter("analysisDebt", { from: val })} to={getChartFilter("analysisDebt").to} setTo={(val) => setChartFilter("analysisDebt", { to: val })} /><select aria-label="Loại phân tích công nợ" className={chartSelectClass} value={analysisDebtBreakdownType} onChange={(event) => setAnalysisDebtBreakdownType(event.target.value as AnalysisDebtBreakdownType)}><option value="product">Theo sản phẩm</option><option value="customer">Theo khách hàng</option><option value="salesUnit">Theo đơn vị phân phối</option></select></div>}>
+          <ChartCard title="Công nợ theo sản phẩm / khách hàng / đơn vị phân phối" description={`Tổng còn nợ theo ${selectedAnalysisDebtLabel} trong phạm vi bộ lọc.`} action={<div className="grid gap-2 lg:grid-cols-[auto_164px]"><ChartTimeControl label="Phân tích công nợ" group={getChartFilter("analysisDebt").group} setGroup={(val) => setChartFilter("analysisDebt", { group: val })} from={getChartFilter("analysisDebt").from} setFrom={(val) => setChartFilter("analysisDebt", { from: val })} to={getChartFilter("analysisDebt").to} setTo={(val) => setChartFilter("analysisDebt", { to: val })} /><Select value={analysisDebtBreakdownType} onValueChange={(val) => setAnalysisDebtBreakdownType(val as AnalysisDebtBreakdownType)}><SelectTrigger aria-label="Loại phân tích công nợ" className={chartSelectClass}><SelectValue placeholder="Chọn phân tích" /></SelectTrigger><SelectContent><SelectItem value="product">Theo sản phẩm</SelectItem><SelectItem value="customer">Theo khách hàng</SelectItem><SelectItem value="salesUnit">Theo đơn vị phân phối</SelectItem></SelectContent></Select></div>}>
             {selectedAnalysisDebtData.length === 0 ? <EmptyChart>{`Không có dữ liệu công nợ theo ${selectedAnalysisDebtLabel}.`}</EmptyChart> : <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={selectedAnalysisDebtData.slice(0, 8)} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 4 }}><CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" horizontal={false} /><XAxis type="number" tick={axisStyle} tickLine={false} axisLine={false} tickFormatter={(value) => `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`} /><YAxis dataKey="name" type="category" width={96} tick={axisStyle} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: "#f8fafc" }} formatter={(value) => [money(Number(value)), "Còn nợ"]} /><Bar dataKey="amount" radius={[0, 6, 6, 0]} maxBarSize={26} isAnimationActive={false}>{selectedAnalysisDebtData.slice(0, 8).map((item) => <Cell key={item.name} fill={item.fill} />)}</Bar></BarChart></ResponsiveContainer><ChartLegendList items={selectedAnalysisDebtData} valueLabel="amount" /></div>}
           </ChartCard>
           <ChartCard title="% hoàn thành kế hoạch thu" description="Tỷ lệ đã thu so với tổng phải thu trong phạm vi bộ lọc." action={chartAction("Hoàn thành kế hoạch thu", "analysisPlan")}>

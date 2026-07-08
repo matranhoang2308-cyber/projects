@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { addendumColumns } from "./addendumData";
+import { addendumCompactFilterTriggerClass, cn } from "./addendumStyles";
 
 interface ColumnVisibilityDropdownProps {
   visible: Record<string, boolean>;
@@ -19,7 +20,7 @@ export function ColumnVisibilityDropdown({ visible, onChange }: ColumnVisibility
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-[8px] border-[#E5EAF3] text-sm text-slate-700">
+        <Button variant="outline" size="sm" className={cn(addendumCompactFilterTriggerClass, "gap-1.5")}>
           <Settings2 className="h-3.5 w-3.5" />
           Hiển thị
         </Button>

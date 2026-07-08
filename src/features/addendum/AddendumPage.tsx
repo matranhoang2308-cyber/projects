@@ -8,6 +8,7 @@ import { AddendumDetailDrawer } from "./AddendumDetailDrawer";
 import { AddendumHistoryModal } from "./AddendumHistoryModal";
 import { addendumDetails } from "./addendumDetailSchema";
 import type { AddendumListItem } from "./addendumData";
+import { addendumPageShellClass, addendumPageHeaderClass, addendumPrimaryButtonClass } from "./addendumStyles";
 
 export function AddendumPage() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -37,16 +38,18 @@ export function AddendumPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    <div className={addendumPageShellClass}>
       {/* Header */}
-      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+      <div className={addendumPageHeaderClass}>
         <div>
-          <h1 className="text-xl font-semibold leading-7 text-slate-950">Quản lý phụ lục</h1>
-          <p className="mt-0.5 text-sm leading-5 text-slate-500">Tạo, theo dõi và quản lý phụ lục hợp đồng</p>
+          <h1 className="text-slate-950" style={{ fontWeight: 750 }}>Quản lý phụ lục</h1>
+          <p className="mt-1 text-sm text-slate-500">Tạo, theo dõi và quản lý phụ lục hợp đồng</p>
         </div>
-        <Button size="sm" className="h-10 gap-2 bg-slate-950 text-sm hover:bg-slate-800" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-4 h-4" />Tạo phụ lục
-        </Button>
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+          <Button size="sm" className={addendumPrimaryButtonClass} onClick={() => setCreateOpen(true)}>
+            <Plus className="w-4 h-4" />Tạo phụ lục
+          </Button>
+        </div>
       </div>
 
       {/* Success toast */}

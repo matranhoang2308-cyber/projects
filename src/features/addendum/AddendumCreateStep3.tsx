@@ -1,9 +1,10 @@
 import { RefreshCw, FileText, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { contractStatusCfg, type AddendumContractOption, type AddendumTemplate } from "./addendumData";
 import type { NewOwnerFields } from "./AddendumCreateStep2";
-import { cn } from "./addendumStyles";
+import { addendumBadgeBaseClass, cn } from "./addendumStyles";
 
 interface AddendumCreateStep3Props {
   contract?: AddendumContractOption;
@@ -33,7 +34,7 @@ export function AddendumCreateStep3({ contract, template, effectiveDate, fields,
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-indigo-600">{contract.label}</span>
-              <span className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium", contractStatusCfg[contract.status])}>{contract.status}</span>
+              <Badge variant="outline" className={cn(addendumBadgeBaseClass, "font-semibold", contractStatusCfg[contract.status])}>{contract.status}</Badge>
             </div>
             <p className="mt-0.5 truncate text-xs text-slate-500">{contract.customer} · {contract.property}</p>
           </div>

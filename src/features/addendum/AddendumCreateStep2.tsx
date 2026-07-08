@@ -3,8 +3,9 @@ import { Upload, Minus, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { contractStatusCfg, type AddendumContractOption, type AddendumTemplate } from "./addendumData";
-import { addendumInputClass, addendumTextareaClass, cn } from "./addendumStyles";
+import { addendumInputClass, addendumTextareaClass, addendumBadgeBaseClass, cn } from "./addendumStyles";
 
 export interface NewOwnerFields {
   fullName: string;
@@ -83,7 +84,7 @@ export function AddendumCreateStep2({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-indigo-600">{contract.label}</span>
-              <span className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium", contractStatusCfg[contract.status])}>{contract.status}</span>
+              <Badge variant="outline" className={cn(addendumBadgeBaseClass, "font-semibold", contractStatusCfg[contract.status])}>{contract.status}</Badge>
             </div>
             <p className="mt-0.5 truncate text-xs text-slate-500">{contract.customer} · {contract.property}</p>
           </div>

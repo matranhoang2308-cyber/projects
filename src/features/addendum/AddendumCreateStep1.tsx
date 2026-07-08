@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Search, Check, CornerDownRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { templates, contractOptions, contractStatusCfg, type AddendumContractOption } from "./addendumData";
-import { addendumSearchInputClass, addendumSelectTriggerClass, cn } from "./addendumStyles";
+import { addendumSearchInputClass, addendumSelectTriggerClass, addendumBadgeBaseClass, cn } from "./addendumStyles";
 
 const ALL = "Tất cả";
 
@@ -91,7 +92,7 @@ export function AddendumCreateStep1({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-indigo-600">{c.label}</span>
-                  <span className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium", contractStatusCfg[c.status])}>{c.status}</span>
+                  <Badge variant="outline" className={cn(addendumBadgeBaseClass, "font-semibold", contractStatusCfg[c.status])}>{c.status}</Badge>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-slate-500">{c.customer} · {c.property}</p>
               </div>

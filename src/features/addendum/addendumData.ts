@@ -70,10 +70,13 @@ export const contractOptions: AddendumContractOption[] = [
   { value: "HDMB-154", label: "HDMB-154", customer: "Bùi Thị Lan",     property: "Căn hộ G7-0258",     value_str: "2,820,000,000đ", status: "Đã đặt cọc" },
 ];
 
+// Ring-based pattern (bg-50 + ring-1), matching the system's status-badge
+// convention (see DebtDashboard statusConfig / CONTRACT_STATUS_CLASSES) —
+// not the bg-100 + border pattern the old addendum page used.
 export const contractStatusCfg: Record<string, string> = {
-  "Đã ký":       "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "Công chứng":  "bg-violet-100 text-violet-700 border-violet-200",
-  "Đã đặt cọc":  "bg-orange-100 text-orange-700 border-orange-200",
+  "Đã ký":       "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  "Công chứng":  "bg-violet-50 text-violet-700 ring-violet-100",
+  "Đã đặt cọc":  "bg-orange-50 text-orange-700 ring-orange-200",
 };
 
 // ─── Addendum list — 13 columns ───────────────────────────────────────────────
@@ -142,8 +145,8 @@ export const addendumList: AddendumListItem[] = [
 ];
 
 export const addendumStatusCfg: Record<AddendumStatus, string> = {
-  "Đã ký": "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "Nháp":  "bg-slate-100 text-slate-600 border-slate-200",
+  "Đã ký": "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  "Nháp":  "bg-slate-50 text-slate-600 ring-slate-200",
 };
 
 // ─── Filter option lists (derived) ────────────────────────────────────────────

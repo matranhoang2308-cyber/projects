@@ -50,8 +50,10 @@ export function AddendumCreateModal({ open, onClose, onSuccess }: AddendumCreate
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col overflow-hidden p-0" aria-describedby={undefined}>
-        {/* Header + stepper */}
-        <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
+        {/* Header + stepper — circle/connector classes match ContractTransferDialog's
+            stepper exactly (design/addendum-consistency-checklist.md #6); current step
+            uses the system's slate-900, not the blue Figma calls for. */}
+        <div className="shrink-0 border-b border-border/60 px-6 pb-4 pt-5">
           <div className="mb-3 flex items-center justify-between">
             <DialogTitle className="text-slate-900">Tạo phụ lục</DialogTitle>
             <button type="button" onClick={handleClose} aria-label="Đóng" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
@@ -63,16 +65,16 @@ export function AddendumCreateModal({ open, onClose, onSuccess }: AddendumCreate
               <div key={s.id} className="flex flex-1 items-center">
                 <div className="flex items-center gap-2">
                   <div className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all",
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all",
                     step > s.id ? "border-emerald-500 bg-emerald-500 text-white"
-                      : step === s.id ? "border-blue-600 bg-blue-600 text-white"
+                      : step === s.id ? "border-slate-900 bg-slate-900 text-white"
                       : "border-slate-200 bg-white text-slate-400"
                   )}>
                     {step > s.id ? <Check className="h-3.5 w-3.5" /> : s.id}
                   </div>
                   <p className={cn(
                     "hidden whitespace-nowrap text-xs sm:block",
-                    step === s.id ? "font-medium text-blue-700" : step > s.id ? "text-emerald-600" : "text-slate-400"
+                    step === s.id ? "font-medium text-slate-900" : step > s.id ? "text-emerald-600" : "text-slate-400"
                   )}>{s.label}</p>
                 </div>
                 {idx < steps.length - 1 && (
@@ -116,7 +118,7 @@ export function AddendumCreateModal({ open, onClose, onSuccess }: AddendumCreate
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-white px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-white px-6 py-4">
           <Select value={draftMode} onValueChange={setDraftMode}>
             <SelectTrigger className={cn(addendumSelectTriggerClass, "w-[110px]")}>
               <SelectValue />

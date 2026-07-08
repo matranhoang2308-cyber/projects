@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { contractStatusCfg } from "./addendumData";
 import type { AddendumDetail, AddendumDetailField } from "./addendumDetailSchema";
-import { cn } from "./addendumStyles";
+import { addendumBadgeBaseClass, cn } from "./addendumStyles";
 
 function FieldGrid({ fields }: { fields: AddendumDetailField[] }) {
   return (
@@ -63,9 +65,9 @@ export function AddendumBlockView({ detail }: { detail: AddendumDetail }) {
           </div>
           <div>
             <p className="text-xs text-slate-400">Trạng thái hợp đồng</p>
-            <span className="inline-flex items-center rounded border border-violet-200 bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-700">
+            <Badge variant="outline" className={cn(addendumBadgeBaseClass, "font-semibold", contractStatusCfg[detail.contract.status] ?? contractStatusCfg["Công chứng"])}>
               {detail.contract.status}
-            </span>
+            </Badge>
           </div>
         </div>
       </div>

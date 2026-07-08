@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { getAuditLogForAddendum, type AddendumListItem } from "./addendumData";
-import { cn } from "./addendumStyles";
+import { addendumBadgeBaseClass, cn } from "./addendumStyles";
 
 interface AddendumHistoryModalProps {
   item: AddendumListItem | null;
@@ -16,7 +17,7 @@ export function AddendumHistoryModal({ item, open, onClose }: AddendumHistoryMod
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg p-0" aria-describedby={undefined}>
-        <div className="border-b border-slate-100 px-6 py-4">
+        <div className="border-b border-border/60 px-6 py-4">
           <DialogTitle className="text-slate-900">Nhật ký thay đổi</DialogTitle>
         </div>
 
@@ -37,10 +38,10 @@ export function AddendumHistoryModal({ item, open, onClose }: AddendumHistoryMod
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-semibold text-slate-800">{e.user}</span>
                         <span className="text-xs text-slate-400">{e.time}</span>
-                        <span className={cn(
-                          "rounded px-1.5 py-0.5 text-[11px] font-medium",
-                          e.action === "Tạo phụ lục" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                        )}>{e.action}</span>
+                        <Badge variant="outline" className={cn(
+                          addendumBadgeBaseClass,
+                          e.action === "Tạo phụ lục" ? "bg-blue-50 text-blue-700 ring-blue-100" : "bg-amber-50 text-amber-700 ring-amber-200"
+                        )}>{e.action}</Badge>
                       </div>
                       <p className="mt-0.5 text-xs leading-4 text-slate-500">{e.detail}</p>
                       <span className="text-xs font-medium text-indigo-500">{e.contract}</span>
@@ -52,7 +53,7 @@ export function AddendumHistoryModal({ item, open, onClose }: AddendumHistoryMod
           )}
         </div>
 
-        <div className="flex justify-end border-t border-slate-100 px-6 py-4">
+        <div className="flex justify-end border-t border-border/60 px-6 py-4">
           <Button variant="outline" className="text-sm" onClick={onClose}>Đóng</Button>
         </div>
       </DialogContent>

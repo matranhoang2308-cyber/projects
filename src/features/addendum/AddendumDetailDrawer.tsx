@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileSpreadsheet, LayoutGrid, Table as TableIcon, Download, History } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { addendumStatusCfg } from "./addendumData";
 import type { AddendumListItem } from "./addendumData";
@@ -9,7 +10,7 @@ import type { AddendumDetail } from "./addendumDetailSchema";
 import { AddendumBlockView } from "./AddendumBlockView";
 import { AddendumTableView } from "./AddendumTableView";
 import { getAuditLogForAddendum } from "./addendumData";
-import { cn } from "./addendumStyles";
+import { addendumBadgeBaseClass, cn } from "./addendumStyles";
 
 type ViewMode = "block" | "table";
 
@@ -57,7 +58,7 @@ export function AddendumDetailDrawer({ item, detail, open, onClose, onOpenHistor
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="flex w-full flex-col overflow-hidden p-0 sm:max-w-2xl" aria-describedby={undefined}>
+      <SheetContent className="flex w-full flex-col overflow-hidden p-0 sm:max-w-xl" aria-describedby={undefined}>
         <SheetTitle className="sr-only">Chi tiết phụ lục {detail.id}</SheetTitle>
 
         {/* ── HEADER ── */}
@@ -66,9 +67,9 @@ export function AddendumDetailDrawer({ item, detail, open, onClose, onOpenHistor
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold text-slate-900">{detail.title}</h3>
             <span className="text-xs font-semibold text-indigo-600">{detail.code}</span>
-            <span className={cn("inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium", addendumStatusCfg[detail.status])}>
+            <Badge variant="outline" className={cn(addendumBadgeBaseClass, "font-semibold", addendumStatusCfg[detail.status])}>
               {detail.status}
-            </span>
+            </Badge>
           </div>
           <p className="mt-1 text-xs text-slate-500">
             Ngày tạo: {detail.createdDate} · Người tạo: {detail.createdBy} · Hiệu lực: {detail.effectiveDate}
@@ -145,10 +146,10 @@ export function AddendumDetailDrawer({ item, detail, open, onClose, onOpenHistor
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-xs font-semibold text-slate-800">{a.user}</span>
                         <span className="text-xs text-slate-400">{a.time}</span>
-                        <span className={cn(
-                          "rounded px-1.5 py-0.5 text-[11px] font-medium",
-                          a.action === "Tạo phụ lục" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                        )}>{a.action}</span>
+                        <Badge variant="outline" className={cn(
+                          addendumBadgeBaseClass,
+                          a.action === "Tạo phụ lục" ? "bg-blue-50 text-blue-700 ring-blue-100" : "bg-amber-50 text-amber-700 ring-amber-200"
+                        )}>{a.action}</Badge>
                       </div>
                       <p className="mt-0.5 text-xs leading-4 text-slate-500">{a.detail}</p>
                       <span className="text-xs font-medium text-indigo-500">{a.contract}</span>

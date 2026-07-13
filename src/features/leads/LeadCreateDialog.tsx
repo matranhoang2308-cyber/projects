@@ -69,12 +69,14 @@ export function LeadCreateDialog({
   const [bookingPaymentDate, setBookingPaymentDate] = useState("");
   const [bookingQueueNumber, setBookingQueueNumber] = useState("");
   const [bookingDate, setBookingDate] = useState("");
+  const [status, setStatus] = useState<LeadStatus>("Lead mới");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open) {
       if (leadToEdit) {
         setName(leadToEdit.name || "");
+        setStatus(leadToEdit.status || "Lead mới");
         setPhone(leadToEdit.phone || "");
         setEmail(leadToEdit.email || "");
         setGender(leadToEdit.gender || "");
@@ -116,6 +118,7 @@ export function LeadCreateDialog({
         setErrors({});
       } else {
         setName("");
+        setStatus("Lead mới");
         setPhone("");
         setEmail("");
         setGender("");
@@ -168,6 +171,7 @@ export function LeadCreateDialog({
         job: job.trim(),
         source: finalSource,
         salesperson: finalSalesperson,
+        status: status,
         careNote: careNote.trim(),
         bookingAmount: bookingAmount.trim() || undefined,
         bookingPaymentDate: formattedBookingPaymentDate || undefined,
@@ -187,7 +191,7 @@ export function LeadCreateDialog({
         job: job.trim(),
         source: finalSource,
         salesperson: finalSalesperson,
-        status: "Lead mới" as LeadStatus,
+        status: status,
         createDate: formattedDate,
         careNote: careNote.trim(),
         timeline: [
@@ -206,6 +210,7 @@ export function LeadCreateDialog({
     }
 
     setName("");
+    setStatus("Lead mới");
     setPhone("");
     setEmail("");
     setGender("");
@@ -313,6 +318,21 @@ export function LeadCreateDialog({
           )}
 
           <div className="grid grid-cols-2 gap-4">
+            <FormField label="Giai đoạn">
+              <Select value={status} onValueChange={(val) => setStatus(val as LeadStatus)}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Chọn giai đoạn" /></SelectTrigger>
+                <SelectContent className="bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                  <SelectItem value="Lead mới">Lead mới</SelectItem>
+                  <SelectItem value="Đã tiếp nhận">Đã tiếp nhận</SelectItem>
+                  <SelectItem value="Đang tư vấn">Đang tư vấn</SelectItem>
+                  <SelectItem value="Đã gửi báo giá">Đã gửi báo giá</SelectItem>
+                  <SelectItem value="Đặt chỗ">Đặt chỗ</SelectItem>
+                  <SelectItem value="Tham quan nhà mẫu">Tham quan nhà mẫu</SelectItem>
+                  <SelectItem value="Thành công">Thành công</SelectItem>
+                  <SelectItem value="Không thành công">Không thành công</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
             <FormField label="Nghề nghiệp">
               <Input
                 value={job}
@@ -321,6 +341,9 @@ export function LeadCreateDialog({
                 className="h-9 text-xs"
               />
             </FormField>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <FormField label="Người tạo">
               <Select value={salesperson} onValueChange={setSalesperson}>
                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Chọn người tạo" /></SelectTrigger>
@@ -354,7 +377,7 @@ export function LeadCreateDialog({
             />
           </FormField>
 
-          {leadToEdit?.status === "Đặt chỗ" && (
+          {status === "Đặt chỗ" && (
             <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/50 space-y-3">
               <h3 className="text-xs font-bold text-slate-800">Thông tin đặt chỗ</h3>
               <div className="grid grid-cols-2 gap-3">

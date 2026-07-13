@@ -9,7 +9,12 @@
       "Read(//usr/local/lib/node_modules/**)",
       "Bash(rm -f verify-reminder*.tmp.mjs)",
       "Bash(npm uninstall *)",
-      "Bash(pkill -f \"vite\")"
+      "Bash(pkill -f \"vite\")",
+      "Bash(cp src/features/leads/LeadPage.tsx /tmp/LeadPage.tsx.bak)",
+      "Bash(sed -i '' 's|navigate\\(\"/customers\"\\);|window.location.href = \"/customers\";|' src/features/leads/LeadPage.tsx)",
+      "Bash(cp /tmp/LeadPage.tsx.bak src/features/leads/LeadPage.tsx)",
+      "Bash(rm -f verify-*.tmp.mjs)",
+      "Bash(pkill -f vite)"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router";
 import {
   Search, Users, User, MoreHorizontal, Eye, Trash2, Plus, Upload, SlidersHorizontal, CheckSquare, CheckCircle2, Pencil
 } from "lucide-react";
@@ -31,6 +32,7 @@ import { LeadCreateDialog } from "./LeadCreateDialog";
 import { LeadDetailSheet } from "./LeadDetailSheet";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import type { Lead, LeadStatus } from "./leadTypes";
 
 const pipelineStatuses: LeadStatus[] = [
@@ -38,12 +40,9 @@ const pipelineStatuses: LeadStatus[] = [
   "Đã tiếp nhận",
   "Đang tư vấn",
   "Đã gửi báo giá",
-  "Đã tham quan",
-  "Giữ chỗ",
   "Đặt chỗ",
-  "Đặt cọc",
-  "Ký HĐMB",
-  "Converted",
+  "Tham quan nhà mẫu",
+  "Thành công",
   "Không thành công"
 ];
 
@@ -57,7 +56,7 @@ const sourceFilters = [
 ];
 
 const statusFilters = [
-  { value: "all", label: "Tất cả trạng thái" },
+  { value: "all", label: "Tất cả giai đoạn" },
   ...pipelineStatuses.map((s) => ({ value: s, label: s }))
 ];
 
@@ -76,12 +75,9 @@ const statusConfig: Record<LeadStatus, string> = {
   "Đã tiếp nhận": "bg-blue-50 text-blue-700 ring-blue-200 border-blue-200",
   "Đang tư vấn": "bg-indigo-50 text-indigo-700 ring-indigo-200 border-indigo-200",
   "Đã gửi báo giá": "bg-amber-50 text-amber-700 ring-amber-200 border-amber-200",
-  "Đã tham quan": "bg-purple-50 text-purple-700 ring-purple-200 border-purple-200",
-  "Giữ chỗ": "bg-cyan-50 text-cyan-700 ring-cyan-200 border-cyan-200",
   "Đặt chỗ": "bg-sky-50 text-sky-700 ring-sky-200 border-sky-200",
-  "Đặt cọc": "bg-teal-50 text-teal-700 ring-teal-200 border-teal-200",
-  "Ký HĐMB": "bg-emerald-50 text-emerald-700 ring-emerald-200 border-emerald-200",
-  Converted: "bg-green-50 text-green-700 ring-green-200 border-green-200",
+  "Tham quan nhà mẫu": "bg-purple-50 text-purple-700 ring-purple-200 border-purple-200",
+  "Thành công": "bg-green-50 text-green-700 ring-green-200 border-green-200",
   "Không thành công": "bg-red-50 text-red-700 ring-red-200 border-red-200",
 };
 
@@ -98,6 +94,7 @@ const customerSourceClass: Record<string, string> = {
 };
 
 export function LeadPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -109,8 +106,29 @@ export function LeadPage() {
   const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ lead: Lead; newStatus: LeadStatus } | null>(null);
   const [statusLogContent, setStatusLogContent] = useState("");
+  const [dialogBookingAmount, setDialogBookingAmount] = useState("");
+  const [dialogBookingPaymentDate, setDialogBookingPaymentDate] = useState("");
+  const [dialogBookingQueueNumber, setDialogBookingQueueNumber] = useState("");
+  const [dialogBookingDate, setDialogBookingDate] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState("10");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (pendingStatusChange && pendingStatusChange.newStatus === "Đặt chỗ") {
+      const lead = pendingStatusChange.lead;
+      setDialogBookingAmount(lead.bookingAmount || "");
+      const bpdParts = (lead.bookingPaymentDate || "").split("/");
+      setDialogBookingPaymentDate(bpdParts.length === 3 ? `${bpdParts[2]}-${bpdParts[1]}-${bpdParts[0]}` : "");
+      setDialogBookingQueueNumber(lead.bookingQueueNumber ? String(lead.bookingQueueNumber) : "");
+      const bdParts = (lead.bookingDate || "").split("/");
+      setDialogBookingDate(bdParts.length === 3 ? `${bdParts[2]}-${bdParts[1]}-${bdParts[0]}` : "");
+    } else {
+      setDialogBookingAmount("");
+      setDialogBookingPaymentDate("");
+      setDialogBookingQueueNumber("");
+      setDialogBookingDate("");
+    }
+  }, [pendingStatusChange]);
 
   // Load from localStorage
   useEffect(() => {
@@ -247,15 +265,15 @@ export function LeadPage() {
     }
 
     // 3. Mark Lead as Converted
-    const updated = leadList.map((l) => (l.id === lead.id ? { ...l, status: "Converted" as LeadStatus } : l));
+    const updated = leadList.map((l) => (l.id === lead.id ? { ...l, status: "Thành công" as LeadStatus } : l));
     setLeadList(updated);
     saveStoredLeads(updated);
 
-    setSelectedLead((prev) => (prev?.id === lead.id ? { ...prev, status: "Converted" as LeadStatus } : prev));
+    setSelectedLead((prev) => (prev?.id === lead.id ? { ...prev, status: "Thành công" as LeadStatus } : prev));
     setSheetOpen(false);
 
     alert(`Đã chuyển đổi Lead "${lead.name}" thành Khách hàng thành công!\nHệ thống đang điều hướng sang danh sách Khách hàng.`);
-    window.location.href = "/customers";
+    navigate("/customers");
   };
 
   const filteredLeads = useMemo(() => {
@@ -273,7 +291,7 @@ export function LeadPage() {
   const totalLeads = leadList.length;
   const newLeadCount = leadList.filter((l) => l.status === "Lead mới").length;
   const consultingCount = leadList.filter((l) => l.status === "Đang tư vấn").length;
-  const convertedCount = leadList.filter((l) => l.status === "Converted").length;
+  const convertedCount = leadList.filter((l) => l.status === "Thành công").length;
 
   const perPage = Number(rowsPerPage);
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / perPage));
@@ -338,7 +356,7 @@ export function LeadPage() {
         <CoreMetricCard icon={Users} label="Tổng số Lead" value={String(totalLeads)} sub="Đã tiếp nhận" iconClass="bg-blue-50" />
         <CoreMetricCard icon={User} label="Lead mới" value={String(newLeadCount)} sub="Chờ tiếp nhận" iconClass="bg-blue-50" />
         <CoreMetricCard icon={SlidersHorizontal} label="Đang tư vấn" value={String(consultingCount)} sub="Trong Pipeline" iconClass="bg-orange-50" />
-        <CoreMetricCard icon={CheckSquare} label="Đã chuyển đổi" value={String(convertedCount)} sub="Converted" iconClass="bg-green-50" />
+        <CoreMetricCard icon={CheckSquare} label="Đã chuyển đổi" value={String(convertedCount)} sub="Thành công" iconClass="bg-green-50" />
       </div>
 
       {/* Main Panel */}
@@ -391,8 +409,8 @@ export function LeadPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
-              <SelectTrigger aria-label="Lọc theo trạng thái" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
-                <SelectValue placeholder="Trạng thái" />
+              <SelectTrigger aria-label="Lọc theo giai đoạn" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
+                <SelectValue placeholder="Giai đoạn" />
               </SelectTrigger>
               <SelectContent>
                 {statusFilters.map((opt) => (
@@ -425,7 +443,7 @@ export function LeadPage() {
                 <TableHead className={`${leadTableHeaderClass} w-44`} style={{ fontWeight: 650 }}>Email</TableHead>
                 <TableHead className={`${leadTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Nguồn</TableHead>
                 <TableHead className={`${leadTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Ngày tạo</TableHead>
-                <TableHead className={`${leadTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Trạng thái</TableHead>
+                <TableHead className={`${leadTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Giai đoạn</TableHead>
                 <TableHead className="h-10 w-14 border-b border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center align-middle text-[11px] leading-4 text-slate-600" style={{ fontWeight: 650 }}>...</TableHead>
               </TableRow>
             </TableHeader>
@@ -497,11 +515,9 @@ export function LeadPage() {
                           <SelectItem value="Đã tiếp nhận">Đã tiếp nhận</SelectItem>
                           <SelectItem value="Đang tư vấn">Đang tư vấn</SelectItem>
                           <SelectItem value="Đã gửi báo giá">Đã gửi báo giá</SelectItem>
-                          <SelectItem value="Đã tham quan">Đã tham quan</SelectItem>
-                          <SelectItem value="Giữ chỗ">Giữ chỗ</SelectItem>
                           <SelectItem value="Đặt chỗ">Đặt chỗ</SelectItem>
-                          <SelectItem value="Đặt cọc">Đặt cọc</SelectItem>
-                          <SelectItem value="Ký HĐMB">Ký HĐMB</SelectItem>
+                          <SelectItem value="Tham quan nhà mẫu">Tham quan nhà mẫu</SelectItem>
+                          <SelectItem value="Thành công">Thành công</SelectItem>
                           <SelectItem value="Không thành công">Không thành công</SelectItem>
                         </SelectContent>
                       </Select>
@@ -634,6 +650,54 @@ export function LeadPage() {
                 {pendingStatusChange?.newStatus}
               </Badge>
             </div>
+
+            {pendingStatusChange?.newStatus === "Đặt chỗ" && (
+              <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/50 space-y-3">
+                <h3 className="text-xs font-bold text-slate-800">Thông tin đặt chỗ</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-700">Số tiền đặt chỗ</span>
+                    <Input
+                      value={dialogBookingAmount}
+                      onChange={(e) => setDialogBookingAmount(e.target.value)}
+                      placeholder="VD: 50,000,000"
+                      className="h-8 text-xs bg-white"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-700">Ngày thanh toán</span>
+                    <Input
+                      type="date"
+                      value={dialogBookingPaymentDate}
+                      onChange={(e) => setDialogBookingPaymentDate(e.target.value)}
+                      className="h-8 text-xs bg-white"
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-700">Số thứ tự (STT giữ chỗ)</span>
+                    <Input
+                      type="number"
+                      value={dialogBookingQueueNumber}
+                      onChange={(e) => setDialogBookingQueueNumber(e.target.value)}
+                      placeholder="VD: 5"
+                      className="h-8 text-xs bg-white"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-700">Ngày đặt chỗ</span>
+                    <Input
+                      type="date"
+                      value={dialogBookingDate}
+                      onChange={(e) => setDialogBookingDate(e.target.value)}
+                      className="h-8 text-xs bg-white"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-slate-700">Nội dung nhật ký</span>
               <Textarea
@@ -655,9 +719,32 @@ export function LeadPage() {
                   const now = new Date();
                   const formattedTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} ${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
                   const content = statusLogContent.trim() || `Chuyển trạng thái sang "${pendingStatusChange.newStatus}"`;
+                  const formattedBpd = dialogBookingPaymentDate ? dialogBookingPaymentDate.split("-").reverse().join("/") : "";
+                  const formattedBd = dialogBookingDate ? dialogBookingDate.split("-").reverse().join("/") : "";
+                  
+                  const newNote = {
+                    content: content,
+                    author: pendingStatusChange.lead.salesperson || "Nhân viên",
+                    date: now.toLocaleDateString("vi-VN")
+                  };
+                  const initialNotes = pendingStatusChange.lead.notes || [
+                    { 
+                      content: pendingStatusChange.lead.careNote || "Chưa có ghi chú chăm sóc", 
+                      author: pendingStatusChange.lead.salesperson || "Nhân viên", 
+                      date: pendingStatusChange.lead.createDate 
+                    }
+                  ];
+                  const updatedNotes = [newNote, ...initialNotes];
+
                   const updatedLead = {
                     ...pendingStatusChange.lead,
                     status: pendingStatusChange.newStatus,
+                    bookingAmount: pendingStatusChange.newStatus === "Đặt chỗ" ? dialogBookingAmount : pendingStatusChange.lead.bookingAmount,
+                    bookingPaymentDate: pendingStatusChange.newStatus === "Đặt chỗ" ? formattedBpd : pendingStatusChange.lead.bookingPaymentDate,
+                    bookingQueueNumber: pendingStatusChange.newStatus === "Đặt chỗ" && dialogBookingQueueNumber ? Number(dialogBookingQueueNumber) : pendingStatusChange.lead.bookingQueueNumber,
+                    bookingDate: pendingStatusChange.newStatus === "Đặt chỗ" ? formattedBd : pendingStatusChange.lead.bookingDate,
+                    notes: updatedNotes,
+                    careNote: content,
                     timeline: [
                       {
                         date: formattedTime,
@@ -670,6 +757,9 @@ export function LeadPage() {
                   handleUpdateLead(updatedLead);
                   setPendingStatusChange(null);
                   setStatusLogContent("");
+                  if (pendingStatusChange.newStatus === "Thành công") {
+                    handleConvertLead(updatedLead);
+                  }
                 }
               }}
               className="h-9 text-xs bg-slate-950 hover:bg-slate-800 text-white px-4"

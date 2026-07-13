@@ -33,12 +33,9 @@ export type LeadStatus =
   | "Đã tiếp nhận"
   | "Đang tư vấn"
   | "Đã gửi báo giá"
-  | "Đã tham quan"
-  | "Giữ chỗ"
   | "Đặt chỗ"
-  | "Đặt cọc"
-  | "Ký HĐMB"
-  | "Converted"
+  | "Tham quan nhà mẫu"
+  | "Thành công"
   | "Không thành công";
 
 export interface Lead {
@@ -60,4 +57,9 @@ export interface Lead {
   files: LeadFile[];
   proposals: LeadProposal[];
   tasks: LeadTask[];
+  bookingAmount?: string;
+  bookingPaymentDate?: string;
+  bookingQueueNumber?: number;
+  bookingDate?: string;
+  notes?: Array<{ content: string; author: string; date: string }>;
 }

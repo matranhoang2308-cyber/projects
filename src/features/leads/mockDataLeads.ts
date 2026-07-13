@@ -12,7 +12,7 @@ const INITIAL_LEADS: Lead[] = [
     job: "Kinh doanh tự do",
     source: "Website",
     salesperson: "Nguyễn Văn A",
-    status: "Ký HĐMB",
+    status: "Thành công",
     createDate: "01/06/2026",
     careNote: "Khách hàng rất quan tâm căn hộ 2 phòng ngủ dự án The Sun Avenue. Đã xem căn hộ mẫu.",
     timeline: [
@@ -51,7 +51,11 @@ const INITIAL_LEADS: Lead[] = [
     job: "Quản lý dự án",
     source: "Hotline",
     salesperson: "Trần Thị B",
-    status: "Đang tư vấn",
+    status: "Đặt chỗ",
+    bookingAmount: "50.000.000đ",
+    bookingPaymentDate: "15/06/2026",
+    bookingQueueNumber: 5,
+    bookingDate: "13/06/2026",
     createDate: "05/06/2026",
     careNote: "Cần mua căn hộ shophouse để kinh doanh cà phê. Đang phân vân vị trí mặt đường chính.",
     timeline: [

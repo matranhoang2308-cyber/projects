@@ -65,6 +65,10 @@ export function LeadCreateDialog({
   const [salesperson, setSalesperson] = useState("Nguyễn Văn A");
   const [customSalesperson, setCustomSalesperson] = useState("");
   const [careNote, setCareNote] = useState("");
+  const [bookingAmount, setBookingAmount] = useState("");
+  const [bookingPaymentDate, setBookingPaymentDate] = useState("");
+  const [bookingQueueNumber, setBookingQueueNumber] = useState("");
+  const [bookingDate, setBookingDate] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -79,6 +83,14 @@ export function LeadCreateDialog({
         setDob(dobVal);
         setAddress(leadToEdit.address || "");
         setJob(leadToEdit.job || "");
+
+        // Handle booking details
+        setBookingAmount(leadToEdit.bookingAmount || "");
+        const bpdParts = (leadToEdit.bookingPaymentDate || "").split("/");
+        setBookingPaymentDate(bpdParts.length === 3 ? `${bpdParts[2]}-${bpdParts[1]}-${bpdParts[0]}` : "");
+        setBookingQueueNumber(leadToEdit.bookingQueueNumber ? String(leadToEdit.bookingQueueNumber) : "");
+        const bdParts = (leadToEdit.bookingDate || "").split("/");
+        setBookingDate(bdParts.length === 3 ? `${bdParts[2]}-${bdParts[1]}-${bdParts[0]}` : "");
 
         // Handle source
         const standardSources = ["Facebook", "Website", "Hotline", "Walk-in", "Giới thiệu", "Offline"];
@@ -115,6 +127,10 @@ export function LeadCreateDialog({
         setSalesperson("Nguyễn Văn A");
         setCustomSalesperson("");
         setCareNote("");
+        setBookingAmount("");
+        setBookingPaymentDate("");
+        setBookingQueueNumber("");
+        setBookingDate("");
         setErrors({});
       }
     }
@@ -132,6 +148,8 @@ export function LeadCreateDialog({
     }
 
     const formattedDob = dob ? dob.split("-").reverse().join("/") : "";
+    const formattedBookingPaymentDate = bookingPaymentDate ? bookingPaymentDate.split("-").reverse().join("/") : "";
+    const formattedBookingDate = bookingDate ? bookingDate.split("-").reverse().join("/") : "";
     const createdDate = new Date();
     const formattedDate = `${String(createdDate.getDate()).padStart(2, "0")}/${String(createdDate.getMonth() + 1).padStart(2, "0")}/${createdDate.getFullYear()}`;
 
@@ -151,6 +169,10 @@ export function LeadCreateDialog({
         source: finalSource,
         salesperson: finalSalesperson,
         careNote: careNote.trim(),
+        bookingAmount: bookingAmount.trim() || undefined,
+        bookingPaymentDate: formattedBookingPaymentDate || undefined,
+        bookingQueueNumber: bookingQueueNumber ? Number(bookingQueueNumber) : undefined,
+        bookingDate: formattedBookingDate || undefined,
       };
       onCreated(updatedLead);
     } else {
@@ -174,7 +196,11 @@ export function LeadCreateDialog({
         chats: [],
         files: [],
         proposals: [],
-        tasks: []
+        tasks: [],
+        bookingAmount: bookingAmount.trim() || undefined,
+        bookingPaymentDate: formattedBookingPaymentDate || undefined,
+        bookingQueueNumber: bookingQueueNumber ? Number(bookingQueueNumber) : undefined,
+        bookingDate: formattedBookingDate || undefined,
       };
       onCreated(newLead);
     }
@@ -327,6 +353,49 @@ export function LeadCreateDialog({
               className="h-9 text-xs"
             />
           </FormField>
+
+          {leadToEdit?.status === "Đặt chỗ" && (
+            <div className="border border-slate-100 rounded-lg p-3 bg-slate-50/50 space-y-3">
+              <h3 className="text-xs font-bold text-slate-800">Thông tin đặt chỗ</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Số tiền đặt chỗ">
+                  <Input
+                    value={bookingAmount}
+                    onChange={(e) => setBookingAmount(e.target.value)}
+                    placeholder="VD: 50,000,000"
+                    className="h-9 text-xs bg-white"
+                  />
+                </FormField>
+                <FormField label="Ngày thanh toán">
+                  <Input
+                    type="date"
+                    value={bookingPaymentDate}
+                    onChange={(e) => setBookingPaymentDate(e.target.value)}
+                    className="h-9 text-xs bg-white"
+                  />
+                </FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Số thứ tự (STT giữ chỗ)">
+                  <Input
+                    type="number"
+                    value={bookingQueueNumber}
+                    onChange={(e) => setBookingQueueNumber(e.target.value)}
+                    placeholder="VD: 5"
+                    className="h-9 text-xs bg-white"
+                  />
+                </FormField>
+                <FormField label="Ngày đặt chỗ">
+                  <Input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    className="h-9 text-xs bg-white"
+                  />
+                </FormField>
+              </div>
+            </div>
+          )}
 
           <FormField label="Ghi chú ban đầu">
             <Textarea

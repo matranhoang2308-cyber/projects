@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   X, CheckCircle2, Eye, Search, Plus, MessageSquare, Clock, FileText, BriefcaseBusiness, Check, CircleAlert, CalendarDays, Download, UploadCloud
 } from "lucide-react";
@@ -38,12 +38,9 @@ const statusConfig: Record<LeadStatus, string> = {
   "Đã tiếp nhận": "bg-blue-100 text-blue-700 border-blue-200",
   "Đang tư vấn": "bg-indigo-100 text-indigo-700 border-indigo-200",
   "Đã gửi báo giá": "bg-amber-100 text-amber-700 border-amber-200",
-  "Đã tham quan": "bg-purple-100 text-purple-700 border-purple-200",
-  "Giữ chỗ": "bg-cyan-100 text-cyan-700 border-cyan-200",
   "Đặt chỗ": "bg-sky-100 text-sky-700 border-sky-200",
-  "Đặt cọc": "bg-teal-100 text-teal-700 border-teal-200",
-  "Ký HĐMB": "bg-emerald-100 text-emerald-700 border-emerald-200",
-  Converted: "bg-green-100 text-green-700 border-green-200",
+  "Tham quan nhà mẫu": "bg-purple-100 text-purple-700 border-purple-200",
+  "Thành công": "bg-green-100 text-green-700 border-green-200",
   "Không thành công": "bg-red-100 text-red-700 border-red-200",
 };
 
@@ -66,11 +63,9 @@ const pipelineSteps: LeadStatus[] = [
   "Đã tiếp nhận",
   "Đang tư vấn",
   "Đã gửi báo giá",
-  "Đã tham quan",
-  "Giữ chỗ",
   "Đặt chỗ",
-  "Đặt cọc",
-  "Ký HĐMB",
+  "Tham quan nhà mẫu",
+  "Thành công",
 ];
 
 interface LeadDetailSheetProps {
@@ -268,7 +263,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onUpdateLead, onConv
             >
               Chỉnh sửa
             </Button>
-            {lead.status === "Ký HĐMB" && (
+            {lead.status === "Thành công" && (
               <Button
                 onClick={() => onConvert(lead)}
                 className="h-9 rounded-lg bg-emerald-600 text-sm text-white hover:bg-emerald-700 px-4 font-bold shadow-sm"
@@ -304,7 +299,7 @@ function LeadTabContent({ activeTab, lead, onUpdateLead }: { activeTab: LeadDeta
 
 function LeadOverviewTab({ lead }: { lead: Lead }) {
   const empty = "Chưa cập nhật";
-  const rows = [
+  const generalRows = [
     { label: "Trạng thái Pipeline", value: lead.status || empty },
     { label: "Nguồn đăng ký", value: lead.source || empty },
     { label: "Giới tính", value: lead.gender || empty },
@@ -315,19 +310,49 @@ function LeadOverviewTab({ lead }: { lead: Lead }) {
     { label: "Ghi chú ban đầu", value: lead.careNote || empty },
   ];
 
+  const hasBooking = lead.status === "Đặt chỗ" || lead.bookingAmount || lead.bookingPaymentDate || lead.bookingQueueNumber || lead.bookingDate;
+
+  const bookingRows = hasBooking ? [
+    { label: "Số tiền đặt chỗ", value: lead.bookingAmount || empty },
+    { label: "Ngày thanh toán", value: lead.bookingPaymentDate || empty },
+    { label: "Số thứ tự (STT)", value: lead.bookingQueueNumber ? String(lead.bookingQueueNumber) : empty },
+    { label: "Ngày đặt chỗ", value: lead.bookingDate || empty },
+  ] : [];
+
   return (
     <div className="p-5">
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="divide-y divide-slate-100">
-          {rows.map((row) => (
-            <div key={row.label} className="grid grid-cols-[minmax(170px,0.38fr)_1fr] gap-7 py-5 first:pt-0 last:pb-0">
-              <p className="text-[15px] text-slate-500">{row.label}</p>
-              <p className="max-w-[760px] text-[15px] leading-6 text-slate-950" style={{ fontWeight: 650 }}>
-                {row.value}
-              </p>
-            </div>
-          ))}
+      <div className={`grid grid-cols-1 gap-5 ${hasBooking ? "lg:grid-cols-2" : ""}`}>
+        {/* Card 1: Thông tin chung */}
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Thông tin chung</h3>
+          <div className="divide-y divide-slate-100">
+            {generalRows.map((row) => (
+              <div key={row.label} className="grid grid-cols-[minmax(140px,0.35fr)_1fr] gap-4 py-3.5 first:pt-0 last:pb-0">
+                <p className="text-[13px] text-slate-500">{row.label}</p>
+                <p className="max-w-[760px] text-[13px] leading-5 text-slate-950" style={{ fontWeight: 650 }}>
+                  {row.value}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Card 2: Thông tin đặt chỗ */}
+        {hasBooking && (
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Thông tin đặt chỗ</h3>
+            <div className="divide-y divide-slate-100">
+              {bookingRows.map((row) => (
+                <div key={row.label} className="grid grid-cols-[minmax(140px,0.35fr)_1fr] gap-4 py-3.5 first:pt-0 last:pb-0">
+                  <p className="text-[13px] text-slate-500">{row.label}</p>
+                  <p className="max-w-[760px] text-[13px] leading-5 text-slate-950" style={{ fontWeight: 650 }}>
+                    {row.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1181,10 +1206,20 @@ function AddLeadNoteDialog({
 function LeadNotesTab({ lead, onUpdateLead }: { lead: Lead; onUpdateLead: (updated: Lead) => void }) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [notesList, setNotesList] = useState<Array<{ content: string; author: string; date: string }>>(() => {
-    return [
+    return lead.notes || [
       { content: lead.careNote || "Chưa có ghi chú chăm sóc", author: lead.salesperson, date: lead.createDate }
     ];
   });
+
+  useEffect(() => {
+    if (lead.notes) {
+      setNotesList(lead.notes);
+    } else {
+      setNotesList([
+        { content: lead.careNote || "Chưa có ghi chú chăm sóc", author: lead.salesperson, date: lead.createDate }
+      ]);
+    }
+  }, [lead.notes, lead.careNote, lead.salesperson, lead.createDate]);
 
   const handleAddNote = (content: string) => {
     const item = {
@@ -1196,6 +1231,7 @@ function LeadNotesTab({ lead, onUpdateLead }: { lead: Lead; onUpdateLead: (updat
     setNotesList(updatedNotes);
     onUpdateLead({
       ...lead,
+      notes: updatedNotes,
       careNote: content
     });
     setIsAddOpen(false);

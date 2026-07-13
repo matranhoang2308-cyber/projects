@@ -21,7 +21,7 @@ function projectsBaseRedirect() {
     name: 'projects-base-redirect',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url === '/projects') {
+        if (req.url === '/' || req.url === '/projects') {
           res.statusCode = 302
           res.setHeader('Location', '/projects/')
           res.end()

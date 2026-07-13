@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, MoreVertical, Eye, History } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Search, MoreVertical, Eye, History, RefreshCw, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +18,7 @@ import {
   employeeFilterOptions,
   towerBlockFilterOptions,
   statusFilterOptions,
+  templates,
   type AddendumListItem,
 } from "./addendumData";
 import {
@@ -34,6 +34,8 @@ import {
   addendumPaginationButtonClass,
   addendumBadgeBaseClass,
   addendumAvatarPalette,
+  addendumPanelHeaderClass,
+  addendumPanelMetaClass,
   cn,
 } from "./addendumStyles";
 
@@ -131,6 +133,30 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
 
   return (
     <div className={addendumPanelClass}>
+      {/* ── Panel Header ── */}
+      <div className={addendumPanelHeaderClass}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-slate-900">Danh sách phụ lục</h2>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500">
+              {filtered.length} phụ lục phù hợp · {selected.size} đang chọn
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <span className={cn(addendumPanelMetaClass, "border-blue-100 bg-blue-50 text-blue-700 gap-1.5")}>
+              <RefreshCw className="h-3 w-3 text-blue-500" />
+              Tự động đồng bộ: 15:03 14/03/2026
+            </span>
+            <span className={addendumPanelMetaClass}>{filtered.length} kết quả</span>
+            {selected.size > 0 && (
+              <span className={cn(addendumPanelMetaClass, "border-blue-200 bg-blue-50 text-blue-700")}>
+                {selected.size} đang chọn
+              </span>
+            )}
+            <span className="hidden text-xs text-slate-500 lg:inline">Bấm vào dòng để xem chi tiết phụ lục</span>
+          </div>
+        </div>
+      </div>
       {/* ── Toolbar (single scroll row, matches ContractListPage/DebtDashboard) ── */}
       <div className={addendumToolbarWrapClass}>
         <div className={addendumToolbarRowClass}>
@@ -184,28 +210,36 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
       </div>
 
       {/* ── Table ── */}
-      <Table className="min-w-max table-fixed border-separate border-spacing-0 text-sm">
+      <Table className="min-w-[1600px] table-fixed border-separate border-spacing-0 text-sm">
         <TableHeader className="sticky top-0 z-20">
           <TableRow className="hover:bg-transparent">
-            <TableHead className={cn(addendumTableHeaderClass, "sticky left-0 z-40 w-10 text-center", addendumStickyCellClass, stickyShadowLeft)}>
-              <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Chọn tất cả" />
+            <TableHead className={cn(addendumTableHeaderClass, "sticky left-0 z-40 w-12 text-center", addendumStickyCellClass, stickyShadowLeft)}>
+              <button
+                type="button"
+                aria-label="Chọn tất cả dòng"
+                aria-pressed={allSelected}
+                className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${allSelected ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-transparent hover:border-slate-500"}`}
+                onClick={toggleAll}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              </button>
             </TableHead>
-            <TableHead className={cn(addendumTableHeaderClass, "sticky z-40", addendumStickyCellClass)} style={{ left: 40, fontWeight: 650 }}>
+            <TableHead className={cn(addendumTableHeaderClass, "w-28")} style={{ fontWeight: 650 }}>
               Mã phụ lục
             </TableHead>
-            {isVisible("soPhuLuc") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Số phụ lục</TableHead>}
-            {isVisible("loaiPhuLuc") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Loại phụ lục</TableHead>}
-            {isVisible("maHopDong") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Mã hợp đồng</TableHead>}
-            {isVisible("khachHang") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Khách hàng</TableHead>}
-            {isVisible("nhanVienThayDoi") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Nhân viên thay đổi</TableHead>}
-            {isVisible("duAn") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Dự án</TableHead>}
-            {isVisible("thapBlock") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Tháp/block</TableHead>}
-            {isVisible("tang") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Tầng</TableHead>}
-            {isVisible("maCan") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Mã căn</TableHead>}
-            {isVisible("ngayTao") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Ngày tạo</TableHead>}
-            {isVisible("capNhatLanCuoi") && <TableHead className={addendumTableHeaderClass} style={{ fontWeight: 650 }}>Cập nhật lần cuối</TableHead>}
-            <TableHead className={cn(addendumTableHeaderClass, "text-center")} style={{ fontWeight: 650 }}>Trạng thái</TableHead>
-            <TableHead className={cn(addendumTableHeaderClass, "sticky right-0 z-40 w-14 border-r-0 text-center", addendumStickyCellClass, stickyShadowRight)} style={{ fontWeight: 650 }}>
+            {isVisible("soPhuLuc") && <TableHead className={cn(addendumTableHeaderClass, "w-44")} style={{ fontWeight: 650 }}>Số phụ lục</TableHead>}
+            {isVisible("loaiPhuLuc") && <TableHead className={cn(addendumTableHeaderClass, "w-52")} style={{ fontWeight: 650 }}>Loại phụ lục</TableHead>}
+            {isVisible("maHopDong") && <TableHead className={cn(addendumTableHeaderClass, "w-32")} style={{ fontWeight: 650 }}>Mã hợp đồng</TableHead>}
+            {isVisible("khachHang") && <TableHead className={cn(addendumTableHeaderClass, "w-56")} style={{ fontWeight: 650 }}>Khách hàng</TableHead>}
+            {isVisible("nhanVienThayDoi") && <TableHead className={cn(addendumTableHeaderClass, "w-56")} style={{ fontWeight: 650 }}>Nhân viên thay đổi</TableHead>}
+            {isVisible("duAn") && <TableHead className={cn(addendumTableHeaderClass, "w-36")} style={{ fontWeight: 650 }}>Dự án</TableHead>}
+            {isVisible("thapBlock") && <TableHead className={cn(addendumTableHeaderClass, "w-28")} style={{ fontWeight: 650 }}>Tháp/block</TableHead>}
+            {isVisible("tang") && <TableHead className={cn(addendumTableHeaderClass, "w-20")} style={{ fontWeight: 650 }}>Tầng</TableHead>}
+            {isVisible("maCan") && <TableHead className={cn(addendumTableHeaderClass, "w-24")} style={{ fontWeight: 650 }}>Mã căn</TableHead>}
+            {isVisible("ngayTao") && <TableHead className={cn(addendumTableHeaderClass, "w-32")} style={{ fontWeight: 650 }}>Ngày tạo</TableHead>}
+            {isVisible("capNhatLanCuoi") && <TableHead className={cn(addendumTableHeaderClass, "w-36")} style={{ fontWeight: 650 }}>Cập nhật lần cuối</TableHead>}
+            <TableHead className={cn(addendumTableHeaderClass, "w-28 text-center")} style={{ fontWeight: 650 }}>Trạng thái</TableHead>
+            <TableHead className={cn(addendumTableHeaderClass, "sticky right-0 z-40 w-14 border-l border-l-[#DDE5F0] border-r-0 text-center", addendumStickyCellClass, stickyShadowRight)} style={{ fontWeight: 650 }}>
               Hành động
             </TableHead>
           </TableRow>
@@ -229,14 +263,32 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onView(item); }
               }}
             >
-              <TableCell className={cn(addendumTableCellClass, "td-select sticky left-0 z-10 text-center", addendumStickyCellClass)}>
-                <Checkbox checked={selected.has(item.id)} onCheckedChange={() => toggleRow(item.id)} aria-label={`Chọn ${item.id}`} />
+              <TableCell className={cn(addendumTableCellClass, "td-select sticky left-0 z-10 text-center", addendumStickyCellClass, stickyShadowLeft)}>
+                <button
+                  type="button"
+                  className={`mx-auto flex h-5 w-5 items-center justify-center rounded border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-1 ${selected.has(item.id) ? "border-slate-900 bg-slate-900 text-white" : "border-[#DDE5F0] bg-white text-transparent hover:border-slate-500"}`}
+                  title="Chọn dòng"
+                  aria-label={`Chọn dòng ${item.id}`}
+                  aria-pressed={selected.has(item.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleRow(item.id);
+                  }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </button>
               </TableCell>
-              <TableCell className={cn(addendumTableCellClass, "sticky z-10", addendumStickyCellClass)} style={{ left: 40 }}>
+              <TableCell className={addendumTableCellClass}>
                 <span className="text-xs font-semibold text-indigo-600">{item.id}</span>
               </TableCell>
-              {isVisible("soPhuLuc") && <TableCell className={addendumTableCellClass}><span className="text-xs text-slate-700">{item.soPhuLuc}</span></TableCell>}
-              {isVisible("loaiPhuLuc") && <TableCell className={addendumTableCellClass}><span className="text-xs text-slate-700">{item.loaiPhuLuc}</span></TableCell>}
+               {isVisible("soPhuLuc") && <TableCell className={addendumTableCellClass}><span className="text-xs text-slate-700">{item.soPhuLuc}</span></TableCell>}
+              {isVisible("loaiPhuLuc") && (
+                <TableCell className={addendumTableCellClass}>
+                  <span className="text-xs text-slate-700 font-medium whitespace-nowrap">
+                    {item.loaiPhuLuc}
+                  </span>
+                </TableCell>
+              )}
               {isVisible("maHopDong") && (
                 <TableCell className={addendumTableCellClass}>
                   <span className="text-xs font-semibold text-indigo-600">{item.maHopDong}</span>
@@ -263,7 +315,7 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
                   {item.trangThai}
                 </Badge>
               </TableCell>
-              <TableCell className={cn(addendumTableCellClass, "td-actions sticky right-0 z-10 border-r-0 text-center", addendumStickyCellClass)}>
+              <TableCell className={cn(addendumTableCellClass, "td-actions sticky right-0 z-10 border-l border-r-0 text-center", addendumStickyCellClass, stickyShadowRight)}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" aria-label={`Hành động cho ${item.id}`} className="h-8 w-8 p-0">
@@ -271,10 +323,22 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onView(item)} className="gap-2 text-xs">
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onView(item);
+                      }}
+                      className="gap-2 text-xs"
+                    >
                       <Eye className="h-3.5 w-3.5" />Xem
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onHistory(item)} className="gap-2 text-xs">
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onHistory(item);
+                      }}
+                      className="gap-2 text-xs"
+                    >
                       <History className="h-3.5 w-3.5" />Nhật ký thay đổi
                     </DropdownMenuItem>
                   </DropdownMenuContent>

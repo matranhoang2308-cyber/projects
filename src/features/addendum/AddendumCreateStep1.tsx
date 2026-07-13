@@ -70,7 +70,7 @@ export function AddendumCreateStep1({
             </SelectContent>
           </Select>
         </div>
-        <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
+        <div className="max-h-56 space-y-4 overflow-y-auto pr-0.5">
           {filteredContracts.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">Không tìm thấy hợp đồng phù hợp</div>
           ) : filteredContracts.map((c) => (
@@ -79,24 +79,37 @@ export function AddendumCreateStep1({
               type="button"
               onClick={() => onSelectContract(c.value)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left transition-all",
-                selectedContract === c.value ? "border-slate-900 bg-slate-50" : "border-transparent hover:border-slate-100 hover:bg-slate-50"
+                "flex w-full items-center gap-4 rounded-xl border px-4 py-3 text-left transition-all",
+                selectedContract === c.value
+                  ? "border-indigo-600 bg-indigo-50/20"
+                  : "border-[#E5EAF3] bg-white hover:border-slate-300 hover:bg-slate-50"
               )}
             >
+              {/* Radio Indicator */}
               <div className={cn(
-                "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2",
-                selectedContract === c.value ? "border-slate-900 bg-slate-900" : "border-slate-300"
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all",
+                selectedContract === c.value
+                  ? "border-indigo-600 bg-white"
+                  : "border-slate-300 bg-white"
               )}>
-                {selectedContract === c.value && <Check className="h-2.5 w-2.5 text-white" />}
+                {selectedContract === c.value && (
+                  <div className="h-2.5 w-2.5 rounded-full bg-indigo-600 animate-in fade-in zoom-in-75 duration-100" />
+                )}
               </div>
+
+              {/* Main Info */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-indigo-600">{c.label}</span>
+                  <span className="text-sm font-bold text-indigo-600">{c.label}</span>
                   <Badge variant="outline" className={cn(addendumBadgeBaseClass, "font-semibold", contractStatusCfg[c.status])}>{c.status}</Badge>
                 </div>
-                <p className="mt-0.5 truncate text-xs text-slate-500">{c.customer} · {c.property}</p>
+                <p className="mt-1 truncate text-xs text-slate-500 font-medium">
+                  {c.customer} <span className="mx-1 text-slate-300">·</span> {c.property}
+                </p>
               </div>
-              <span className="shrink-0 text-xs font-medium tabular-nums text-slate-500">{c.value_str}</span>
+
+              {/* Price Value */}
+              <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{c.value_str}</span>
             </button>
           ))}
         </div>
@@ -136,7 +149,7 @@ export function AddendumCreateStep1({
           {filteredTemplates.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">Không tìm thấy mẫu phù hợp</div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {filteredTemplates.map((t) => {
                 const Icon = t.icon;
                 const active = selectedTemplate === t.id;

@@ -1,4 +1,4 @@
-import { Settings2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,9 +20,9 @@ export function ColumnVisibilityDropdown({ visible, onChange }: ColumnVisibility
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(addendumCompactFilterTriggerClass, "gap-1.5")}>
-          <Settings2 className="h-3.5 w-3.5" />
+        <Button variant="outline" size="sm" className={cn(addendumCompactFilterTriggerClass, "flex items-center justify-between gap-2 px-3")}>
           Hiển thị
+          <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

@@ -32,6 +32,16 @@ export function AddendumPage() {
     // returns the user to where they were.
   }
 
+  function closeDetail() {
+    setDetailOpen(false);
+    setDetailItem(null);
+  }
+
+  function closeHistory() {
+    setHistoryOpen(false);
+    setHistoryItem(null);
+  }
+
   function handleSuccess() {
     setSuccessAlert(true);
     setTimeout(() => setSuccessAlert(false), 4000);
@@ -88,10 +98,10 @@ export function AddendumPage() {
         item={detailItem}
         detail={detailItem ? addendumDetails[detailItem.id] ?? null : null}
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        onClose={closeDetail}
         onOpenHistory={openHistory}
       />
-      <AddendumHistoryModal item={historyItem} open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <AddendumHistoryModal item={historyItem} open={historyOpen} onClose={closeHistory} />
     </div>
   );
 }

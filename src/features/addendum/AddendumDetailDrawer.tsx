@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileSpreadsheet, LayoutGrid, Table as TableIcon, Download, History } from "lucide-react";
+import { FileSpreadsheet, LayoutList, Table as TableIcon, Download, History } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,28 +77,38 @@ export function AddendumDetailDrawer({ item, detail, open, onClose, onOpenHistor
 
           <div className="mt-4 flex items-center justify-between">
             <p className="text-xs text-slate-500">Dạng xem chi tiết thông tin thay đổi</p>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="h-8 w-8 border-emerald-200 p-0 text-emerald-600 hover:bg-emerald-50" aria-label="Xuất Excel" onClick={() => exportExcel(detail)}>
                 <FileSpreadsheet className="h-3.5 w-3.5" />
               </Button>
-              <Button
-                variant={viewMode === "block" ? "default" : "outline"}
-                size="sm"
-                className={cn("h-8 w-8 p-0", viewMode === "block" && "bg-slate-950 hover:bg-slate-800")}
-                aria-label="Block view"
-                onClick={() => setViewMode("block")}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "default" : "outline"}
-                size="sm"
-                className={cn("h-8 w-8 p-0", viewMode === "table" && "bg-slate-950 hover:bg-slate-800")}
-                aria-label="Table view"
-                onClick={() => setViewMode("table")}
-              >
-                <TableIcon className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex items-center gap-1 rounded-xl border border-[#E5EAF3] bg-[#F8FAFC] p-1">
+                <button
+                  type="button"
+                  aria-label="Dạng danh sách"
+                  onClick={() => setViewMode("block")}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-lg transition-all",
+                    viewMode === "block"
+                      ? "bg-white text-slate-800 shadow-sm border border-slate-100"
+                      : "bg-transparent text-slate-400 hover:bg-white/50 hover:text-slate-600"
+                  )}
+                >
+                  <LayoutList className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Dạng bảng"
+                  onClick={() => setViewMode("table")}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-lg transition-all",
+                    viewMode === "table"
+                      ? "bg-white text-slate-800 shadow-sm border border-slate-100"
+                      : "bg-transparent text-slate-400 hover:bg-white/50 hover:text-slate-600"
+                  )}
+                >
+                  <TableIcon className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

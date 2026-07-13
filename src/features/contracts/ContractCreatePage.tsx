@@ -81,10 +81,12 @@ function CustomerCodeField({ value, onChange, onSelect, onCreate, label = "Mã k
   const [search, setSearch] = useState("");
   const [availableCustomers, setAvailableCustomers] = useState<Customer[]>(() => [...savedContractCustomers(), ...customers]);
   const expectedType = label.toLowerCase().includes("doanh nghiệp") ? "Doanh nghiệp" : "Cá nhân";
+  
   const filteredCustomers = availableCustomers.filter((customer) => {
     const query = search.trim().toLowerCase();
     return customer.type === expectedType && (!query || [customer.id, customer.name, customer.phone, customer.email].some((item) => item.toLowerCase().includes(query)));
   });
+
   const selectCustomer = (customer: Customer) => {
     onChange(customer.id);
     onSelect?.(customer);
@@ -92,11 +94,117 @@ function CustomerCodeField({ value, onChange, onSelect, onCreate, label = "Mã k
     setOpen(false);
     setSearch("");
   };
+
   const createCustomer = () => {
     setOpen(false);
     setCreateOpen(true);
   };
-  return <Field label={label}><div className="flex gap-2"><TextBox value={value} onChange={onChange} /><Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => setOpen(true)} aria-label={`Chọn ${label.toLowerCase()}`} title={`Chọn ${label.toLowerCase()}`}><Plus className="h-4 w-4" /></Button></div><Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-w-2xl gap-0 overflow-hidden p-0"><DialogHeader className="border-b border-slate-200 px-6 py-5"><DialogTitle>Chọn khách hàng {expectedType.toLowerCase()}</DialogTitle><DialogDescription>Tìm và chọn khách hàng có sẵn để tự động điền thông tin.</DialogDescription></DialogHeader><div className="p-5"><div className="mb-4 flex gap-2"><div className="relative flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input autoFocus value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm theo mã, tên, số điện thoại hoặc email..." className={`${formInputClass} pl-9`} /></div>{onCreate && <Button type="button" onClick={createCustomer} className="h-10 shrink-0 gap-2 bg-slate-950 px-4 text-white hover:bg-slate-800"><UserPlus className="h-4 w-4" />Thêm khách hàng</Button>}</div><div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">{filteredCustomers.map((customer) => <button key={customer.id} type="button" onClick={() => selectCustomer(customer)} className="flex w-full items-center gap-3 rounded-lg border border-slate-200 p-3 text-left transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">{customer.type === "Doanh nghiệp" ? <Building2 className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}</span><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="truncate text-sm font-semibold text-slate-900">{customer.name}</span><span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">{customer.id}</span></span><span className="mt-1 block truncate text-xs text-slate-500">{customer.phone} · {customer.email}</span></span><span className="text-xs font-semibold text-slate-700">Chọn</span></button>)}{filteredCustomers.length === 0 && <div className="py-10 text-center text-sm text-slate-500">Không tìm thấy khách hàng phù hợp.</div>}</div></div></DialogContent></Dialog><CustomerCreateDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={(customer) => { setAvailableCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]); selectCustomer(customer); }} /></Field>;
+
+  // Find the selected customer to display their name if possible
+  const selectedCustomerName = useMemo(() => {
+    const found = availableCustomers.find(c => c.id === value);
+    return found ? found.name : value;
+  }, [value, availableCustomers]);
+
+  return (
+    <Field label={label}>
+      <div className="flex gap-2">
+        <div 
+          onClick={() => setOpen(true)}
+          className="relative flex-1 cursor-pointer"
+        >
+          <Input 
+            readOnly 
+            value={selectedCustomerName} 
+            placeholder={`Chọn ${label.toLowerCase()}...`} 
+            className="h-10 text-sm cursor-pointer bg-white pr-9 select-none" 
+          />
+          <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        </div>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="icon" 
+          className="h-10 w-10 shrink-0 rounded-lg border-slate-200" 
+          onClick={() => setOpen(true)}
+          aria-label={`Chọn ${label.toLowerCase()}`}
+          title={`Chọn ${label.toLowerCase()}`}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0 bg-white rounded-xl shadow-2xl border border-slate-200">
+          <DialogHeader className="border-b border-slate-200 px-6 py-5">
+            <DialogTitle className="text-base font-bold text-slate-900">Chọn khách hàng {expectedType.toLowerCase()}</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">Tìm và chọn khách hàng có sẵn để tự động điền thông tin.</DialogDescription>
+          </DialogHeader>
+          <div className="p-5">
+            <div className="mb-4 flex gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input 
+                  autoFocus 
+                  value={search} 
+                  onChange={(event) => setSearch(event.target.value)} 
+                  placeholder="Tìm theo mã, tên, số điện thoại hoặc email..." 
+                  className={`${formInputClass} pl-9 text-xs`} 
+                />
+              </div>
+              {onCreate && (
+                <Button 
+                  type="button" 
+                  onClick={createCustomer} 
+                  className="h-10 shrink-0 gap-2 bg-slate-950 px-4 text-white hover:bg-slate-800 text-xs rounded-lg font-medium"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Thêm khách hàng
+                </Button>
+              )}
+            </div>
+
+            <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+              {filteredCustomers.map((customer) => (
+                <button 
+                  key={customer.id} 
+                  type="button" 
+                  onClick={() => selectCustomer(customer)} 
+                  className="flex w-full items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-slate-350 hover:bg-slate-50/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-50 border border-slate-100 text-slate-500">
+                    {customer.type === "Doanh nghiệp" ? <Building2 className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-bold text-slate-900">{customer.name}</span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-150">{customer.id}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-slate-500 font-medium">
+                      {customer.phone} · {customer.email}
+                    </span>
+                  </span>
+                  <span className="text-sm font-bold text-slate-900 hover:text-blue-600 shrink-0 pr-2">Chọn</span>
+                </button>
+              ))}
+              {filteredCustomers.length === 0 && (
+                <div className="py-12 text-center text-sm text-slate-500">Không tìm thấy khách hàng phù hợp.</div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CustomerCreateDialog 
+        open={createOpen} 
+        onOpenChange={setCreateOpen} 
+        onCreated={(customer) => { 
+          setAvailableCustomers((current) => [customer, ...current.filter((item) => item.id !== customer.id)]); 
+          selectCustomer(customer); 
+        }} 
+      />
+    </Field>
+  );
 }
 function PersonForm({ person, onChange }: { person: Person; onChange: (person: Person) => void }) {
   const set = (key: keyof Person, value: string) => onChange({ ...person, [key]: value });

@@ -31,7 +31,9 @@ import {
   MoreHorizontal,
   LayoutList,
   Table2,
+  Bell,
 } from "lucide-react";
+import { PaymentReminderDialog } from "@/components/reminders/PaymentReminderDialog";
 import {
   customers,
   formatVND,
@@ -594,6 +596,9 @@ function StageBlock({
 
   // State for audit history dialog
   const [auditHistoryRecord, setAuditHistoryRecord] = useState<PaymentRecord | null>(null);
+
+  // State for payment reminder dialog
+  const [reminderTarget, setReminderTarget] = useState<PaymentRecord | null>(null);
 
   // Local audit logs per record (augmented by adjustments made in-session)
   const [localAuditLogs, setLocalAuditLogs] = useState<Map<string, import("@/data/mockDataCongNo").DebtAuditLog[]>>(
@@ -1208,6 +1213,21 @@ function StageBlock({
         />
       )}
 
+      {reminderTarget && (
+        <PaymentReminderDialog
+          open={true}
+          onOpenChange={(v: boolean) => !v && setReminderTarget(null)}
+          customerId={customerId}
+          contractId={contractId}
+          paymentId={reminderTarget.id}
+          customerName={customerName}
+          contractLabel={`${projectName}${unit ? ` · ${unit}` : ""}`}
+          installmentLabel={reminderTarget.label}
+          amountLabel={formatVND(reminderTarget.remainingAmount ?? reminderTarget.baseAmount)}
+          dueDateLabel={fmtDate(reminderTarget.dueDate)}
+        />
+      )}
+
       {auditHistoryRecord && (
         <Dialog open={true} onOpenChange={(v) => !v && setAuditHistoryRecord(null)}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -1388,6 +1408,17 @@ function StageBlock({
                             >
                               <BadgeCheck className="size-3" />
                               Xác nhận thanh toán
+                            </Button>
+                          )}
+                          {record.status !== "paid" && record.status !== "overpaid" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50"
+                              onClick={() => setReminderTarget(normalizePaymentRecord(record))}
+                            >
+                              <Bell className="size-3" />
+                              Nhắc khách
                             </Button>
                           )}
                           <DropdownMenu>
@@ -1777,6 +1808,7 @@ function PaymentTable({
   const [paymentConfirmTarget, setPaymentConfirmTarget] = useState<PaymentRecord | null>(null);
   const [debtAdjustTarget, setDebtAdjustTarget] = useState<PaymentRecord | null>(null);
   const [auditHistoryRecord, setAuditHistoryRecord] = useState<PaymentRecord | null>(null);
+  const [reminderTarget, setReminderTarget] = useState<PaymentRecord | null>(null);
 
   // Session-only override (không lưu localStorage → reload về demo ban đầu)
   const [recordOverrides, setRecordOverrides] = useState<Map<string, Partial<PaymentRecord>>>(new Map());
@@ -2036,6 +2068,17 @@ function PaymentTable({
                           <BadgeCheck className="size-4" />
                         </Button>
                       )}
+                      {!isFullyPaid && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-md text-amber-600 hover:text-amber-700 hover:bg-amber-50 shrink-0"
+                          onClick={() => setReminderTarget(normalizePaymentRecord(record))}
+                          title="Nhắc khách"
+                        >
+                          <Bell className="size-4" />
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -2114,6 +2157,21 @@ function PaymentTable({
           record={debtAdjustTarget}
           onConfirm={handleDebtAdjustConfirm}
           onClose={() => setDebtAdjustTarget(null)}
+        />
+      )}
+
+      {reminderTarget && (
+        <PaymentReminderDialog
+          open={true}
+          onOpenChange={(v: boolean) => !v && setReminderTarget(null)}
+          customerId={customerId}
+          contractId={contractId}
+          paymentId={reminderTarget.id}
+          customerName={customer.name}
+          contractLabel={`${contract.projectName}${contract.unit ? ` · ${contract.unit}` : ""}`}
+          installmentLabel={reminderTarget.label}
+          amountLabel={formatVND(reminderTarget.remainingAmount ?? reminderTarget.baseAmount)}
+          dueDateLabel={fmtDate(reminderTarget.dueDate)}
         />
       )}
 

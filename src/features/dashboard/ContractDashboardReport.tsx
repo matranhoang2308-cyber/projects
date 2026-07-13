@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { DashboardFilters, TrendGroup } from "./dashboardApi";
 import { hdmbImportRecords, type HdmbRecord } from "@/data/hdmbImportSchema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { bucketOf, fillTimeSeries, widenRangeToCoverDates, type TimeGranularity } from "./timeBuckets";
 
 type MetricTone = "blue" | "green" | "red" | "amber" | "slate" | "violet";
 const number = (value: number) => new Intl.NumberFormat("vi-VN").format(value);
@@ -170,37 +171,31 @@ function groupLabel(date: Date | null, group: TrendGroup) {
   return String(date.getFullYear());
 }
 
-function progressBucket(date: Date | null, group: TrendGroup) {
-  if (!date) return { label: "Chưa có ngày", sortKey: "9999-99-99" };
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  if (group === "day" || group === "custom") return { label: date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }), sortKey: inputDate(date) };
-  if (group === "week") {
-    const startOfYear = new Date(year, 0, 1);
-    const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86_400_000) + 1;
-    const week = Math.ceil((dayOfYear + startOfYear.getDay()) / 7);
-    return { label: `Tuần ${week}`, sortKey: String(week).padStart(2, "0") };
-  }
-  if (group === "month") return { label: `Tháng ${month}/${year}`, sortKey: `${year}-${String(month).padStart(2, "0")}` };
-  return { label: String(year), sortKey: String(year) };
+/** Chart trend groups map 1:1 onto bucket granularities, except "custom" which buckets by day. */
+function toGranularity(group: TrendGroup): TimeGranularity {
+  return group === "custom" ? "day" : group;
 }
 
-function ensureProgressBuckets(points: Array<{ date: string; count: number; sortKey: string }>, group: TrendGroup) {
-  if (group === "year") {
-    const year = new Date().getFullYear();
-    const required = [year - 2, year - 1, year].map((item) => String(item));
-    const byKey = new Map(points.map((point) => [point.sortKey, point]));
-    required.forEach((key) => {
-      if (!byKey.has(key)) byKey.set(key, { date: key, count: 0, sortKey: key });
-    });
-    return Array.from(byKey.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+/**
+ * Mirrors the "last N days" / "since Jan 1" windows the chart-time filters already
+ * apply (see filterByChartTime/filterStatusByChartTime/filterTransferByChartTime),
+ * purely so the chart axis has a nominal [start, end] to generate buckets across.
+ * Does not change which records match — that filtering logic is untouched.
+ */
+function nominalChartRange(group: TrendGroup, from: string, to: string) {
+  const now = new Date();
+  if (group === "custom") {
+    return {
+      start: from ? new Date(`${from}T00:00:00`) : now,
+      end: to ? new Date(`${to}T23:59:59`) : now,
+    };
   }
-
-  if (group === "week") {
-    return points.map((point) => ({ ...point, date: `Tuần ${Number(point.sortKey)}` }));
-  }
-
-  return points;
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  if (group === "week") start.setDate(now.getDate() - 7);
+  if (group === "month") start.setDate(now.getDate() - 30);
+  if (group === "year") start.setMonth(0, 1);
+  return { start, end: now };
 }
 
 function filterByChartTime(records: HdmbRecord[], group: TrendGroup, from: string, to: string) {
@@ -436,17 +431,24 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
 
   const statusData = useMemo(() => dossierStatuses.map((status) => ({ status, count: statusRecords.filter((record) => normalizeStatus(record.status) === status).length })), [statusRecords]);
   const progressData = useMemo(() => {
-    const grouped = progressRecords.reduce<Record<string, { date: string; count: number; sortKey: string }>>((acc, record) => {
+    const granularity = toGranularity(progressGroup);
+    const grouped = new Map<string, { date: string; count: number }>();
+    let noDateCount = 0;
+    const actualDates: Date[] = [];
+    progressRecords.forEach((record) => {
       const date = recordDate(record);
-      const bucket = progressBucket(date, progressGroup);
-      acc[bucket.sortKey] = acc[bucket.sortKey] ?? { date: bucket.label, count: 0, sortKey: bucket.sortKey };
-      acc[bucket.sortKey].count += 1;
-      return acc;
-    }, {});
-    return ensureProgressBuckets(Object.values(grouped), progressGroup)
-      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-      .map(({ date, count }) => ({ date, count }));
-  }, [progressGroup, progressRecords]);
+      if (!date) { noDateCount += 1; return; }
+      actualDates.push(date);
+      const bucket = bucketOf(date, granularity);
+      const existing = grouped.get(bucket.key) ?? { date: bucket.label, count: 0 };
+      existing.count += 1;
+      grouped.set(bucket.key, existing);
+    });
+    const nominal = nominalChartRange(progressGroup, progressFrom, progressTo);
+    const range = widenRangeToCoverDates(nominal.start, nominal.end, actualDates);
+    const series = fillTimeSeries(grouped, range, granularity, (bucket) => ({ date: bucket.label, count: 0 }));
+    return noDateCount > 0 ? [...series, { date: "Chưa có ngày", count: noDateCount }] : series;
+  }, [progressFrom, progressGroup, progressRecords, progressTo]);
   const contractQuantityData = useMemo(() => {
     const grouped = records.reduce<Record<string, { label: string; count: number; sortKey: string }>>((acc, record) => {
       const label = contractQuantityLabel(record, contractQuantityView);
@@ -474,17 +476,27 @@ export function ContractDashboardReport({ filters }: { filters: DashboardFilters
   const transferLogs = readTransferLogs();
   const transferEntries = records.flatMap((record) => (transferLogs[record.id] ?? []).map((log) => ({ record, log })));
   const transferLineData = useMemo(() => {
+    const granularity = toGranularity(transferLineGroup);
     const filteredEntries = filterTransferByChartTime(transferEntries, transferLineGroup, transferLineFrom, transferLineTo);
-    const grouped = filteredEntries.reduce<Record<string, { date: string; count: number; value: number; sortKey: string }>>((acc, entry) => {
-      const bucket = progressBucket(transferLogDate(entry.log), transferLineGroup);
-      acc[bucket.sortKey] = acc[bucket.sortKey] ?? { date: bucket.label, count: 0, value: 0, sortKey: bucket.sortKey };
-      acc[bucket.sortKey].count += 1;
-      acc[bucket.sortKey].value += transferLogValue(entry.record, entry.log);
-      return acc;
-    }, {});
-    return Object.values(grouped)
-      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-      .map(({ date, count, value }) => ({ date, count, value }));
+    const grouped = new Map<string, { date: string; count: number; value: number }>();
+    let noDateCount = 0;
+    let noDateValue = 0;
+    const actualDates: Date[] = [];
+    filteredEntries.forEach((entry) => {
+      const date = transferLogDate(entry.log);
+      const entryValue = transferLogValue(entry.record, entry.log);
+      if (!date) { noDateCount += 1; noDateValue += entryValue; return; }
+      actualDates.push(date);
+      const bucket = bucketOf(date, granularity);
+      const existing = grouped.get(bucket.key) ?? { date: bucket.label, count: 0, value: 0 };
+      existing.count += 1;
+      existing.value += entryValue;
+      grouped.set(bucket.key, existing);
+    });
+    const nominal = nominalChartRange(transferLineGroup, transferLineFrom, transferLineTo);
+    const range = widenRangeToCoverDates(nominal.start, nominal.end, actualDates);
+    const series = fillTimeSeries(grouped, range, granularity, (bucket) => ({ date: bucket.label, count: 0, value: 0 }));
+    return noDateCount > 0 ? [...series, { date: "Chưa có ngày", count: noDateCount, value: noDateValue }] : series;
   }, [transferEntries, transferLineFrom, transferLineGroup, transferLineTo]);
   const transferBarData = useMemo(() => {
     const grouped = transferEntries.reduce<Record<string, { label: string; count: number; value: number; contractIds: Set<string> }>>((acc, entry) => {

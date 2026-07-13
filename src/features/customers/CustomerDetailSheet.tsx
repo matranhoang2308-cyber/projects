@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router";
 import {
   CheckCircle2,
-  Eye, Search,
+  Eye, Search, X, MessageSquare, Plus, CalendarDays, Clock, FileText, Download, UploadCloud
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,13 @@ import type { DateRange } from "react-day-picker";
 import { ContractDetailSheet } from "../contracts/ContractDetailSheet";
 import { PaymentDetails } from "../debt/PaymentDetails";
 import type { Customer, Contract } from "@/data/mockDataHopDong";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ReminderActivityList } from "@/components/reminders/ReminderActivityList";
+import { useCustomerReminders } from "@/hooks/use-reminders";
+
 
 const statusConfig: Record<string, string> = {
   "Đang ký":   "bg-blue-100 text-blue-700 border-blue-200",
@@ -45,7 +52,9 @@ type CustomerDetailTab =
   | "contracts"
   | "pointHistory"
   | "bookingHistory"
-  | "ticket";
+  | "ticket"
+  | "files"
+  | "activity";
 
 const customerDetailTabs: Array<{ value: CustomerDetailTab; label: string }> = [
   { value: "extraInfo", label: "Thông tin thêm" },
@@ -56,6 +65,8 @@ const customerDetailTabs: Array<{ value: CustomerDetailTab; label: string }> = [
   { value: "pointHistory", label: "Lịch sử tích đổi điểm" },
   { value: "bookingHistory", label: "Lịch sử booking" },
   { value: "ticket", label: "Ticket" },
+  { value: "activity", label: "Hoạt động" },
+  { value: "files", label: "File" },
 ];
 
 interface CustomerDetailSheetProps {
@@ -63,6 +74,7 @@ interface CustomerDetailSheetProps {
   contracts: Contract[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUpdateCustomer?: (updated: Customer) => void;
 }
 
 type CustomerDetailStats = {
@@ -80,9 +92,10 @@ type CustomerDetailPageProps = {
   stats: CustomerDetailStats;
   onOpenContract: (contract: Contract) => void;
   onOpenDebtDetail: (contract: Contract) => void;
+  onUpdateCustomer?: (updated: Customer) => void;
 };
 
-export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }: CustomerDetailSheetProps) {
+export function CustomerDetailSheet({ customer, contracts, open, onOpenChange, onUpdateCustomer }: CustomerDetailSheetProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [contractSheetOpen, setContractSheetOpen] = useState(false);
   const [selectedDebtContract, setSelectedDebtContract] = useState<Contract | null>(null);
@@ -115,7 +128,10 @@ export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }:
           className="inset-x-auto left-1/2 top-1/2 h-[92vh] w-[calc(100vw-48px)] max-w-[1440px] -translate-x-1/2 -translate-y-1/2 gap-0 overflow-hidden rounded-xl border border-slate-200 p-0 shadow-2xl sm:max-w-[1440px]"
           aria-describedby={undefined}
         >
-          <CustomerDetailPage customer={customer} contracts={contracts} stats={{ totalValue, totalPaid, outstanding, activeCount, cancelCount, overallPct }} onOpenContract={openContract} onOpenDebtDetail={openDebtDetail} />
+          <SheetClose className="absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none text-slate-500 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-1.5 z-50">
+            <X className="h-4 w-4" />
+          </SheetClose>
+          <CustomerDetailPage customer={customer} contracts={contracts} stats={{ totalValue, totalPaid, outstanding, activeCount, cancelCount, overallPct }} onOpenContract={openContract} onOpenDebtDetail={openDebtDetail} onUpdateCustomer={onUpdateCustomer} />
         </SheetContent>
       </Sheet>
 
@@ -131,6 +147,9 @@ export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }:
           className="w-full p-0 sm:max-w-[1180px]"
           aria-describedby={undefined}
         >
+          <SheetClose className="absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none text-slate-500 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-1.5 z-50">
+            <X className="h-4 w-4" />
+          </SheetClose>
           <SheetTitle className="sr-only">Chi tiết công nợ {selectedDebtContract?.id}</SheetTitle>
           {selectedDebtContract && (
             <PaymentDetails
@@ -146,7 +165,7 @@ export function CustomerDetailSheet({ customer, contracts, open, onOpenChange }:
   );
 }
 
-function CustomerDetailPage({ customer, contracts, stats, onOpenContract, onOpenDebtDetail }: CustomerDetailPageProps) {
+function CustomerDetailPage({ customer, contracts, stats, onOpenContract, onOpenDebtDetail, onUpdateCustomer }: CustomerDetailPageProps) {
   const [activeTab, setActiveTab] = useState<CustomerDetailTab>("extraInfo");
 
   return (
@@ -162,6 +181,7 @@ function CustomerDetailPage({ customer, contracts, stats, onOpenContract, onOpen
         onTabChange={setActiveTab}
         onOpenContract={onOpenContract}
         onOpenDebtDetail={onOpenDebtDetail}
+        onUpdateCustomer={onUpdateCustomer}
       />
     </div>
   );
@@ -213,6 +233,7 @@ function CustomerDetailBody({
   onTabChange,
   onOpenContract,
   onOpenDebtDetail,
+  onUpdateCustomer,
 }: {
   customer: Customer;
   contracts: Contract[];
@@ -221,6 +242,7 @@ function CustomerDetailBody({
   onTabChange: (tab: CustomerDetailTab) => void;
   onOpenContract: (contract: Contract) => void;
   onOpenDebtDetail: (contract: Contract) => void;
+  onUpdateCustomer?: (updated: Customer) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -233,6 +255,7 @@ function CustomerDetailBody({
           onTabChange={onTabChange}
           onOpenContract={onOpenContract}
           onOpenDebtDetail={onOpenDebtDetail}
+          onUpdateCustomer={onUpdateCustomer}
         />
       </div>
       <div className="flex h-16 shrink-0 items-center justify-end gap-3 border-t border-slate-200 bg-white px-6">
@@ -351,6 +374,7 @@ function CustomerMainPanel({
   onTabChange,
   onOpenContract,
   onOpenDebtDetail,
+  onUpdateCustomer,
 }: {
   customer: Customer;
   contracts: Contract[];
@@ -358,6 +382,7 @@ function CustomerMainPanel({
   onTabChange: (tab: CustomerDetailTab) => void;
   onOpenContract: (contract: Contract) => void;
   onOpenDebtDetail: (contract: Contract) => void;
+  onUpdateCustomer?: (updated: Customer) => void;
 }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -369,6 +394,7 @@ function CustomerMainPanel({
           contracts={contracts}
           onOpenContract={onOpenContract}
           onOpenDebtDetail={onOpenDebtDetail}
+          onUpdateCustomer={onUpdateCustomer}
         />
       </div>
     </div>
@@ -384,7 +410,7 @@ function CustomerTabsNavigation({
 }) {
   return (
     <div className="border-b border-slate-200 bg-white px-5 py-4">
-      <div className="flex h-10 w-full items-center gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
+      <div className="flex h-10 w-full items-center gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {customerDetailTabs.map((tab) => {
           const isActive = activeTab === tab.value;
           return (
@@ -415,12 +441,14 @@ function CustomerTabContent({
   contracts,
   onOpenContract,
   onOpenDebtDetail,
+  onUpdateCustomer,
 }: {
   activeTab: CustomerDetailTab;
   customer: Customer;
   contracts: Contract[];
   onOpenContract: (contract: Contract) => void;
   onOpenDebtDetail: (contract: Contract) => void;
+  onUpdateCustomer?: (updated: Customer) => void;
 }) {
   switch (activeTab) {
     case "extraInfo":
@@ -432,13 +460,17 @@ function CustomerTabContent({
     case "interactionHistory":
       return <CustomerInteractionHistoryTab />;
     case "journey":
-      return <CustomerJourneyTab />;
+      return <CustomerJourneyTab customer={customer} onUpdateCustomer={onUpdateCustomer} />;
     case "pointHistory":
       return <CustomerPointHistoryTab />;
     case "bookingHistory":
       return <CustomerBookingHistoryTab />;
     case "ticket":
       return <CustomerTicketTab />;
+    case "files":
+      return <CustomerFilesTab customer={customer} onUpdateCustomer={onUpdateCustomer} />;
+    case "activity":
+      return <CustomerActivityTab customer={customer} />;
     default:
       return <CustomerExtraInfoTab customer={customer} />;
   }
@@ -457,7 +489,7 @@ const debtFilterOptions: Array<{ value: DebtPaymentFilter; label: string }> = [
 
 const debtTableHeaderClass = "h-11 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
 const debtTableCellClass = "h-[58px] border-b border-r border-[#E5EAF3] bg-white px-3 py-2 align-middle text-xs text-slate-700 transition-colors group-hover:bg-[#F8FAFC]";
-const debtBadgeClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
+const debtBadgeClass = "inline-flex h-5 max-w-full items-center justify-center rounded-md border-transparent px-2 text-[10px] leading-none ring-1";
 
 function formatMoney(value: number) {
   return `${value.toLocaleString("vi-VN")}đ`;
@@ -1386,6 +1418,223 @@ function CustomerTicketTab() {
   );
 }
 
+function AddCustomerFileDialog({
+  open,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (fileName: string, fileSize: string) => void;
+}) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [error, setError] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
+      setDisplayName(file.name);
+      setError("");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setDisplayName(file.name);
+      setError("");
+    }
+  };
+
+  const handleSave = () => {
+    if (!selectedFile) {
+      setError("Vui lòng chọn hoặc kéo thả tài liệu để tải lên");
+      return;
+    }
+    const name = displayName.trim() || selectedFile.name;
+    const sizeKB = `${Math.round(selectedFile.size / 1024)} KB`;
+    onSave(name, sizeKB);
+    setSelectedFile(null);
+    setDisplayName("");
+    setError("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(val: boolean) => !val && onClose()}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-xl border border-slate-200 shadow-2xl bg-white">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-200">
+          <DialogTitle className="text-base font-bold text-slate-900">Tải lên tài liệu</DialogTitle>
+          <DialogDescription className="text-xs text-slate-500 mt-1">Đính kèm file tài liệu, hồ sơ mới từ máy tính của bạn</DialogDescription>
+        </DialogHeader>
+        <div className="px-6 py-5 space-y-4">
+          {error && <div className="text-xs text-red-600 font-medium">{error}</div>}
+
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+
+          <div
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2.5 ${
+              dragActive ? "border-blue-500 bg-blue-50/50" : "border-slate-200 hover:border-slate-400 bg-slate-50/50"
+            }`}
+          >
+            <UploadCloud className={`h-8 w-8 ${dragActive ? "text-blue-500" : "text-slate-400"}`} />
+            {selectedFile ? (
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-900 max-w-[300px] truncate">{selectedFile.name}</p>
+                <p className="text-[10px] text-slate-500">{Math.round(selectedFile.size / 1024)} KB</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-800">Nhấp để chọn file hoặc kéo thả vào đây</p>
+                <p className="text-[10px] text-slate-400">Hỗ trợ PDF, DOCX, PNG, JPG... tối đa 25MB</p>
+              </div>
+            )}
+          </div>
+
+          {selectedFile && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Tên hiển thị tài liệu <span className="text-red-500">*</span></label>
+              <Input
+                value={displayName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
+                placeholder="VD: CCCD_mat_truoc"
+                className="h-9 text-xs"
+              />
+            </div>
+          )}
+        </div>
+        <DialogFooter className="border-t border-slate-200 bg-white px-6 py-4">
+          <Button variant="outline" onClick={onClose} className="h-9 rounded-lg border-slate-200 text-sm text-slate-700 shadow-sm w-20">Hủy</Button>
+          <Button onClick={handleSave} className="h-9 rounded-lg bg-black text-sm text-white hover:bg-slate-800 shadow-sm px-4">Tải lên</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CustomerFilesTab({ customer, onUpdateCustomer }: { customer: Customer; onUpdateCustomer?: (updated: Customer) => void }) {
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const files = customer.files ?? [];
+
+  const handleAddFile = (fileName: string, fileSize: string) => {
+    const newFile = {
+      name: fileName.endsWith(".pdf") || fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".docx") ? fileName : `${fileName}.pdf`,
+      size: fileSize,
+      date: new Date().toLocaleDateString("vi-VN")
+    };
+    onUpdateCustomer?.({ ...customer, files: [...files, newFile] });
+    setIsAddOpen(false);
+  };
+
+  return (
+    <div className="p-5">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        {/* Action Panel / Toolbar */}
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3 flex items-center justify-between">
+          <div className="text-xs font-semibold text-slate-500">Tài liệu, hồ sơ liên quan</div>
+          <Button
+            size="sm"
+            onClick={() => setIsAddOpen(true)}
+            className="h-9 gap-1.5 bg-black text-white hover:bg-slate-800 text-xs px-3 rounded-lg font-medium shadow-sm shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Tải lên tài liệu
+          </Button>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500">
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-bold text-slate-800">Tên tài liệu</th>
+                <th className="h-10 w-28 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-bold text-slate-800">Dung lượng</th>
+                <th className="h-10 w-32 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-bold text-slate-800">Ngày tải lên</th>
+                <th className="h-10 w-20 border-b border-[#E5EAF3] px-3 py-2 text-center align-middle text-xs font-bold text-slate-800">Tải về</th>
+              </tr>
+            </thead>
+            <tbody>
+              {files.map((f: { name: string; size: string; date: string }, i: number) => (
+                <tr key={i} className="hover:bg-slate-50/50">
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 font-bold text-slate-800">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span className="truncate">{f.name}</span>
+                    </div>
+                  </td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600 font-semibold">{f.size}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600 font-semibold">{f.date}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-center align-middle">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Tải xuống</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </td>
+                </tr>
+              ))}
+              {files.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-xs text-slate-400">Chưa có tài liệu nào được tải lên.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <AddCustomerFileDialog open={isAddOpen} onClose={() => setIsAddOpen(false)} onSave={handleAddFile} />
+    </div>
+  );
+}
+
+function CustomerActivityTab({ customer }: { customer: Customer }) {
+  const reminders = useCustomerReminders(customer.id);
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div className="border-b border-[#E5EAF3] bg-white px-4 py-3">
+          <p className="text-sm font-bold text-slate-800">Lịch sử hoạt động nhắc hẹn</p>
+          <p className="text-xs text-slate-400 mt-0.5">Chỉ để tra cứu — Reminder chỉ được tạo từ Hợp đồng hoặc Công nợ.</p>
+        </div>
+        <div className="p-3">
+          <ReminderActivityList reminders={reminders} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustomerPlaceholderTab({ title }: { title: string }) {
   return (
     <div className="px-5 py-4">
@@ -1413,7 +1662,7 @@ function CustomerInteractionHistoryTab() {
   const [search, setSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
-  const [displayFilter, setDisplayFilter] = useState("default");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
@@ -1471,14 +1720,14 @@ function CustomerInteractionHistoryTab() {
       }
       return true;
     });
-  }, [search, timeFilter, dateRange, sourceFilter, displayFilter]);
+  }, [search, timeFilter, dateRange, sourceFilter]);
 
   return (
     <div className="p-5 space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         {/* Toolbar */}
         <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
-          <div className="grid min-w-0 grid-cols-[1fr_130px_120px_120px] items-center gap-2">
+          <div className="grid min-w-0 grid-cols-[1fr_130px_120px] items-center gap-2">
             <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -1571,16 +1820,6 @@ function CustomerInteractionHistoryTab() {
                 <SelectItem value="Email">Email</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={displayFilter} onValueChange={setDisplayFilter}>
-              <SelectTrigger aria-label="Chọn chế độ hiển thị" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
-                <SelectValue placeholder="Hiển thị" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Hiển thị</SelectItem>
-                <SelectItem value="all">Tất cả cột</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -1590,8 +1829,9 @@ function CustomerInteractionHistoryTab() {
             <thead>
               <tr className="bg-slate-50 text-slate-500">
                 <th className="h-10 w-[260px] border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Thời gian</th>
-                <th className="h-10 w-[220px] border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nguồn</th>
-                <th className="h-10 border-b border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nội dung</th>
+                <th className="h-10 w-[180px] border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nguồn</th>
+                <th className="h-10 border-b border-r border-[#E5EAF3] px-3 py-2 text-left align-middle text-xs font-semibold text-slate-600">Nội dung</th>
+                <th className="h-10 w-[120px] border-b border-[#E5EAF3] px-3 py-2 text-center align-middle text-xs font-semibold text-slate-600">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -1609,12 +1849,31 @@ function CustomerInteractionHistoryTab() {
                       {item.source}
                     </span>
                   </td>
-                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-slate-700">{item.content}</td>
+                  <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-700">{item.content}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-center align-middle">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                            onClick={() => setIsChatOpen(true)}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Xem lịch sử chat</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </td>
                 </tr>
               ))}
               {filteredData.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-xs text-slate-400">
+                  <td colSpan={4} className="px-4 py-8 text-center text-xs text-slate-400">
                     Không tìm thấy kết quả phù hợp
                   </td>
                 </tr>
@@ -1637,36 +1896,101 @@ function CustomerInteractionHistoryTab() {
           </div>
         </div>
       </div>
+
+      <ChatHistoryDialog open={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
 }
 
-function CustomerJourneyTab() {
+function ChatHistoryDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-xl border border-slate-200 shadow-2xl bg-white">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-200/80">
+          <DialogTitle className="text-base font-bold text-slate-900">
+            Lịch sử chat
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500 mt-1">
+            Trao đổi chi tiết với khách hàng
+          </DialogDescription>
+        </DialogHeader>
+        <div className="px-6 py-5 space-y-4 max-h-[400px] overflow-y-auto bg-slate-50">
+          <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col items-start gap-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Khách</span>
+              <div className="bg-white rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 max-w-[85%] shadow-sm">
+                Anh gửi giúp em bảng giá.
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Nhân viên</span>
+              <div className="bg-blue-600 rounded-lg px-3 py-2 text-xs text-white max-w-[85%] shadow-sm">
+                Dạ em gửi anh.
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Khách</span>
+              <div className="bg-white rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 max-w-[85%] shadow-sm">
+                Cho em xin lịch xem nhà mẫu.
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Nhân viên</span>
+              <div className="bg-blue-600 rounded-lg px-3 py-2 text-xs text-white max-w-[85%] shadow-sm">
+                Dạ thứ 7 lúc 9h.
+              </div>
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="border-t border-slate-200 bg-white px-6 py-4">
+          <Button variant="outline" onClick={onClose} className="h-9 rounded-lg border-slate-200 text-sm text-slate-700 shadow-sm w-20">
+            Đóng
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const formatDateTimeInput = (val: string): string => {
+  if (!val) return "";
+  const d = new Date(val);
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${hours}:${minutes} ${day}/${month}/${year}`;
+};
+
+function CustomerJourneyTab({ customer, onUpdateCustomer }: { customer: Customer; onUpdateCustomer: (updated: Customer) => void }) {
   const [search, setSearch] = useState("");
   const [timeFilter, setTimeFilter] = useState("all");
-  const [displayFilter, setDisplayFilter] = useState("default");
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  const data = [
-    { time: "09:12 05/06/2026", action: "Submit Form — Điền form quan tâm qua Landing Page" },
-    { time: "14:30 06/06/2026", action: "Follow OA — Theo dõi Zalo OA dự án" },
-    { time: "10:05 08/06/2026", action: "Chat OA — Trao đổi lần đầu qua Zalo OA" },
-    { time: "11:20 10/06/2026", action: "Tham quan nhà mẫu — Check-in tại showroom" },
-    { time: "16:45 12/06/2026", action: "Booking — Đặt chỗ giữ căn hộ tầng 12 block A" },
-    { time: "09:15 15/06/2026", action: "Đặt lịch ký HĐMB" },
-    { time: "14:40 18/06/2026", action: "Ký HĐMB thành công" },
-    { time: "10:30 20/06/2026", action: "Thanh toán đợt 1" },
-    { time: "16:00 22/06/2026", action: "Nhận bàn giao căn hộ" },
-    { time: "09:45 25/06/2026", action: "Hoàn tất hồ sơ khách hàng" }
+  const defaultJourney = [
+    { time: "09:12 05/06/2026", action: "Submit Form — Điền form quan tâm qua Landing Page", isManual: false },
+    { time: "14:30 06/06/2026", action: "Follow OA — Theo dõi Zalo OA dự án", isManual: false },
+    { time: "10:05 08/06/2026", action: "Chat OA — Trao đổi lần đầu qua Zalo OA", isManual: false },
+    { time: "11:20 10/06/2026", action: "Tham quan nhà mẫu — Check-in tại showroom", isManual: false },
+    { time: "16:45 12/06/2026", action: "Booking — Đặt chỗ giữ căn hộ tầng 12 block A", isManual: false },
+    { time: "09:15 15/06/2026", action: "Đặt lịch ký HĐMB", isManual: false },
+    { time: "14:40 18/06/2026", action: "Ký HĐMB thành công", isManual: false },
+    { time: "10:30 20/06/2026", action: "Thanh toán đợt 1", isManual: false },
+    { time: "16:00 22/06/2026", action: "Nhận bàn giao căn hộ", isManual: false },
+    { time: "09:45 25/06/2026", action: "Hoàn tất hồ sơ khách hàng", isManual: false }
   ];
+
+  const journeyList = customer.journey || defaultJourney;
 
   const baselineDate = new Date(2026, 5, 25, 23, 59, 59);
 
   const filteredData = useMemo(() => {
-    return data.filter((item) => {
+    return journeyList.filter((item) => {
       if (search.trim() !== "") {
         const query = search.toLowerCase();
         const matchesSearch =
@@ -1696,20 +2020,32 @@ function CustomerJourneyTab() {
         if (itemDate < start || itemDate > end) return false;
       }
 
-      if (displayFilter !== "default") {
-        if (displayFilter === "all") return true;
-      }
       return true;
     });
-  }, [search, timeFilter, dateRange, displayFilter]);
+  }, [search, timeFilter, dateRange, journeyList]);
+
+  const handleAddJourney = (dateTime: string, note: string, fileName?: string, fileSize?: string) => {
+    const newRecord = {
+      time: dateTime,
+      action: note,
+      isManual: true,
+      fileName,
+      fileSize
+    };
+    onUpdateCustomer({
+      ...customer,
+      journey: [newRecord, ...journeyList]
+    });
+    setIsAddOpen(false);
+  };
 
   return (
     <div className="p-5 space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
         {/* Toolbar */}
-        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3">
-          <div className="grid min-w-0 grid-cols-[1fr_150px_120px] items-center gap-2">
-            <div className="relative min-w-0">
+        <div className="border-b border-[#E5EAF3] bg-white px-3 py-3 flex items-center justify-between gap-3">
+          <div className="flex flex-1 min-w-0 items-center gap-2">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
@@ -1727,7 +2063,7 @@ function CustomerJourneyTab() {
               }
             }}>
               <PopoverTrigger asChild>
-                <div className="w-full">
+                <div className="w-[150px] shrink-0">
                   <Select
                     value={timeFilter}
                     onValueChange={(val) => {
@@ -1787,17 +2123,15 @@ function CustomerJourneyTab() {
                 </div>
               </PopoverContent>
             </Popover>
-
-            <Select value={displayFilter} onValueChange={setDisplayFilter}>
-              <SelectTrigger aria-label="Chọn chế độ hiển thị" className="h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none w-full">
-                <SelectValue placeholder="Hiển thị" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Hiển thị</SelectItem>
-                <SelectItem value="all">Tất cả cột</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
+          <Button
+            size="sm"
+            onClick={() => setIsAddOpen(true)}
+            className="h-9 gap-1.5 bg-black text-white hover:bg-slate-800 text-xs px-3 rounded-lg font-medium shadow-sm shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Thêm hành trình
+          </Button>
         </div>
 
         {/* Table */}
@@ -1813,7 +2147,25 @@ function CustomerJourneyTab() {
               {filteredData.map((item, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/50">
                   <td className="h-11 border-b border-r border-[#E5EAF3] px-3 py-2 text-slate-600 font-medium">{item.time}</td>
-                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-slate-700">{item.action}</td>
+                  <td className="h-11 border-b border-[#E5EAF3] px-3 py-2 text-slate-700">
+                    <div className="flex flex-col gap-1 py-1">
+                      <div className="flex items-center gap-2">
+                        <span>{item.action}</span>
+                        {item.isManual && (
+                          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100 shadow-sm leading-4">
+                            Manual
+                          </span>
+                        )}
+                      </div>
+                      {item.fileName && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-150 px-2 py-1 rounded w-fit">
+                          <FileText className="h-3.5 w-3.5 text-slate-400" />
+                          <span className="font-medium text-slate-700">{item.fileName}</span>
+                          {item.fileSize && <span className="text-slate-400">({item.fileSize})</span>}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
               {filteredData.length === 0 && (
@@ -1829,10 +2181,10 @@ function CustomerJourneyTab() {
 
         {/* Footer/Pagination */}
         <div className="flex h-12 items-center justify-between border-t border-[#E5EAF3] bg-white px-4 text-xs text-slate-500">
-          <div>Hiển thị {filteredData.length} / {data.length} dòng</div>
+          <div>Hiển thị {filteredData.length} / {journeyList.length} dòng</div>
           <div className="flex items-center gap-3">
             <span className="tabular-nums">
-              {filteredData.length > 0 ? `1–${filteredData.length}` : "0–0"} of {filteredData.length > 0 ? 52 : 0}
+              {filteredData.length > 0 ? `1–${filteredData.length}` : "0–0"} of {filteredData.length > 0 ? journeyList.length : 0}
             </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>
@@ -1841,6 +2193,176 @@ function CustomerJourneyTab() {
           </div>
         </div>
       </div>
+
+      <AddJourneyDialog open={isAddOpen} onClose={() => setIsAddOpen(false)} onSave={handleAddJourney} />
     </div>
+  );
+}
+
+function AddJourneyDialog({
+  open,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (dateTime: string, note: string, fileName?: string, fileSize?: string) => void;
+}) {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [time, setTime] = useState("09:00");
+  const [note, setNote] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [fileSize, setFileSize] = useState("");
+  const [error, setError] = useState("");
+  const [isCalendarPopoverOpen, setIsCalendarPopoverOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSave = () => {
+    if (!selectedDate || !note.trim()) {
+      setError("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+    
+    const formattedDate = format(selectedDate, "dd/MM/yyyy");
+    const formattedDateTime = `${time} ${formattedDate}`;
+
+    onSave(formattedDateTime, note, fileName || undefined, fileSize || undefined);
+    setSelectedDate(undefined);
+    setTime("09:00");
+    setNote("");
+    setFileName("");
+    setFileSize("");
+    setError("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden rounded-xl border border-slate-200 shadow-2xl bg-white">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-200/80">
+          <DialogTitle className="text-base font-bold text-slate-900">
+            Thêm hành trình
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500 mt-1">
+            Ghi nhận thủ công hành trình mới của khách hàng
+          </DialogDescription>
+        </DialogHeader>
+        <div className="px-6 py-5 space-y-4">
+          {error && <div className="text-xs text-red-600 font-medium">{error}</div>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                Ngày <span className="text-red-500">*</span>
+              </label>
+              
+              <Popover open={isCalendarPopoverOpen} onOpenChange={setIsCalendarPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white px-3 py-1.5 text-xs text-slate-800 justify-between items-center outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  >
+                    <span className={selectedDate ? "text-slate-800" : "text-slate-400"}>
+                      {selectedDate ? format(selectedDate, "dd/MM/yyyy") : "dd/mm/yyyy"}
+                    </span>
+                    <CalendarDays className="h-4 w-4 text-slate-400" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 animate-in fade-in zoom-in-95 duration-100" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(d) => {
+                      setSelectedDate(d);
+                      setIsCalendarPopoverOpen(false);
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                Giờ <span className="text-red-500">*</span>
+              </label>
+              <div className="relative flex items-center">
+                <Input
+                  type="text"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  placeholder="09:00"
+                  className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white pl-3 pr-8 text-xs text-slate-800 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+                <Clock className="absolute right-3 h-4 w-4 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">
+              Ghi chú <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="VD: Đi xem nhà mẫu, Đi cà phê với khách..."
+              className="min-h-24 text-xs resize-none"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700">Tài liệu đính kèm</label>
+            <div className="flex gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setFileName(file.name);
+                    const sizeInMb = file.size / (1024 * 1024);
+                    setFileSize(sizeInMb >= 0.1 ? `${sizeInMb.toFixed(1)} MB` : `${(file.size / 1024).toFixed(0)} KB`);
+                  }
+                }}
+              />
+              <div className="flex-1 flex items-center justify-between h-9 px-3 rounded-lg border border-[#E5EAF3] bg-white text-xs overflow-hidden">
+                {fileName ? (
+                  <span className="text-slate-800 truncate font-medium">{fileName} ({fileSize})</span>
+                ) : (
+                  <span className="text-slate-400">Chưa chọn file...</span>
+                )}
+                {fileName && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFileName("");
+                      setFileSize("");
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="text-slate-400 hover:text-red-500 font-bold ml-2 text-sm"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 px-3 border-slate-200 text-xs shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Chọn file
+              </Button>
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="border-t border-slate-200 bg-white px-6 py-4">
+          <Button variant="outline" onClick={onClose} className="h-9 rounded-lg border-slate-200 text-sm text-slate-700 shadow-sm w-20">
+            Hủy
+          </Button>
+          <Button onClick={handleSave} className="h-9 rounded-lg bg-black text-sm text-white hover:bg-slate-800 shadow-sm px-4">
+            Lưu
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

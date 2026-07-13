@@ -6,7 +6,6 @@ import {
   BookOpen,
   Users,
   ChevronLeft,
-  Bell,
   Search,
   Settings,
   LogOut,
@@ -14,6 +13,9 @@ import {
   Menu,
   X,
   Wallet,
+  Star,
+  FolderTree,
+  Package,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const isVercel = import.meta.env.VITE_IS_VERCEL === "true" || import.meta.env.VITE_IS_VERCEL === true;
 const showDebt = !isVercel || import.meta.env.VITE_SHOW_DEBT === "true";
 const showAddendum = !isVercel || import.meta.env.VITE_SHOW_ADDENDUM === "true";
+const showRealEstate = !isVercel || import.meta.env.VITE_SHOW_REAL_ESTATE === "true";
 
 const navItems = [
   {
@@ -40,9 +43,18 @@ const navItems = [
   {
     group: "Khách hàng",
     items: [
+      { label: "Khách hàng tiềm năng", icon: Users, path: "/leads" },
       { label: "Danh sách khách hàng", icon: Users, path: "/customers" },
     ],
   },
+  ...(showRealEstate ? [{
+    group: "Quản lý bất động sản",
+    items: [
+      { label: "Đánh giá sao", icon: Star, path: "/real-estate/ratings" },
+      { label: "Danh mục", icon: FolderTree, path: "/real-estate/categories" },
+      { label: "Sản phẩm", icon: Package, path: "/real-estate/products" },
+    ],
+  }] : []),
   ...(showDebt ? [{
     group: "Công nợ",
     items: [
@@ -223,12 +235,6 @@ export function Layout() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <div className="relative">
-              <button type="button" aria-label="Mở thông báo" className="relative flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
-                <Bell className="w-4 h-4 text-slate-600" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-            </div>
             <Badge variant="outline" className="text-xs hidden sm:flex">
               Q2 / 2026
             </Badge>

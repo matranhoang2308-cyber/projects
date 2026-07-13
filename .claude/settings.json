@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node verify-reminder.tmp.mjs)",
+      "Bash(npm ls *)",
+      "Bash(npx --yes -p playwright node \"/Users/matranhoang/Documents/CRM - AKH/project/verify-reminder.tmp.mjs\")",
+      "Bash(npm root *)",
+      "Bash(ls /usr/local/lib/node_modules/ 2>&1 | grep -i playwright)",
+      "Read(//usr/local/lib/node_modules/**)",
+      "Bash(rm -f verify-reminder*.tmp.mjs)",
+      "Bash(npm uninstall *)",
+      "Bash(pkill -f \"vite\")"
+    ]
+  }
+}

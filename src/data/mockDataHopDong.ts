@@ -1,5 +1,7 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+import type { ContractStatus } from "@/types/contractStatus";
+
 export type OwnerProfile = {
   name: string;
   dob: string;
@@ -82,6 +84,8 @@ export type Contract = {
   total: number;
   pct: number;
   status: "Đang ký" | "Đã ký" | "Công chứng" | "Đã hủy";
+  /** 14-step contract flow status, used to derive the Reminder "Loại nhắc" for this contract. */
+  contractStatus?: ContractStatus;
   date: string;
   payments: PaymentRecord[];
   docs: DocRecord[];
@@ -119,6 +123,7 @@ export type Customer = {
   representative?: string;
   note?: string;
   joinDate: string;
+  files?: Array<{ name: string; size: string; date: string }>;
 };
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -247,6 +252,7 @@ export const contracts: Contract[] = [
     total: 2400000000,
     pct: 30,
     status: "Đang ký",
+    contractStatus: "Đủ điều kiện ký",
     date: "14/04/2026",
     payments: [
       { seq: 1, amount: "720,000,000", due: "14/04/2026", paid: "14/04/2026", status: "on-time" },
@@ -347,6 +353,7 @@ export const contracts: Contract[] = [
     total: 3150000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "20/07/2025",
     payments: [
       { seq: 1, amount: "945,000,000", due: "20/07/2025", paid: "18/07/2025", status: "on-time" },
@@ -374,6 +381,7 @@ export const contracts: Contract[] = [
     total: 4800000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "10/03/2024",
     payments: [
       { seq: 1, amount: "1,440,000,000", due: "10/03/2024", paid: "08/03/2024", status: "on-time" },
@@ -403,6 +411,7 @@ export const contracts: Contract[] = [
     total: 8100000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "13/04/2026",
     payments: [
       { seq: 1, amount: "2,430,000,000", due: "01/01/2026", paid: "29/12/2025", status: "on-time" },
@@ -429,6 +438,7 @@ export const contracts: Contract[] = [
     total: 2800000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "05/11/2024",
     payments: [
       { seq: 1, amount: "840,000,000", due: "05/11/2024", paid: "02/11/2024", status: "on-time" },
@@ -457,6 +467,7 @@ export const contracts: Contract[] = [
     total: 3600000000,
     pct: 70,
     status: "Công chứng",
+    contractStatus: "Đã đóng dấu",
     date: "12/04/2026",
     payments: [
       { seq: 1, amount: "720,000,000", due: "12/01/2026", paid: "12/01/2026", status: "on-time" },
@@ -506,6 +517,7 @@ export const contracts: Contract[] = [
     total: 1200000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "20/06/2024",
     payments: [
       { seq: 1, amount: "600,000,000", due: "20/06/2024", paid: "18/06/2024", status: "on-time" },
@@ -533,6 +545,7 @@ export const contracts: Contract[] = [
     total: 1900000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "11/04/2026",
     payments: [
       { seq: 1, amount: "950,000,000", due: "11/01/2026", paid: "09/01/2026", status: "on-time" },
@@ -560,6 +573,7 @@ export const contracts: Contract[] = [
     total: 5200000000,
     pct: 0,
     status: "Đã hủy",
+    contractStatus: "Đã cọc",
     date: "10/04/2026",
     payments: [],
     docs: [
@@ -581,6 +595,7 @@ export const contracts: Contract[] = [
     total: 2100000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "15/01/2025",
     payments: [
       { seq: 1, amount: "630,000,000", due: "15/01/2025", paid: "14/01/2025", status: "on-time" },
@@ -609,6 +624,7 @@ export const contracts: Contract[] = [
     total: 420000000,
     pct: 50,
     status: "Đang ký",
+    contractStatus: "Đủ điều kiện ký",
     date: "09/04/2026",
     payments: [
       { seq: 1, amount: "210,000,000", due: "09/04/2026", paid: "09/04/2026", status: "on-time" },
@@ -654,6 +670,7 @@ export const contracts: Contract[] = [
     total: 12000000000,
     pct: 33,
     status: "Công chứng",
+    contractStatus: "Đã đóng dấu",
     date: "01/04/2026",
     payments: [
       { seq: 1, amount: "4,000,000,000", due: "01/04/2026", paid: "01/04/2026", status: "on-time" },
@@ -681,6 +698,7 @@ export const contracts: Contract[] = [
     total: 6000000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "15/06/2025",
     payments: [
       { seq: 1, amount: "2,000,000,000", due: "15/06/2025", paid: "12/06/2025", status: "on-time" },
@@ -707,6 +725,7 @@ export const contracts: Contract[] = [
     total: 3600000000,
     pct: 100,
     status: "Đã ký",
+    contractStatus: "Đã ký",
     date: "10/01/2024",
     payments: [
       { seq: 1, amount: "1,800,000,000", due: "10/01/2024", paid: "08/01/2024", status: "on-time" },

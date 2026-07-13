@@ -10,7 +10,7 @@ export const addendumSelectTriggerClass =
 export const addendumTextareaClass =
   "resize-none rounded-[8px] border-[#E5EAF3] bg-white text-sm font-medium text-slate-800 shadow-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-100";
 export const addendumSearchInputClass =
-  "w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-8 pr-3 text-xs font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+  "h-10 w-full rounded-[8px] border border-[#E5EAF3] bg-white pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
 export const addendumPanelClass =
   "gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
 export const addendumPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";

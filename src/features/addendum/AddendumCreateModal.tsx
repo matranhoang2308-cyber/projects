@@ -49,39 +49,46 @@ export function AddendumCreateModal({ open, onClose, onSuccess }: AddendumCreate
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col overflow-hidden p-0" aria-describedby={undefined}>
-        {/* Header + stepper — circle/connector classes match ContractTransferDialog's
-            stepper exactly (design/addendum-consistency-checklist.md #6); current step
-            uses the system's slate-900, not the blue Figma calls for. */}
+      <DialogContent className="flex max-h-[90vh] sm:max-w-4xl w-full flex-col overflow-hidden p-0" aria-describedby={undefined}>
+        {/* Header + stepper */}
         <div className="shrink-0 border-b border-border/60 px-6 pb-4 pt-5">
-          <div className="mb-3 flex items-center justify-between">
-            <DialogTitle className="text-slate-900">Tạo phụ lục</DialogTitle>
-            <button type="button" onClick={handleClose} aria-label="Đóng" className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-              <X className="h-4 w-4" />
-            </button>
+          <div className="mb-4 flex items-center justify-between">
+            <DialogTitle className="text-slate-900 font-bold text-base">Tạo phụ lục</DialogTitle>
           </div>
-          <div className="flex items-center gap-0">
-            {steps.map((s, idx) => (
-              <div key={s.id} className="flex flex-1 items-center">
-                <div className="flex items-center gap-2">
-                  <div className={cn(
-                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all",
-                    step > s.id ? "border-emerald-500 bg-emerald-500 text-white"
-                      : step === s.id ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-400"
-                  )}>
-                    {step > s.id ? <Check className="h-3.5 w-3.5" /> : s.id}
-                  </div>
-                  <p className={cn(
-                    "hidden whitespace-nowrap text-xs sm:block",
-                    step === s.id ? "font-medium text-slate-900" : step > s.id ? "text-emerald-600" : "text-slate-400"
-                  )}>{s.label}</p>
+          <div className="flex w-full items-center gap-3 overflow-x-auto">
+            {steps.map((s, index) => {
+              const no = s.id;
+              const done = step > no;
+              const active = step === no;
+              return (
+                <div key={s.id} className="flex flex-1 items-center gap-3 last:flex-none">
+                  <button
+                    type="button"
+                    disabled={!done && !active}
+                    onClick={() => done && setStep(no)}
+                    className={cn(
+                      "inline-flex min-h-10 items-center gap-2.5 whitespace-nowrap rounded-lg border px-4 py-2 text-sm transition-all focus-visible:outline-none",
+                      active
+                        ? "border-slate-900 bg-slate-900 text-white font-bold"
+                        : done
+                          ? "border-slate-200 bg-slate-100 text-slate-800 hover:border-slate-300"
+                          : "cursor-default border-[#E5EAF3] bg-white text-slate-400"
+                    )}
+                  >
+                    <span className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-md text-xs font-semibold",
+                      active ? "bg-white/15 text-white" : done ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-400"
+                    )}>
+                      {no}
+                    </span>
+                    {s.label}
+                  </button>
+                  {no < steps.length && (
+                    <div className="h-px flex-1 border-t border-dashed border-slate-300 min-w-[20px]" />
+                  )}
                 </div>
-                {idx < steps.length - 1 && (
-                  <div className={cn("mx-2 h-px flex-1", step > s.id ? "bg-emerald-300" : "bg-slate-200")} />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { cn } from "@/components/ui/utils";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   Filter,
@@ -23,10 +24,13 @@ import {
   Mail,
   Eye,
   Pencil,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
+import { ContractReminderDialog } from "@/components/reminders/ContractReminderDialog";
+import { PaymentReminderDialog } from "@/components/reminders/PaymentReminderDialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ContractCreatePage } from "./ContractCreatePage";
 import { Button } from "@/components/ui/button";
@@ -75,6 +79,7 @@ import { CONTRACT_STATUS_CLASSES, canJumpToStatus } from "@/helpers/contractStat
 import { buildTransferContractDetailSections } from "./transferContractDetailSchema";
 import { TransferContractBlockView } from "./TransferContractBlockView";
 import { TransferContractTableView } from "./TransferContractTableView";
+import { customers } from "@/data/mockDataHopDong";
 import type { Contract } from "@/data/mockDataHopDong";
 
 const compactValue = (value?: string) => {
@@ -774,8 +779,34 @@ function parseVNDate(value: string | undefined, fallback: Date): Date {
 
 type PaymentRowStatus = "paid" | "partial" | "overdue" | "upcoming" | "pending";
 
-function PaymentProgressTable({ record }: { record: HdmbRecord }) {
+function PaymentProgressTable({
+  record,
+  onAddPaymentReminder,
+}: {
+  record: HdmbRecord;
+  onAddPaymentReminder: (row: any) => void;
+}) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const openPayment = searchParams.get("openPayment");
+    if (openPayment) {
+      setTimeout(() => {
+        const el = document.getElementById(`payment-row-${openPayment}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("bg-blue-50/80");
+          setTimeout(() => {
+            el.classList.remove("bg-blue-50/80");
+          }, 3000);
+        }
+      }, 500);
+      const next = new URLSearchParams(searchParams);
+      next.delete("openPayment");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const totalValue = parseVNCurrency(record.values.c93 || record.values.c87, 3200000000);
   const depositRequired = parseVNCurrency(record.values.c94, 200000000);
   const depositCollected = parseVNCurrency(record.values.c95, 200000000);
@@ -856,17 +887,53 @@ function PaymentProgressTable({ record }: { record: HdmbRecord }) {
               <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-center text-[11px]" style={{ fontWeight: 650 }}>%TT</th>
               <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-right text-[11px]" style={{ fontWeight: 650 }}>Số tiền</th>
               <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Ngày dự kiến TT</th>
-              <th className="border-b border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Trạng thái TT</th>
+              <th className="border-b border-r border-[#DDE5F0] px-3 py-2 text-left text-[11px]" style={{ fontWeight: 650 }}>Trạng thái TT</th>
+              <th className="border-b border-[#DDE5F0] px-3 py-2 text-center text-[11px]" style={{ fontWeight: 650 }}>Nhắc hẹn</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
               const meta = statusMeta[row.status];
-              return <tr key={row.seq} className="hover:bg-[#F8FAFC]"><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-500">{row.seq}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-800" style={{ fontWeight: 600 }}>{row.label}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{row.depositDate}</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-700">{row.pct}%</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-right text-xs tabular-nums text-slate-900" style={{ fontWeight: 600 }}>{row.amount.toLocaleString("vi-VN")} VNĐ</td><td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{row.dueDate}</td><td className="border-b border-[#E5EAF3] px-3 py-2"><span className={`inline-flex rounded px-2 py-1 text-[11px] ${meta.className}`} style={{ fontWeight: 650 }}>{meta.label}</span></td></tr>;
+              return (
+                <tr key={row.seq} id={`payment-row-${row.seq}`} className="hover:bg-[#F8FAFC] transition-colors duration-500">
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-500">{row.seq}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-800" style={{ fontWeight: 600 }}>{row.label}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{row.depositDate}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-center text-xs text-slate-700">{row.pct}%</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-right text-xs tabular-nums text-slate-900" style={{ fontWeight: 600 }}>{row.amount.toLocaleString("vi-VN")} VNĐ</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2 text-xs text-slate-600">{row.dueDate}</td>
+                  <td className="border-b border-r border-[#E5EAF3] px-3 py-2">
+                    <span className={`inline-flex rounded px-2 py-1 text-[11px] ${meta.className}`} style={{ fontWeight: 650 }}>
+                      {meta.label}
+                    </span>
+                  </td>
+                  <td className="border-b border-[#E5EAF3] px-3 py-2 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1 text-[11px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddPaymentReminder(row);
+                      }}
+                    >
+                      <Bell className="h-3.5 w-3.5" />
+                      Nhắc khách
+                    </Button>
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
           <tfoot className="bg-[#F8FAFC] text-slate-900">
-            <tr><td className="border-r border-[#DDE5F0] px-3 py-2 text-center text-xs" style={{ fontWeight: 700 }}>Tổng</td><td className="border-r border-[#DDE5F0] px-3 py-2 text-xs" style={{ fontWeight: 650 }}>18 đợt</td><td className="border-r border-[#DDE5F0]" /><td className="border-r border-[#DDE5F0] px-3 py-2 text-center text-xs" style={{ fontWeight: 650 }}>100%</td><td className="border-r border-[#DDE5F0] px-3 py-2 text-right text-xs tabular-nums" style={{ fontWeight: 650 }}>{totalValue.toLocaleString("vi-VN")} VNĐ</td><td colSpan={2} /></tr>
+            <tr>
+              <td className="border-r border-[#DDE5F0] px-3 py-2 text-center text-xs" style={{ fontWeight: 700 }}>Tổng</td>
+              <td className="border-r border-[#DDE5F0] px-3 py-2 text-xs" style={{ fontWeight: 650 }}>18 đợt</td>
+              <td className="border-r border-[#DDE5F0]" />
+              <td className="border-r border-[#DDE5F0] px-3 py-2 text-center text-xs" style={{ fontWeight: 650 }}>100%</td>
+              <td className="border-r border-[#DDE5F0] px-3 py-2 text-right text-xs tabular-nums" style={{ fontWeight: 650 }}>{totalValue.toLocaleString("vi-VN")} VNĐ</td>
+              <td colSpan={3} />
+            </tr>
           </tfoot>
         </table>
       </div>
@@ -1115,6 +1182,27 @@ function AttachmentPreview({ record }: { record: HdmbRecord }) {
   );
 }
 
+export function getCustomerIdForRecord(record: HdmbRecord): string {
+  const code = record.values.c2;
+  const name = record.values.c3 || record.values.c30;
+  const phone = record.values.c12 || record.values.c27;
+  
+  let found = customers.find((c) => c.id === code || c.id === `C${code?.replace(/\D/g, "")}`);
+  if (found) return found.id;
+  
+  if (phone) {
+    found = customers.find((c) => c.phone.replace(/\s/g, "") === phone.replace(/\s/g, ""));
+    if (found) return found.id;
+  }
+  
+  if (name) {
+    found = customers.find((c) => c.name.toLowerCase() === name.toLowerCase());
+    if (found) return found.id;
+  }
+  
+  return customers[0]?.id || "C001";
+}
+
 function DetailDrawer({
   record,
   checkResult,
@@ -1134,7 +1222,16 @@ function DetailDrawer({
   onUpdateStatus: (recordId: string, nextStatus: ContractStatus) => void;
   onEdit: (recordId: string) => void;
 }) {
+  const [searchParams] = useSearchParams();
   const [detailView, setDetailView] = useState<"block" | "table">("block");
+  
+  useEffect(() => {
+    const openPayment = searchParams.get("openPayment");
+    if (openPayment) {
+      setDetailView("table");
+    }
+  }, [searchParams]);
+
   const [checkDialogOpen, setCheckDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [statusInfoDialogOpen, setStatusInfoDialogOpen] = useState(false);
@@ -1145,6 +1242,9 @@ function DetailDrawer({
   const [statusInfoResults, setStatusInfoResults] = useState<Record<string, ContractStatusInfo>>({});
   const [statusInfoCollapsed, setStatusInfoCollapsed] = useState<Record<string, boolean>>({});
   const statusInfoFileInputRef = useRef<HTMLInputElement>(null);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [paymentReminderInfo, setPaymentReminderInfo] = useState<any | null>(null);
+  const [paymentReminderOpen, setPaymentReminderOpen] = useState(false);
 
   if (!record) return null;
 
@@ -1421,6 +1521,7 @@ function DetailDrawer({
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button variant="outline" size="icon" className="h-9 w-9 text-amber-700" onClick={() => setReminderOpen(true)} aria-label="Tạo nhắc hẹn cho hợp đồng" title="Nhắc hẹn"><Bell className="h-4 w-4" /></Button>
               <Button variant="outline" size="icon" className="h-9 w-9 text-emerald-700" onClick={exportExcel} aria-label="Xuất Excel" title="Xuất Excel"><FileSpreadsheet className="h-4 w-4" /></Button>
               <div className="flex items-center border border-slate-200 bg-slate-50 p-1 rounded-lg">
                 <button
@@ -1450,10 +1551,6 @@ function DetailDrawer({
                   <Table2 className="h-4 w-4" />
                 </button>
               </div>
-              <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-slate-950 text-white hover:bg-slate-800`} onClick={() => onEdit(record.id)}>
-                <Pencil className="h-4 w-4" />
-                Chỉnh sửa
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-blue-600 hover:bg-blue-700`}>
@@ -1483,6 +1580,13 @@ function DetailDrawer({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52 bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
                   <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Thao tác</div>
+                  <DropdownMenuItem
+                    className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                    onClick={() => onEdit(record.id)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-slate-400" />
+                    Chỉnh sửa hợp đồng
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
                     onClick={openCheckDialog}
@@ -1652,7 +1756,20 @@ function DetailDrawer({
             </> : <>
               {transferLogs.length > 0 && <TransferHistoryTable logs={transferLogs} />}
               <TransferContractTableView sections={sections} contract={dummyContract} />
-              <PaymentProgressTable record={record} />
+              <PaymentProgressTable
+                record={record}
+                onAddPaymentReminder={(row) => {
+                  setPaymentReminderInfo({
+                    customerName: ownerName,
+                    contractCode: record.values.c51 || record.values.c54 || record.id,
+                    paymentLabel: row.label,
+                    dueDate: row.dueDate,
+                    amount: row.amount.toLocaleString("vi-VN"),
+                    seq: row.seq,
+                  });
+                  setPaymentReminderOpen(true);
+                }}
+              />
             </>}
           </div>
         </main>
@@ -1660,10 +1777,7 @@ function DetailDrawer({
         <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3">
           <div className="mx-auto flex max-w-6xl justify-end gap-2">
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>Đóng</Button>
-            <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-slate-950 text-white hover:bg-slate-800`} onClick={() => onEdit(record.id)}>
-              <Pencil className="h-4 w-4" />
-              Chỉnh sửa
-            </Button>
+            <Button variant="outline" size="icon" className="h-9 w-9 text-amber-700" onClick={() => setReminderOpen(true)} aria-label="Tạo nhắc hẹn cho hợp đồng" title="Nhắc hẹn"><Bell className="h-4 w-4" /></Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" className={`${contractDetailCtaClass} gap-2 bg-blue-600 hover:bg-blue-700`}>
@@ -1693,6 +1807,13 @@ function DetailDrawer({
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="end" className="w-52 bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
                 <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Thao tác</div>
+                <DropdownMenuItem
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
+                  onClick={() => onEdit(record.id)}
+                >
+                  <Pencil className="h-3.5 w-3.5 text-slate-400" />
+                  Chỉnh sửa hợp đồng
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 rounded cursor-pointer focus:bg-slate-50 focus:text-slate-700 focus:outline-none"
                   onClick={openCheckDialog}
@@ -1851,6 +1972,29 @@ function DetailDrawer({
           </div>
         </div>
       )}
+
+      <ContractReminderDialog
+        open={reminderOpen}
+        onOpenChange={setReminderOpen}
+        customerId={getCustomerIdForRecord(record)}
+        contractId={record.id}
+        contractStatus={record.status || "Đã cọc"}
+      />
+
+      {paymentReminderInfo && (
+        <PaymentReminderDialog
+          open={paymentReminderOpen}
+          onOpenChange={setPaymentReminderOpen}
+          customerId={getCustomerIdForRecord(record)}
+          contractId={record.id}
+          paymentId={`${record.id}-p-${paymentReminderInfo.seq}`}
+          customerName={paymentReminderInfo.customerName}
+          contractLabel={paymentReminderInfo.contractCode}
+          installmentLabel={paymentReminderInfo.paymentLabel}
+          amountLabel={`${paymentReminderInfo.amount} VNĐ`}
+          dueDateLabel={paymentReminderInfo.dueDate}
+        />
+      )}
     </div>
   );
 }
@@ -1909,9 +2053,9 @@ function ContractChartTimeControl({
   onToChange: (value: string) => void;
 }) {
   return (
-    <div className="grid gap-2">
+    <>
       <Select value={group} onValueChange={(val) => onGroupChange(val as ContractTrendGroup)}>
-        <SelectTrigger aria-label={`Thời gian - ${chartName}`} className={contractChartSelectClass}>
+        <SelectTrigger aria-label={`Thời gian - ${chartName}`} className={cn(contractChartSelectClass, "w-[120px] min-w-0")}>
           <SelectValue placeholder="Thời gian" />
         </SelectTrigger>
         <SelectContent>
@@ -1921,32 +2065,26 @@ function ContractChartTimeControl({
         </SelectContent>
       </Select>
       {group === "custom" && (
-        <div className="grid grid-cols-2 gap-2">
-          <label>
-            <span className="sr-only">Ngày bắt đầu - {chartName}</span>
-            <input
-              aria-label={`Ngày bắt đầu - ${chartName}`}
-              className={contractDateInputClass}
-              type="date"
-              value={from}
-              max={to}
-              onChange={(event) => onFromChange(event.target.value)}
-            />
-          </label>
-          <label>
-            <span className="sr-only">Ngày kết thúc - {chartName}</span>
-            <input
-              aria-label={`Ngày kết thúc - ${chartName}`}
-              className={contractDateInputClass}
-              type="date"
-              value={to}
-              min={from}
-              onChange={(event) => onToChange(event.target.value)}
-            />
-          </label>
-        </div>
+        <>
+          <input
+            aria-label={`Ngày bắt đầu - ${chartName}`}
+            className={cn(contractDateInputClass, "w-[110px]")}
+            type="date"
+            value={from}
+            max={to}
+            onChange={(event) => onFromChange(event.target.value)}
+          />
+          <input
+            aria-label={`Ngày kết thúc - ${chartName}`}
+            className={cn(contractDateInputClass, "w-[110px]")}
+            type="date"
+            value={to}
+            min={from}
+            onChange={(event) => onToChange(event.target.value)}
+          />
+        </>
       )}
-    </div>
+    </>
   );
 }
 
@@ -2121,20 +2259,17 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
             <p className="mt-1 text-xs leading-4 text-slate-500">Theo dõi tiến độ xử lý HĐMB theo từng trạng thái</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="grid gap-1.5">
-              <span className="text-[11px] font-medium leading-none text-slate-500">Trạng thái</span>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger aria-label="Trạng thái - Phễu xử lý hợp đồng" className={contractChartSelectClass}>
-                  <SelectValue placeholder="Tất cả trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  {CONTRACT_STATUS_FLOW.map((status) => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger aria-label="Trạng thái - Phễu xử lý hợp đồng" className={cn(contractChartSelectClass, "w-[140px] min-w-0")}>
+                <SelectValue placeholder="Tất cả trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                {CONTRACT_STATUS_FLOW.map((status) => (
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <ContractChartTimeControl
               chartName="Phễu xử lý hợp đồng"
               group={trend.group}
@@ -2212,7 +2347,7 @@ function ContractPipelineFunnelCard({ filteredRecords }: { filteredRecords: Hdmb
 
 export function ContractListPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const importInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const [projectFilter, setProjectFilter] = useState("all");
@@ -2243,7 +2378,15 @@ export function ContractListPage() {
   useEffect(() => {
     const query = searchParams.get("search") ?? "";
     if (query) setSearch(query);
-  }, [searchParams]);
+
+    const openContractId = searchParams.get("openContract");
+    if (openContractId) {
+      setSelectedRecordId(openContractId);
+      const next = new URLSearchParams(searchParams);
+      next.delete("openContract");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     localStorage.setItem("crm-contract-owner-overrides", JSON.stringify(recordOverrides));

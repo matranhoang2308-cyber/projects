@@ -14,8 +14,15 @@ export function AddendumHistoryModal({ item, open, onClose }: AddendumHistoryMod
   if (!item) return null;
   const entries = getAuditLogForAddendum(item.id);
 
+  const handleClose = () => {
+    onClose();
+    setTimeout(() => {
+      document.body.style.pointerEvents = "auto";
+    }, 100);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-lg p-0" aria-describedby={undefined}>
         <div className="border-b border-border/60 px-6 py-4">
           <DialogTitle className="text-slate-900">Nhật ký thay đổi</DialogTitle>
@@ -54,7 +61,7 @@ export function AddendumHistoryModal({ item, open, onClose }: AddendumHistoryMod
         </div>
 
         <div className="flex justify-end border-t border-border/60 px-6 py-4">
-          <Button variant="outline" className="text-sm" onClick={onClose}>Đóng</Button>
+          <Button variant="outline" className="text-sm" onClick={handleClose}>Đóng</Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -19,28 +19,28 @@ export interface AddendumTemplate {
 export const templates: AddendumTemplate[] = [
   // Tài chính
   { id: "T01", name: "Điều chỉnh giá",          desc: "Điều chỉnh giá trị HĐ do biến động thị trường",    category: "Tài chính", icon: Banknote,      color: "text-emerald-600", bg: "bg-emerald-50", usages: 42 },
-  { id: "T04", name: "Điều chỉnh thanh toán",   desc: "Thay đổi phương thức và lịch thanh toán",           category: "Tài chính", icon: ReceiptText,   color: "text-violet-600",  bg: "bg-violet-50",  usages: 27 },
-  { id: "T07", name: "Điều chỉnh chiết khấu",   desc: "Cập nhật tỷ lệ chiết khấu theo chính sách mới",    category: "Tài chính", icon: BadgePercent,  color: "text-teal-600",    bg: "bg-teal-50",    usages: 19 },
-  { id: "T08", name: "Hoàn tiền đặt cọc",       desc: "Thủ tục hoàn trả tiền đặt cọc khi hủy HĐ",         category: "Tài chính", icon: Banknote,      color: "text-orange-600",  bg: "bg-orange-50",  usages: 8  },
-  { id: "T09", name: "Điều chỉnh phí bảo trì",  desc: "Cập nhật mức phí bảo trì/quản lý căn hộ",          category: "Tài chính", icon: Landmark,      color: "text-cyan-600",    bg: "bg-cyan-50",    usages: 11 },
+  { id: "T04", name: "Điều chỉnh thanh toán",   desc: "Thay đổi phương thức và lịch thanh toán",           category: "Tài chính", icon: ReceiptText,   color: "text-emerald-600", bg: "bg-emerald-50", usages: 27 },
+  { id: "T07", name: "Điều chỉnh chiết khấu",   desc: "Cập nhật tỷ lệ chiết khấu theo chính sách mới",    category: "Tài chính", icon: BadgePercent,  color: "text-emerald-600", bg: "bg-emerald-50", usages: 19 },
+  { id: "T08", name: "Hoàn tiền đặt cọc",       desc: "Thủ tục hoàn trả tiền đặt cọc khi hủy HĐ",         category: "Tài chính", icon: Banknote,      color: "text-emerald-600", bg: "bg-emerald-50", usages: 8  },
+  { id: "T09", name: "Điều chỉnh phí bảo trì",  desc: "Cập nhật mức phí bảo trì/quản lý căn hộ",          category: "Tài chính", icon: Landmark,      color: "text-emerald-600", bg: "bg-emerald-50", usages: 11 },
   // Thời hạn
   { id: "T02", name: "Gia hạn thời gian",        desc: "Gia hạn bàn giao hoặc thời hạn thực hiện HĐ",     category: "Thời hạn",  icon: Calendar,      color: "text-blue-600",    bg: "bg-blue-50",    usages: 31 },
-  { id: "T10", name: "Rút ngắn bàn giao",        desc: "Điều chỉnh ngày bàn giao sớm hơn kế hoạch",       category: "Thời hạn",  icon: Calendar,      color: "text-sky-600",     bg: "bg-sky-50",     usages: 5  },
-  { id: "T11", name: "Gia hạn đợt thanh toán",   desc: "Gia hạn ngày đến hạn của một đợt thanh toán cụ thể", category: "Thời hạn", icon: Calendar,      color: "text-amber-600",   bg: "bg-amber-50",   usages: 23 },
+  { id: "T10", name: "Rút ngắn bàn giao",        desc: "Điều chỉnh ngày bàn giao sớm hơn kế hoạch",       category: "Thời hạn",  icon: Calendar,      color: "text-blue-600",    bg: "bg-blue-50",    usages: 5  },
+  { id: "T11", name: "Gia hạn đợt thanh toán",   desc: "Gia hạn ngày đến hạn của một đợt thanh toán cụ thể", category: "Thời hạn", icon: Calendar,      color: "text-blue-600",    bg: "bg-blue-50",    usages: 23 },
   // Thông tin
   { id: "T03", name: "Thay đổi TT khách hàng",   desc: "Chuyển nhượng hoặc thay đổi thông tin bên mua",   category: "Thông tin", icon: UserCheck,     color: "text-indigo-600",  bg: "bg-indigo-50",  usages: 18 },
-  { id: "T12", name: "Cập nhật thông tin CĐT",   desc: "Sửa CCCD, địa chỉ, thông tin liên hệ khách hàng", category: "Thông tin", icon: UserCheck,     color: "text-pink-600",    bg: "bg-pink-50",    usages: 14 },
-  { id: "T13", name: "Thay đổi TT đồng sở hữu",  desc: "Bổ sung hoặc thay đổi người đồng sở hữu hợp đồng", category: "Thông tin", icon: UserMinus,     color: "text-fuchsia-600", bg: "bg-fuchsia-50", usages: 7  },
-  { id: "T19", name: "Thay đổi TT căn hộ",       desc: "Cập nhật thông tin sản phẩm / căn hộ giao dịch",  category: "Thông tin", icon: Home,          color: "text-lime-700",    bg: "bg-lime-50",    usages: 9  },
+  { id: "T12", name: "Cập nhật thông tin CĐT",   desc: "Sửa CCCD, địa chỉ, thông tin liên hệ khách hàng", category: "Thông tin", icon: UserCheck,     color: "text-indigo-600",  bg: "bg-indigo-50",  usages: 14 },
+  { id: "T13", name: "Thay đổi TT đồng sở hữu",  desc: "Bổ sung hoặc thay đổi người đồng sở hữu hợp đồng", category: "Thông tin", icon: UserMinus,     color: "text-indigo-600",  bg: "bg-indigo-50",  usages: 7  },
+  { id: "T19", name: "Thay đổi TT căn hộ",       desc: "Cập nhật thông tin sản phẩm / căn hộ giao dịch",  category: "Thông tin", icon: Home,          color: "text-indigo-600",  bg: "bg-indigo-50",  usages: 9  },
   // Pháp lý
-  { id: "T05", name: "Chấm dứt hợp đồng",        desc: "Thỏa thuận chấm dứt và giải quyết tranh chấp",    category: "Pháp lý",   icon: FileX,         color: "text-red-600",     bg: "bg-red-50",     usages: 9  },
-  { id: "T06", name: "Bổ sung điều khoản",        desc: "Bổ sung các điều khoản mới theo thỏa thuận",      category: "Pháp lý",   icon: BookOpen,      color: "text-slate-600",   bg: "bg-slate-50",   usages: 15 },
-  { id: "T14", name: "Giải quyết tranh chấp",     desc: "Điều chỉnh phương thức giải quyết tranh chấp",    category: "Pháp lý",   icon: Scale,         color: "text-rose-600",    bg: "bg-rose-50",    usages: 4  },
-  { id: "T15", name: "Chuyển nhượng HĐ",          desc: "Chuyển nhượng toàn bộ quyền và nghĩa vụ HĐ",      category: "Pháp lý",   icon: ArrowLeftRight,color: "text-purple-600",  bg: "bg-purple-50",  usages: 12 },
-  { id: "T16", name: "Cam kết bổ sung",            desc: "Ghi nhận các cam kết phát sinh ngoài HĐ gốc",     category: "Pháp lý",   icon: Shield,        color: "text-lime-600",    bg: "bg-lime-50",    usages: 6  },
+  { id: "T05", name: "Chấm dứt hợp đồng",        desc: "Thỏa thuận chấm dứt và giải quyết tranh chấp",    category: "Pháp lý",   icon: FileX,         color: "text-slate-600",   bg: "bg-slate-100",  usages: 9  },
+  { id: "T06", name: "Bổ sung điều khoản",        desc: "Bổ sung các điều khoản mới theo thỏa thuận",      category: "Pháp lý",   icon: BookOpen,      color: "text-slate-600",   bg: "bg-slate-100",  usages: 15 },
+  { id: "T14", name: "Giải quyết tranh chấp",     desc: "Điều chỉnh phương thức giải quyết tranh chấp",    category: "Pháp lý",   icon: Scale,         color: "text-slate-600",   bg: "bg-slate-100",  usages: 4  },
+  { id: "T15", name: "Chuyển nhượng HĐ",          desc: "Chuyển nhượng toàn bộ quyền và nghĩa vụ HĐ",      category: "Pháp lý",   icon: ArrowLeftRight,color: "text-slate-600",   bg: "bg-slate-100",  usages: 12 },
+  { id: "T16", name: "Cam kết bổ sung",            desc: "Ghi nhận các cam kết phát sinh ngoài HĐ gốc",     category: "Pháp lý",   icon: Shield,        color: "text-slate-600",   bg: "bg-slate-100",  usages: 6  },
   // Khác
-  { id: "T17", name: "Ghi chú & bổ sung",          desc: "Bổ sung ghi chú, thông tin tham chiếu cho HĐ",   category: "Khác",      icon: StickyNote,    color: "text-stone-600",   bg: "bg-stone-50",   usages: 3  },
-  { id: "T18", name: "Tag / Phân loại HĐ",          desc: "Gắn nhãn phân loại để theo dõi theo nhóm",       category: "Khác",      icon: Tag,           color: "text-gray-600",    bg: "bg-gray-50",    usages: 22 },
+  { id: "T17", name: "Ghi chú & bổ sung",          desc: "Bổ sung ghi chú, thông tin tham chiếu cho HĐ",   category: "Khác",      icon: StickyNote,    color: "text-amber-600",   bg: "bg-amber-50",   usages: 3  },
+  { id: "T18", name: "Tag / Phân loại HĐ",          desc: "Gắn nhãn phân loại để theo dõi theo nhóm",       category: "Khác",      icon: Tag,           color: "text-amber-600",   bg: "bg-amber-50",   usages: 22 },
 ];
 
 // ─── Contracts available to pick as "hợp đồng gốc" in Step 1 ─────────────────

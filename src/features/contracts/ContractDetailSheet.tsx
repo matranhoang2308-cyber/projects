@@ -24,10 +24,13 @@ import {
   History,
   FileCheck,
   Users,
+  X,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { ContractReminderDialog } from "@/components/reminders/ContractReminderDialog";
+import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PaymentExtensionDialog } from "./PaymentExtensionDialog";
 import { ContractTableView } from "./ContractTableView";
@@ -308,6 +311,7 @@ function ContractDetailContent({
   const [localCoOwners, setLocalCoOwners] = useState(contract.coOwners ?? []);
   const [localTransferHistory, setLocalTransferHistory] = useState<TransferLog[]>(contract.transferHistory ?? []);
   const [localTransferCount, setLocalTransferCount] = useState(contract.transferCount ?? 0);
+  const [reminderOpen, setReminderOpen] = useState(false);
 
   const contractWithLocalState: Contract = {
     ...contract,
@@ -358,25 +362,38 @@ function ContractDetailContent({
               {contract.date} · {contract.property}
             </p>
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs ${statusConfig[contract.status]}`}
-              style={{ fontWeight: 500 }}
+          <div className="flex items-start gap-2 shrink-0">
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-md border text-xs ${statusConfig[contract.status]}`}
+                style={{ fontWeight: 500 }}
+              >
+                {contract.status}
+              </span>
+              {overdueCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-red-50 border-red-200 text-red-700 text-xs">
+                  <XCircle className="w-3 h-3" />
+                  {overdueCount} đợt quá hạn
+                </span>
+              )}
+              {extensionCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 border-amber-200 text-amber-700 text-xs">
+                  <CalendarClock className="w-3 h-3" />
+                  {extensionCount} đợt gia hạn
+                </span>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Tạo nhắc hẹn cho hợp đồng"
+              title="Nhắc hẹn"
+              className="h-8 w-8 shrink-0 border-slate-200 bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700"
+              onClick={() => setReminderOpen(true)}
             >
-              {contract.status}
-            </span>
-            {overdueCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-red-50 border-red-200 text-red-700 text-xs">
-                <XCircle className="w-3 h-3" />
-                {overdueCount} đợt quá hạn
-              </span>
-            )}
-            {extensionCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border bg-amber-50 border-amber-200 text-amber-700 text-xs">
-                <CalendarClock className="w-3 h-3" />
-                {extensionCount} đợt gia hạn
-              </span>
-            )}
+              <Bell className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -602,6 +619,14 @@ function ContractDetailContent({
           />
         </div>
       )}
+
+      <ContractReminderDialog
+        open={reminderOpen}
+        onOpenChange={setReminderOpen}
+        customerId={contract.customerId}
+        contractId={contract.id}
+        contractStatus={contract.contractStatus ?? "Đã cọc"}
+      />
     </div>
   );
 }
@@ -635,6 +660,9 @@ export function ContractDetailSheet({
         className="w-full sm:max-w-xl p-0 flex flex-col h-full overflow-hidden"
         aria-describedby={undefined}
       >
+        <SheetClose className="absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none text-slate-500 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-1.5 z-50">
+          <X className="h-4 w-4" />
+        </SheetClose>
         {contract && (
           <>
             <SheetTitle className="sr-only">Chi tiết hợp đồng {contract.id}</SheetTitle>

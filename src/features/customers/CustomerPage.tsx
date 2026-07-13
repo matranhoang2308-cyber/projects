@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router";
 import {
   Search, Users, Building2, User, FileText,
   DollarSign, MoreHorizontal, CheckCircle2,
@@ -31,6 +32,8 @@ import { customers as baseCustomers, contracts, getCustomerStats } from "@/data/
 import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
 import { CustomerDetailSheet } from "./CustomerDetailSheet";
 import { CustomerCreateDialog } from "./CustomerCreateDialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { Customer } from "@/data/mockDataHopDong";
 
 function fmtVnd(n: number) {
@@ -61,7 +64,7 @@ const customerPanelMetaClass = "inline-flex h-6 items-center rounded-md border b
 const customerTableHeaderClass = "h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
 const customerTableCellClass = "h-11 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
 const customerStickyCellClass = "bg-white transition-colors group-hover:bg-[#F8FAFC] group-data-[state=selected]:bg-blue-50/50";
-const customerBadgeClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
+const customerBadgeClass = "inline-flex h-5 max-w-full items-center justify-center rounded-md border-transparent px-2 text-[10px] leading-none ring-1";
 const customerStatusClass = (active: boolean) =>
   active
     ? "bg-emerald-50 text-emerald-700 ring-emerald-200 before:mr-1.5 before:h-1.5 before:w-1.5 before:rounded-full before:bg-emerald-500 before:content-['']"
@@ -87,6 +90,8 @@ const customerGroupClass: Record<string, string> = {
   "Thông thường": "bg-slate-100 text-slate-600 ring-slate-200",
   Khác: "bg-violet-50 text-violet-700 ring-violet-100",
 };
+
+const customerGroupOptions: string[] = ["VIP", "Đối tác", "Thông thường", "Khác"];
 
 const customerSourceClass: Record<string, string> = {
   Facebook: "bg-blue-50 text-blue-700 ring-blue-200",
@@ -118,7 +123,43 @@ export function CustomerPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
-  const [customerList, setCustomerList] = useState<Customer[]>(baseCustomers);
+  const [pendingGroupChange, setPendingGroupChange] = useState<{ customer: Customer; newGroup: string } | null>(null);
+  const [groupLogContent, setGroupLogContent] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [customerList, setCustomerList] = useState<Customer[]>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("crm_customers");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return baseCustomers;
+        }
+      }
+      localStorage.setItem("crm_customers", JSON.stringify(baseCustomers));
+    }
+    return baseCustomers;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("crm_customers", JSON.stringify(customerList));
+    }
+  }, [customerList]);
+
+  useEffect(() => {
+    const openCustomerId = searchParams.get("openCustomer");
+    if (openCustomerId) {
+      const found = customerList.find((c) => c.id === openCustomerId);
+      if (found) {
+        setSelectedCustomer(found);
+        setSheetOpen(true);
+        const next = new URLSearchParams(searchParams);
+        next.delete("openCustomer");
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [searchParams, customerList, setSearchParams]);
 
   // Precompute stats for every customer
   const enriched = useMemo(() => {
@@ -202,6 +243,11 @@ export function CustomerPage() {
     if (confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) {
       setCustomerList((current) => current.filter((c) => c.id !== customerId));
     }
+  };
+
+  const handleUpdateCustomer = (updated: Customer) => {
+    setCustomerList((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    setSelectedCustomer(updated);
   };
 
   const currentPageSelected = filtered.length > 0 && filtered.every((customer) => selectedCustomerIds.has(customer.id));
@@ -392,7 +438,7 @@ export function CustomerPage() {
                 <TableHead className={`${customerTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Hợp đồng</TableHead>
                 <TableHead className={`${customerTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Tổng giá trị</TableHead>
                 <TableHead className={`${customerTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>Tiến độ TT</TableHead>
-                <TableHead className={`${customerTableHeaderClass} w-32`} style={{ fontWeight: 650 }}>Nhóm KH</TableHead>
+                <TableHead className={`${customerTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Nhóm KH</TableHead>
                 <TableHead className={`${customerTableHeaderClass} w-36`} style={{ fontWeight: 650 }}>Trạng thái KH</TableHead>
                 <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center text-[11px] text-slate-600 shadow-[-6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>...</TableHead>
               </TableRow>
@@ -405,7 +451,7 @@ export function CustomerPage() {
                 const remainingValue = Math.max(0, c.stats.totalValue - c.stats.totalPaid);
                 const customerGroup = getCustomerGroup(c, c.stats.count);
                 const hasActiveContract = c.stats.activeCount > 0;
-                const customerStatus = hasActiveContract ? "Đã kích hoạt" : "Vô hiệu hóa";
+                const customerStatus = c.customerStatus ?? (hasActiveContract ? "Đã kích hoạt" : "Vô hiệu hóa");
                 const isSelected = selectedCustomerIds.has(c.id);
                 const identityNumber = c.cccd || c.taxCode || "—";
 
@@ -526,13 +572,37 @@ export function CustomerPage() {
                         <span className="text-xs text-slate-300">—</span>
                       )}
                     </TableCell>
-                    <TableCell className={`${customerTableCellClass} w-32`}>
-                      <Badge variant="outline" className={`${customerBadgeClass} ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>{customerGroup}</Badge>
+                    <TableCell className={`td-status ${customerTableCellClass} w-36`} onClick={(event: React.MouseEvent) => event.stopPropagation()}>
+                      <Select
+                        value={customerGroup}
+                        onValueChange={(val: string) => {
+                          setPendingGroupChange({ customer: c, newGroup: val });
+                          setGroupLogContent(`Chuyển nhóm khách hàng từ "${customerGroup}" sang "${val}"`);
+                        }}
+                      >
+                        <SelectTrigger className={`h-5 max-w-full items-center justify-center rounded-md border-transparent px-2 text-[10px] leading-none ring-1 w-fit gap-1 shadow-none focus:ring-0 [&_svg]:size-3 ${customerGroupClass[customerGroup]}`} style={{ fontWeight: 650 }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                          {customerGroupOptions.map((group) => (
+                            <SelectItem key={group} value={group}>{group}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
-                    <TableCell className={`${customerTableCellClass} w-36`}>
-                      <Badge variant="outline" className={`${customerBadgeClass} ${customerStatusClass(hasActiveContract)}`} style={{ fontWeight: 650 }}>
-                        {customerStatus}
-                      </Badge>
+                    <TableCell className={`td-status ${customerTableCellClass} w-36`} onClick={(event: React.MouseEvent) => event.stopPropagation()}>
+                      <Select
+                        value={customerStatus}
+                        onValueChange={(val: string) => handleUpdateCustomer({ ...c, customerStatus: val })}
+                      >
+                        <SelectTrigger className={`h-5 max-w-full items-center justify-center rounded-md border-transparent px-2 text-[10px] leading-none ring-1 w-fit gap-1 shadow-none focus:ring-0 [&_svg]:size-3 ${customerStatusClass(customerStatus === "Đã kích hoạt")}`} style={{ fontWeight: 650 }}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-[#E5EAF3] p-1 shadow-md rounded-md z-50">
+                          <SelectItem value="Đã kích hoạt">Đã kích hoạt</SelectItem>
+                          <SelectItem value="Vô hiệu hóa">Vô hiệu hóa</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className={`td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] px-0 py-1.5 text-center shadow-[-6px_0_12px_-12px_rgba(15,23,42,0.45)] ${customerStickyCellClass}`}>
                       <DropdownMenu>
@@ -620,6 +690,7 @@ export function CustomerPage() {
         contracts={selectedCustomer ? contracts.filter((c) => c.customerId === selectedCustomer.id) : []}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        onUpdateCustomer={handleUpdateCustomer}
       />
       <CustomerCreateDialog
         open={createOpen}
@@ -633,6 +704,81 @@ export function CustomerPage() {
           return [customer, ...current];
         })}
       />
+
+      <Dialog open={!!pendingGroupChange} onOpenChange={(open) => { if (!open) setPendingGroupChange(null); }}>
+        <DialogContent className="max-w-md p-0 gap-0 overflow-hidden bg-white rounded-xl border border-slate-200 shadow-2xl">
+          <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-100">
+            <DialogTitle className="text-base font-bold text-slate-900">Cập nhật nhóm khách hàng</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-1">
+              Nhập ghi chú lý do cập nhật nhóm khách hàng của <strong>{pendingGroupChange?.customer.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-semibold text-slate-500">Nhóm khách hàng mới:</span>
+              <Badge variant="outline" className={`${customerBadgeClass} ${customerGroupClass[pendingGroupChange?.newGroup || "Thông thường"]}`}>
+                {pendingGroupChange?.newGroup}
+              </Badge>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold text-slate-700">Nội dung nhật ký</span>
+              <Textarea
+                autoFocus
+                value={groupLogContent}
+                onChange={(e) => setGroupLogContent(e.target.value)}
+                placeholder="Nhập lý do chuyển nhóm..."
+                className="min-h-[100px] text-xs resize-none"
+              />
+            </label>
+          </div>
+          <DialogFooter className="border-t border-slate-100 bg-slate-50 px-6 py-4 gap-2">
+            <Button variant="outline" onClick={() => setPendingGroupChange(null)} className="h-9 text-xs">
+              Hủy
+            </Button>
+            <Button 
+              onClick={() => {
+                if (pendingGroupChange) {
+                  const now = new Date();
+                  const formattedTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} ${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+                  const action = groupLogContent.trim() || `Chuyển nhóm khách hàng sang "${pendingGroupChange.newGroup}"`;
+                  
+                  const defaultJourney = [
+                    { time: "09:12 05/06/2026", action: "Submit Form — Điền form quan tâm qua Landing Page", isManual: false },
+                    { time: "14:30 06/06/2026", action: "Follow OA — Theo dõi Zalo OA dự án", isManual: false },
+                    { time: "10:05 08/06/2026", action: "Chat OA — Trao đổi lần đầu qua Zalo OA", isManual: false },
+                    { time: "11:20 10/06/2026", action: "Tham quan nhà mẫu — Check-in tại showroom", isManual: false },
+                    { time: "16:45 12/06/2026", action: "Booking — Đặt chỗ giữ căn hộ tầng 12 block A", isManual: false },
+                    { time: "09:15 15/06/2026", action: "Đặt lịch ký HĐMB", isManual: false },
+                    { time: "14:40 18/06/2026", action: "Ký HĐMB thành công", isManual: false },
+                    { time: "10:30 20/06/2026", action: "Thanh toán đợt 1", isManual: false },
+                    { time: "16:00 22/06/2026", action: "Nhận bàn giao căn hộ", isManual: false },
+                    { time: "09:45 25/06/2026", action: "Hoàn tất hồ sơ khách hàng", isManual: false }
+                  ];
+
+                  const currentJourney = pendingGroupChange.customer.journey || defaultJourney;
+                  const updatedJourney = [
+                    { time: formattedTime, action: action, isManual: true },
+                    ...currentJourney
+                  ];
+
+                  const updatedCustomer = {
+                    ...pendingGroupChange.customer,
+                    customerGroup: pendingGroupChange.newGroup,
+                    journey: updatedJourney
+                  };
+
+                  handleUpdateCustomer(updatedCustomer);
+                  setPendingGroupChange(null);
+                  setGroupLogContent("");
+                }
+              }}
+              className="h-9 text-xs bg-slate-950 hover:bg-slate-800 text-white px-4"
+            >
+              Cập nhật
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

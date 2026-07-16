@@ -159,12 +159,8 @@ export interface Customer {
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 export function formatVND(amount: number): string {
-  if (amount >= 1) {
-    const fixed = amount.toFixed(3).replace(/\.?0+$/, "");
-    return `${fixed} tỷ`;
-  }
-  const mil = (amount * 1000).toFixed(1).replace(/\.0$/, "");
-  return `${mil} triệu`;
+  const vnd = Math.round(amount * 1_000_000_000);
+  return `${vnd.toLocaleString("vi-VN")} VNĐ`;
 }
 
 export function calcLateFee(amount: number, ratePercent: number, days: number): number {

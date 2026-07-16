@@ -86,9 +86,9 @@ const debtStatusBadgeBaseClass = "inline-flex h-6 max-w-full items-center justif
 
 const statusConfig: Record<PaymentStatus, { label: string; className: string; dot: string }> = {
   "not-due": {
-    label: "Chưa đến hạn",
-    className: "border-slate-200 bg-slate-50 text-slate-700",
-    dot: "bg-slate-400",
+    label: "Sắp đến hạn",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+    dot: "bg-blue-500",
   },
   upcoming: {
     label: "Sắp đến hạn",
@@ -101,9 +101,9 @@ const statusConfig: Record<PaymentStatus, { label: string; className: string; do
     dot: "bg-emerald-500",
   },
   partial: {
-    label: "Thanh toán một phần",
-    className: "border-amber-200 bg-amber-50 text-amber-700",
-    dot: "bg-amber-500",
+    label: "Quá hạn",
+    className: "border-red-200 bg-red-50 text-red-700",
+    dot: "bg-red-500",
   },
   overpaid: {
     label: "Đã thanh toán",
@@ -116,19 +116,19 @@ const statusConfig: Record<PaymentStatus, { label: string; className: string; do
     dot: "bg-red-500",
   },
   "grace-period": {
-    label: "Trong thời gian ân hạn",
-    className: "border-orange-200 bg-orange-50 text-orange-700",
-    dot: "bg-orange-500",
+    label: "Quá hạn",
+    className: "border-red-200 bg-red-50 text-red-700",
+    dot: "bg-red-500",
   },
   "deposit-forfeited": {
-    label: "Mất cọc",
-    className: "border-rose-200 bg-rose-50 text-rose-700",
-    dot: "bg-rose-500",
+    label: "Quá hạn",
+    className: "border-red-200 bg-red-50 text-red-700",
+    dot: "bg-red-500",
   },
   extended: {
-    label: "Đã gia hạn",
-    className: "border-purple-200 bg-purple-50 text-purple-700",
-    dot: "bg-purple-500",
+    label: "Sắp đến hạn",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+    dot: "bg-blue-500",
   },
 };
 

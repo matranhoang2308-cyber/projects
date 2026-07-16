@@ -94,10 +94,8 @@ const safeNumber = (value: unknown) => {
 };
 const money = (value: number) => {
   const num = safeNumber(value);
-  if (Math.abs(num) < 1 && num !== 0) {
-    return `${(num * 1000).toLocaleString("vi-VN", { maximumFractionDigits: 0 })} triệu`;
-  }
-  return `${num.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} tỷ`;
+  const vnd = Math.round(num * 1_000_000_000);
+  return `${vnd.toLocaleString("vi-VN")} VNĐ`;
 };
 const hexToRgba = (hex: string, alpha: number) => {
   const value = hex.replace("#", "");

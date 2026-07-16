@@ -504,15 +504,71 @@ export function PaymentRecordDetail() {
   const totalDue = principalRemaining + totalInterest;
 
   const statusConfig: Record<string, { label: string; className: string }> = {
-    "not-due": { label: "Chưa đến hạn", className: "border-slate-200 bg-slate-50 text-slate-700" },
-    upcoming: { label: "Sắp đến hạn", className: "border-blue-200 bg-blue-50 text-blue-700" },
-    paid: { label: "Đã thanh toán", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-    partial: { label: "Thanh toán một phần", className: "border-orange-200 bg-orange-50 text-orange-700" },
-    overpaid: { label: "Đã thanh toán", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-    overdue: { label: "Quá hạn", className: "border-red-200 bg-red-50 text-red-700" },
-    "grace-period": { label: "Quá hạn (trong ân hạn)", className: "border-amber-200 bg-amber-50 text-amber-700" },
-    "deposit-forfeited": { label: "Mất cọc", className: "border-red-300 bg-red-100 text-red-800" },
-    extended: { label: "Đã gia hạn", className: "border-purple-200 bg-purple-50 text-purple-700" },
+    "not-due": { label: "Sắp đến hạn", className: "border-blue-200 bg-blue-50 text-blue-700 font-semibold shadow-sm" },
+    upcoming: { label: "Sắp đến hạn", className: "border-blue-200 bg-blue-50 text-blue-700 font-semibold shadow-sm" },
+    paid: { label: "Đã thanh toán", className: "border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold shadow-sm" },
+    partial: { label: "Quá hạn", className: "border-red-200 bg-red-50 text-red-700 font-semibold shadow-sm" },
+    overpaid: { label: "Đã thanh toán", className: "border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold shadow-sm" },
+    overdue: { label: "Quá hạn", className: "border-red-200 bg-red-50 text-red-700 font-semibold shadow-sm" },
+    "grace-period": { label: "Quá hạn", className: "border-red-200 bg-red-50 text-red-700 font-semibold shadow-sm" },
+    "deposit-forfeited": { label: "Quá hạn", className: "border-red-200 bg-red-50 text-red-700 font-semibold shadow-sm" },
+    extended: { label: "Sắp đến hạn", className: "border-blue-200 bg-blue-50 text-blue-700 font-semibold shadow-sm" },
+  };
+
+  const renderStatusBadges = (status: string) => {
+    if (status === "paid") {
+      return (
+        <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold shadow-sm">
+          Đã thanh toán
+        </Badge>
+      );
+    }
+    if (status === "overpaid") {
+      return (
+        <div className="flex items-center gap-1.5">
+          <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700">
+            Thanh toán dư
+          </Badge>
+          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 font-semibold shadow-sm">
+            Đã thanh toán
+          </Badge>
+        </div>
+      );
+    }
+    if (status === "overdue" || status === "grace-period" || status === "deposit-forfeited") {
+      const label = status === "deposit-forfeited" ? "Mất cọc" : (status === "grace-period" ? "Trong thời gian ân hạn" : "Quá hạn");
+      return (
+        <Badge className="border-red-200 bg-red-50 text-red-700 font-semibold shadow-sm">
+          {label}
+        </Badge>
+      );
+    }
+    if (status === "partial") {
+      return (
+        <div className="flex items-center gap-1.5">
+          <Badge className="border-orange-200 bg-orange-50 text-orange-700">
+            Thanh toán một phần
+          </Badge>
+          <Badge className="border-red-200 bg-red-50 text-red-700 font-semibold shadow-sm">
+            Quá hạn
+          </Badge>
+        </div>
+      );
+    }
+    // not-due, upcoming, extended
+    const extraTag = status === "extended" ? (
+      <Badge className="border-purple-200 bg-purple-50 text-purple-700">
+        Đã gia hạn
+      </Badge>
+    ) : null;
+    return (
+      <div className="flex items-center gap-1.5">
+        {extraTag}
+        <Badge className="border-blue-200 bg-blue-50 text-blue-700 font-semibold shadow-sm">
+          Sắp đến hạn
+        </Badge>
+      </div>
+    );
   };
 
   // Mock: payment history
@@ -830,9 +886,7 @@ Bộ phận Quản lý Công nợ`
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h1 id="payment-record-title" className="text-lg text-foreground">{record.label}</h1>
-                  <Badge className={statusConfig[record.status].className}>
-                    {statusConfig[record.status].label}
-                  </Badge>
+                  {renderStatusBadges(record.status)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Thuộc hợp đồng {contractCode}

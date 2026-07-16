@@ -165,8 +165,8 @@ function buildPaymentAuditLog(
 
 const statusConfig: Record<PaymentStatus, { label: string; className: string }> = {
   "not-due": {
-    label: "Chưa đến hạn",
-    className: "border-slate-200 bg-slate-50 text-slate-700",
+    label: "Sắp đến hạn",
+    className: "border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm",
   },
   upcoming: {
     label: "Sắp đến hạn",
@@ -177,29 +177,85 @@ const statusConfig: Record<PaymentStatus, { label: string; className: string }> 
     className: "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm",
   },
   partial: {
-    label: "Thanh toán một phần",
-    className: "border-orange-200 bg-orange-50 text-orange-700",
+    label: "Quá hạn",
+    className: "border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm",
   },
   overpaid: {
-    label: "Thanh toán dư",
-    className: "border-cyan-200 bg-cyan-50 text-cyan-700",
+    label: "Đã thanh toán",
+    className: "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm",
   },
   overdue: {
     label: "Quá hạn",
     className: "border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm",
   },
   "grace-period": {
-    label: "Quá hạn (trong ân hạn)",
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    label: "Quá hạn",
+    className: "border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm",
   },
   "deposit-forfeited": {
-    label: "Mất cọc",
-    className: "border-red-300 bg-red-100 text-red-800",
+    label: "Quá hạn",
+    className: "border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm",
   },
   extended: {
-    label: "Đã gia hạn",
-    className: "border-purple-200 bg-purple-50 text-purple-700",
+    label: "Sắp đến hạn",
+    className: "border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm",
   },
+};
+
+const renderStatusBadges = (status: PaymentStatus) => {
+  if (status === "paid") {
+    return (
+      <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm text-[10px] px-1.5 py-0 shrink-0 ml-auto">
+        Đã thanh toán
+      </Badge>
+    );
+  }
+  if (status === "overpaid") {
+    return (
+      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+        <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700 text-[10px] px-1.5 py-0">
+          Thanh toán dư
+        </Badge>
+        <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm text-[10px] px-1.5 py-0">
+          Đã thanh toán
+        </Badge>
+      </div>
+    );
+  }
+  if (status === "overdue" || status === "grace-period" || status === "deposit-forfeited") {
+    const label = status === "deposit-forfeited" ? "Mất cọc" : (status === "grace-period" ? "Trong thời gian ân hạn" : "Quá hạn");
+    return (
+      <Badge className="border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm text-[10px] px-1.5 py-0 shrink-0 ml-auto">
+        {label}
+      </Badge>
+    );
+  }
+  if (status === "partial") {
+    return (
+      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+        <Badge className="border-orange-200 bg-orange-50 text-orange-700 text-[10px] px-1.5 py-0">
+          Thanh toán một phần
+        </Badge>
+        <Badge className="border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm text-[10px] px-1.5 py-0">
+          Quá hạn
+        </Badge>
+      </div>
+    );
+  }
+  // not-due, upcoming, extended
+  const extraTag = status === "extended" ? (
+    <Badge className="border-purple-200 bg-purple-50 text-purple-700 text-[10px] px-1.5 py-0">
+      Đã gia hạn
+    </Badge>
+  ) : null;
+  return (
+    <div className="flex items-center gap-1.5 ml-auto shrink-0">
+      {extraTag}
+      <Badge className="border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm text-[10px] px-1.5 py-0">
+        Sắp đến hạn
+      </Badge>
+    </div>
+  );
 };
 
 function fmtDate(d: string) {
@@ -778,19 +834,20 @@ function StageBlock({
         return (
           <div key={inst.id} className="space-y-1.5">
             <div
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 ${inst.status === "overdue"
-                ? "border-red-200 bg-red-50/50"
-                : inst.status === "paid"
-                  ? "border-emerald-200 bg-emerald-50/50"
-                  : "border-border/60 bg-muted/20"
-                }`}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 ${
+                (inst.status === "overdue" || inst.status === "grace-period" || inst.status === "deposit-forfeited" || inst.status === "partial")
+                  ? "border-red-200 bg-red-50/50"
+                  : (inst.status === "paid" || inst.status === "overpaid")
+                    ? "border-emerald-200 bg-emerald-50/50"
+                    : "border-blue-200 bg-blue-50/20"
+              }`}
             >
               <span className="text-[11px] text-muted-foreground w-4 text-center shrink-0">
                 {iIdx + 1}
               </span>
-              {inst.status === "paid" ? (
+              {(inst.status === "paid" || inst.status === "overpaid") ? (
                 <BadgeCheck className="size-3.5 text-emerald-500 shrink-0" />
-              ) : inst.status === "overdue" ? (
+              ) : (inst.status === "overdue" || inst.status === "grace-period" || inst.status === "deposit-forfeited" || inst.status === "partial") ? (
                 <div className="flex items-center justify-center rounded-full bg-red-500 shrink-0 size-3.5">
                   <AlertTriangle className="size-2 text-white stroke-[3px]" />
                 </div>
@@ -799,12 +856,13 @@ function StageBlock({
               )}
               <span className="text-xs text-foreground flex-1 truncate">{inst.label}</span>
               <span
-                className={`text-xs shrink-0 ${inst.status === "overdue"
-                  ? "text-red-600"
-                  : inst.status === "paid"
-                    ? "text-emerald-600"
-                    : "text-muted-foreground"
-                  }`}
+                className={`text-xs shrink-0 ${
+                  (inst.status === "overdue" || inst.status === "grace-period" || inst.status === "deposit-forfeited" || inst.status === "partial")
+                    ? "text-red-600"
+                    : (inst.status === "paid" || inst.status === "overpaid")
+                      ? "text-emerald-600"
+                      : "text-blue-600 font-semibold"
+                }`}
               >
                 {inst.status === "paid" && inst.paidDate
                   ? fmtDate(inst.paidDate)
@@ -824,11 +882,7 @@ function StageBlock({
                   <span className="text-[10px] text-red-600">PDF</span>
                 </div>
               )}
-              <Badge
-                className={`text-[10px] px-1.5 h-4 shrink-0 ${statusConfig[inst.status].className}`}
-              >
-                {statusConfig[inst.status].label}
-              </Badge>
+              {renderStatusBadges(inst.status)}
               {isActive && inst.status === "paid" && inst.invoice ? (
                 <Button
                   variant="outline"
@@ -1126,19 +1180,35 @@ function StageBlock({
 
   // Áp override (session) lên cấp stage để icon/progress cũng chuyển "đã thanh toán".
   const hasPaidOverride = stage.records.some(
-    (r) => recordOverrides.get(r.id)?.status === "paid"
+    (r) => {
+      const s = recordOverrides.get(r.id)?.status ?? r.status;
+      return s === "paid" || s === "overpaid";
+    }
   );
-  const effectiveStageStatus: StageStatus | "overdue" = hasPaidOverride && stage.records.every(
-    (r) => (recordOverrides.get(r.id)?.status ?? r.status) === "paid"
-  )
+  const hasOverdueOrPartial = stage.records.some(
+    (r) => {
+      const s = recordOverrides.get(r.id)?.status ?? r.status;
+      return s === "overdue" || s === "partial" || s === "grace-period";
+    }
+  );
+  const effectiveStageStatus: StageStatus | "overdue" = (hasPaidOverride && stage.records.every(
+    (r) => {
+      const s = recordOverrides.get(r.id)?.status ?? r.status;
+      return s === "paid" || s === "overpaid";
+    }
+  ))
     ? "completed"
-    : stage.stageStatus;
+    : (hasOverdueOrPartial || stage.stageStatus === "overdue" ? "overdue" : stage.stageStatus);
+
   const effectivePaidAmount = stage.records.reduce(
     (s, r) => s + (recordOverrides.get(r.id)?.paidAmount ?? r.paidAmount ?? 0),
     0
   );
   const sl = stageLabelMap[effectiveStageStatus];
-  const overdueRecords = stage.records.filter((r) => r.status === "overdue");
+  const overdueRecords = stage.records.filter((r) => {
+    const s = recordOverrides.get(r.id)?.status ?? r.status;
+    return s === "overdue" || s === "partial" || s === "grace-period";
+  });
   const progress =
     stage.totalAmount > 0
       ? Math.round((effectivePaidAmount / stage.totalAmount) * 100)
@@ -1312,6 +1382,16 @@ function StageBlock({
                 // Merge session override (nếu vừa ghi nhận thanh toán) — không đụng data gốc.
                 const override = recordOverrides.get(rawRecord.id);
                 const record = override ? { ...rawRecord, ...override } : rawRecord;
+                const customerObj = customers.find((c) => c.id === customerId);
+                const contractObj = customerObj?.contracts.find((c) => c.id === contractId);
+                const allRecords = contractObj?.stages?.flatMap((s) => s.records) ?? [];
+                const currentIdx = allRecords.findIndex((r) => r.id === record.id);
+                const prevRecord = currentIdx > 0 ? allRecords[currentIdx - 1] : undefined;
+
+                const prevDaysOverdue = prevRecord?.daysOverdue ?? prevRecord?.daysAfterDue ?? 0;
+                const prevLateFee = prevRecord?.lateFee ?? prevRecord?.lateInterest ?? 0;
+                const prevTotalDue = (carryForwardIn > 0 ? carryForwardIn : 0) + prevLateFee;
+
                 const extList = getExtList(record.id);
                 const activeExt = extList.length > 0 ? extList[extList.length - 1] : undefined;
                 const historyExts = extList.slice(0, -1);
@@ -1324,9 +1404,9 @@ function StageBlock({
                     key={record.id}
                     value={record.id}
                     className={`border-l-4 transition-all duration-200 bg-transparent ${
-                      record.status === "overdue"
+                      (record.status === "overdue" || record.status === "grace-period" || record.status === "deposit-forfeited" || record.status === "partial")
                         ? "border-l-red-500 data-[state=open]:bg-red-50/10"
-                        : record.status === "paid"
+                        : (record.status === "paid" || record.status === "overpaid")
                           ? "border-l-emerald-500 data-[state=open]:bg-emerald-50/5"
                           : "border-l-blue-500 data-[state=open]:bg-blue-50/5"
                     } ${idx === 0 ? "border-t-0" : ""}`}
@@ -1334,9 +1414,9 @@ function StageBlock({
                     <AccordionTrigger className="group px-4 py-3 hover:no-underline hover:bg-slate-50/60 text-xs">
                       <div className="flex items-center gap-2 flex-1 min-w-0 mr-3">
                         <div className="group-data-[state=open]:hidden flex items-center gap-2">
-                          {record.status === "paid" ? (
+                          {(record.status === "paid" || record.status === "overpaid") ? (
                             <BadgeCheck className="size-4 text-emerald-500 shrink-0" />
-                          ) : record.status === "overdue" ? (
+                          ) : (record.status === "overdue" || record.status === "grace-period" || record.status === "deposit-forfeited" || record.status === "partial") ? (
                             <div className="flex items-center justify-center rounded-full bg-red-500 shrink-0 size-4">
                               <AlertTriangle className="size-2.5 text-white stroke-[3px]" />
                             </div>
@@ -1344,7 +1424,7 @@ function StageBlock({
                             <Circle className="size-4 text-blue-400 shrink-0" />
                           )}
                           <span
-                            className={`text-sm truncate ${record.status === "overdue" ? "text-red-700" : "text-foreground"
+                            className={`text-sm truncate ${(record.status === "overdue" || record.status === "grace-period" || record.status === "deposit-forfeited" || record.status === "partial") ? "text-red-700 font-semibold" : "text-foreground"
                               }`}
                           >
                             {record.label}
@@ -1385,12 +1465,7 @@ function StageBlock({
                           </div>
                         )}
 
-                        <Badge
-                          className={`ml-auto shrink-0 text-[10px] px-1.5 py-0 ${statusConfig[record.status].className
-                            }`}
-                        >
-                          {statusConfig[record.status].label}
-                        </Badge>
+                        {renderStatusBadges(record.status)}
                       </div>
                     </AccordionTrigger>
 
@@ -1479,7 +1554,7 @@ function StageBlock({
 
                         {/* Banner CHỈ khi khách trả dư ở đợt trước → giảm trừ vào đợt này */}
                         {carryForwardIn < 0 && (
-                          <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5">
+                          <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 mb-3">
                             <span className="text-sm font-medium text-blue-700">
                               Giảm trừ từ đợt trước:
                             </span>
@@ -1489,113 +1564,119 @@ function StageBlock({
                           </div>
                         )}
 
-                        {/* Payment details grid */}
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-3.5 border-t border-border/40 pt-3">
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Ngày đến hạn
-                            </p>
-                            <p className="text-sm font-medium text-slate-800 mt-0.5">
-                              {fmtDate(record.dueDate)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Ngày thanh toán
-                            </p>
-                            <p className={`text-sm font-medium mt-0.5 ${record.paidDate ? "text-emerald-600" : "text-slate-400"}`}>
-                              {record.paidDate ? fmtDate(record.paidDate) : "—"}
-                            </p>
-                          </div>
-                          {stage.stageNumber === 1 && (
+                        {/* Payment details grid (Left and Right Columns) */}
+                        <div className="grid grid-cols-2 gap-x-8 border-t border-border/40 pt-4 mt-1">
+                          {/* Cột bên trái: Đợt Hiện tại */}
+                          <div className="space-y-3.5">
+                            <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b border-border/30 pb-1 mb-2">Đợt Hiện tại</h4>
+                            
                             <div>
-                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                                Tiền cọc
-                              </p>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Ngày đến hạn</p>
+                              <p className="text-sm font-medium text-slate-800 mt-0.5">{fmtDate(record.dueDate)}</p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Số tiền phải thanh toán</p>
+                              <p className="text-sm font-medium text-slate-800 mt-0.5">{formatVND(record.baseAmount)}</p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Tổng đã thu</p>
+                              <p className="text-sm font-medium text-emerald-600 mt-0.5">{formatVND(record.paidAmount)}</p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">% khách hàng thanh toán</p>
                               <p className="text-sm font-medium text-slate-800 mt-0.5">
-                                {formatVND(record.baseAmount)}
+                                {record.baseAmount > 0
+                                  ? `${Math.round((record.paidAmount / record.baseAmount) * 100)}%`
+                                  : "0%"}
                               </p>
                             </div>
-                          )}
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Số tiền phải thanh toán
-                            </p>
-                            <p className="text-sm font-medium text-slate-800 mt-0.5">
-                              {formatVND(record.baseAmount)}
-                            </p>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Số ngày chậm nộp</p>
+                              <p className={`text-sm font-medium mt-0.5 ${(record.daysOverdue ?? 0) > 0 ? "text-red-600 font-semibold" : "text-slate-500"}`}>
+                                {record.daysOverdue ?? 0} ngày
+                              </p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Lãi chậm nộp</p>
+                              <p className={`text-sm font-medium mt-0.5 ${(record.lateFee ?? 0) > 0 ? "text-red-600 font-semibold" : "text-slate-500"}`}>
+                                {formatVND(record.lateFee ?? 0)}
+                              </p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Tổng phải thu (chưa gồm lãi)</p>
+                              <p className={`text-sm font-medium mt-0.5 ${record.remainingAmount > 0 ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
+                                {formatVND(record.remainingAmount)}
+                              </p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Tổng phải thu (gồm lãi)</p>
+                              <p className={`text-sm font-medium mt-0.5 ${(record.remainingAmount + (record.lateFee ?? 0)) > 0 ? "text-red-600 font-semibold" : "text-slate-500"}`}>
+                                {formatVND(record.remainingAmount + (record.lateFee ?? 0))}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Tổng đã thu
-                            </p>
-                            <p className="text-sm font-medium text-emerald-600 mt-0.5">
-                              {formatVND(record.paidAmount)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Còn lại
-                            </p>
-                            <p className={`text-sm font-medium mt-0.5 ${record.remainingAmount > 0 ? "text-orange-600" : "text-slate-500"}`}>
-                              {formatVND(record.remainingAmount)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              % khách hàng thanh toán
-                            </p>
-                            <p className="text-sm font-medium text-slate-800 mt-0.5">
-                              {record.baseAmount > 0
-                                ? `${Math.round((record.paidAmount / record.baseAmount) * 100)}%`
-                                : "0%"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Dư nợ đợt trước
-                            </p>
-                            <p className={`text-sm font-medium mt-0.5 ${carryForwardIn > 0 ? "text-orange-600" : "text-slate-500"}`}>
-                              {formatVND(carryForwardIn > 0 ? carryForwardIn : 0)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Lãi chậm nộp
-                            </p>
-                            <p className={`text-sm font-medium mt-0.5 ${(record.lateFee ?? 0) > 0 ? "text-red-600" : "text-slate-500"}`}>
-                              {formatVND(record.lateFee ?? 0)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Số ngày chậm nộp
-                            </p>
-                            <p className={`text-sm font-medium mt-0.5 ${(record.daysOverdue ?? 0) > 0 ? "text-red-600" : "text-slate-500"}`}>
-                              {record.daysOverdue ?? 0} ngày
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                              Tổng phải thu
-                            </p>
-                            <p className={`text-sm font-medium mt-0.5 ${record.status === "overdue" ? "text-red-700" : "text-slate-500"}`}>
-                              {formatVND(record.status === "paid" ? 0 : Math.max(0, record.remainingAmount + (record.lateFee ?? 0) + carryForwardIn))}
-                            </p>
+
+                          {/* Cột bên phải: Dư nợ đợt trước chuyển sang */}
+                          <div className="space-y-3.5 border-l border-border/40 pl-8">
+                            <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest border-b border-border/30 pb-1 mb-2">Nợ cũ đợt trước mang sang</h4>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Ngày thanh toán</p>
+                              <p className={`text-sm font-medium mt-0.5 ${record.paidDate ? "text-emerald-600 font-semibold" : "text-slate-400"}`}>
+                                {record.paidDate ? fmtDate(record.paidDate) : "—"}
+                              </p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Dư nợ đợt trước</p>
+                              <p className={`text-sm font-medium mt-0.5 ${carryForwardIn > 0 ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
+                                {formatVND(carryForwardIn > 0 ? carryForwardIn : 0)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Số ngày chậm nộp (đợt trước)</p>
+                              <p className={`text-sm font-medium mt-0.5 ${prevDaysOverdue > 0 ? "text-red-600 font-semibold" : "text-slate-500"}`}>
+                                {prevDaysOverdue} ngày
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Lãi chậm nộp (đợt trước)</p>
+                              <p className={`text-sm font-medium mt-0.5 ${prevLateFee > 0 ? "text-red-600 font-semibold" : "text-slate-500"}`}>
+                                {formatVND(prevLateFee)}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Tổng phải thu nợ đợt trước (gồm lãi)</p>
+                              <p className={`text-sm font-medium mt-0.5 ${prevTotalDue > 0 ? "text-red-700 font-semibold" : "text-slate-500"}`}>
+                                {formatVND(prevTotalDue)}
+                              </p>
+                            </div>
                           </div>
                         </div>
 
-                        {record.status === "overdue" &&
-                          record.lateFee != null &&
-                          extList.length === 0 && (
-                            <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2">
-                              <p className="text-xs text-red-700">
-                                <span className="font-medium">Tổng phải thanh toán:</span>{" "}
-                                {formatVND(record.baseAmount + record.lateFee)}
-                                <span className="text-red-500 ml-2">(gốc + phạt trễ hạn)</span>
-                              </p>
-                            </div>
-                          )}
+                        {/* Tổng kết dòng tiền cuối của đợt */}
+                        {record.status !== "paid" && record.status !== "overpaid" && (
+                          <div className="rounded-lg bg-slate-50 border border-slate-200/80 px-4 py-3 mt-4">
+                            <p className="text-xs text-slate-700 flex items-center justify-between">
+                              <span className="font-semibold text-slate-800">TỔNG CỘNG PHẢI THANH TOÁN ĐỢT NÀY:</span>{" "}
+                              <span className="text-sm font-bold text-red-600">
+                                {formatVND(Math.max(0, record.remainingAmount + (record.lateFee ?? 0) + carryForwardIn))}
+                              </span>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              (Bao gồm: Gốc đợt này còn lại + Lãi phạt đợt này + Dư nợ cũ đợt trước mang sang)
+                            </p>
+                          </div>
+                        )}
 
                         {record.status === "paid" && record.invoice && (
                           <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
@@ -2418,9 +2499,7 @@ export function PaymentDetails({ customerId: customerIdProp, contractId: contrac
                 <h1 className="text-base font-medium text-foreground">
                   Mã hợp đồng: <span className="text-blue-600">{contract.contractCode || contract.id}</span>
                 </h1>
-                <Badge className={`text-[10px] px-1.5 py-0 ${statusConfig[contract.status].className}`}>
-                  {statusConfig[contract.status].label}
-                </Badge>
+                {renderStatusBadges(contract.status)}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                 Mã căn hộ: <strong className="text-slate-700">{contract.unit}</strong> · Khách hàng chính: <strong className="text-slate-700">{customer.name}</strong> · Dự án: <strong className="text-slate-700">{contract.projectName}</strong> · Nhân viên KD: <strong className="text-slate-700">{contract.salesperson ?? "Nguyễn Hoàng Phúc"}</strong>

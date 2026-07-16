@@ -721,6 +721,34 @@ const baseCustomers: Customer[] = [
                 remainingAmount: 0.30,
                 status: "partial",
                 debtStatus: "overdue",
+                extensions: [
+                  {
+                    id: "ext-c2-r4",
+                    requestDate: "2026-04-20",
+                    approvedDate: "2026-04-25",
+                    approvedBy: "Lê Quang Đức",
+                    type: "with-penalty",
+                    penaltyRatePercent: 14,
+                    reason: "Khách hàng gặp vấn đề về dòng tiền kinh doanh do đối tác thanh toán chậm. Xin gia hạn thanh toán số tiền còn lại thành 2 đợt nhỏ.",
+                    notes: "Đã ký biên bản cam kết thanh toán.",
+                    installments: [
+                      {
+                        id: "ext-c2-r4-i1",
+                        label: "Đợt gia hạn 1",
+                        dueDate: "2026-05-30",
+                        amount: 0.15,
+                        status: "upcoming",
+                      },
+                      {
+                        id: "ext-c2-r4-i2",
+                        label: "Đợt gia hạn 2",
+                        dueDate: "2026-06-30",
+                        amount: 0.15,
+                        status: "upcoming",
+                      }
+                    ]
+                  }
+                ],
               },
               {
                 id: "c2-1-r5",

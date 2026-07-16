@@ -578,27 +578,29 @@ export function CustomerContracts() {
           </Button>
           <div className="flex-1">
             <Card className="border-slate-200 bg-white shadow-sm shadow-slate-200/50">
-              <CardContent className="p-5">
-                <div className="flex flex-wrap items-start gap-5">
-                  {/* Avatar + Name */}
+              <CardContent className="p-6">
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                  {/* Left Side: Avatar + Customer Details */}
                   <div className="flex items-center gap-4">
-                    <Avatar className="size-12 shrink-0">
-                      <AvatarFallback className={`text-base ${customer.avatarColor}`}>
+                    <Avatar className="size-14 shrink-0 border border-slate-100 shadow-sm">
+                      <AvatarFallback className={`text-lg font-bold bg-gradient-to-tr from-slate-100 to-slate-200 text-slate-700 ${customer.avatarColor}`}>
                         {customer.initials}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h1 id="customer-debt-title" className="text-foreground leading-tight">{customer.name}</h1>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                      <h1 id="customer-debt-title" className="text-lg font-semibold text-slate-900 leading-tight">
+                        {customer.name}
+                      </h1>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5">
                         {customer.email && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Mail className="size-3" />
+                          <span className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors">
+                            <Mail className="size-3.5 text-slate-400" />
                             {customer.email}
                           </span>
                         )}
                         {customer.phone && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="size-3" />
+                          <span className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors">
+                            <Phone className="size-3.5 text-slate-400" />
                             {customer.phone}
                           </span>
                         )}
@@ -606,60 +608,55 @@ export function CustomerContracts() {
                     </div>
                   </div>
 
-                  <Separator orientation="vertical" className="h-12 hidden sm:block" />
+                  {/* Right Side: Key Financial Stats */}
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
+                    <div className="flex flex-col items-start sm:items-end">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Hợp đồng</span>
+                      <span className="text-base font-semibold text-slate-700 mt-0.5">{customer.contracts.length} bản</span>
+                    </div>
+                    
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
-                  {/* Aggregated stats */}
-                  <div className="flex flex-wrap gap-6 ml-auto">
-                    <div className="text-center">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Hợp đồng
-                      </p>
-                      <p className="text-xl text-foreground mt-0.5">
-                        {customer.contracts.length}
-                      </p>
+                    <div className="flex flex-col items-start sm:items-end">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tổng giá trị</span>
+                      <span className="text-base font-semibold text-slate-800 mt-0.5 tabular-nums">{formatVND(totalValue)}</span>
                     </div>
-                    <div className="text-center">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Tổng giá trị
-                      </p>
-                      <p className="text-xl text-foreground mt-0.5 tabular-nums">
-                        {formatVND(totalValue)}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Đã thanh toán
-                      </p>
-                      <p className="text-xl text-emerald-600 mt-0.5 tabular-nums">
-                        {formatVND(totalPaid)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">{progress}%</p>
-                    </div>
-                    {totalLateFee > 0 && (
-                      <div className="text-center">
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                          Phí phạt
-                        </p>
-                        <p className="text-xl text-red-600 mt-0.5 tabular-nums">
-                          {formatVND(totalLateFee)}
-                        </p>
+
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+
+                    <div className="flex flex-col items-start sm:items-end">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Đã thanh toán</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-base font-semibold text-emerald-600 tabular-nums">{formatVND(totalPaid)}</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {progress}%
+                        </span>
                       </div>
+                    </div>
+
+                    {totalLateFee > 0 && (
+                      <>
+                        <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+                        <div className="flex flex-col items-start sm:items-end">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Phí phạt lũy kế</span>
+                          <span className="text-base font-semibold text-red-600 mt-0.5 tabular-nums">{formatVND(totalLateFee)}</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
 
                 {/* Overall progress bar */}
-                <div className="mt-4 space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Tiến độ tổng thể ({progress}%)</span>
-                    <span>
-                      Còn lại: {formatVND(totalValue - totalPaid)} /{" "}
-                      {formatVND(totalValue)}
+                <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-600">Tiến độ thanh toán tổng thể ({progress}%)</span>
+                    <span className="text-slate-500">
+                      Còn lại: <span className="font-semibold text-slate-700">{formatVND(totalValue - totalPaid)}</span> / {formatVND(totalValue)}
                     </span>
                   </div>
                   <Progress
                     value={progress}
-                    className={`h-1.5 ${
+                    className={`h-2 ${
                       isOverdue
                         ? "bg-red-100 [&>[data-slot=progress-indicator]]:bg-red-500"
                         : worst === "upcoming"

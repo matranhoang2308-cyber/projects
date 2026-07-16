@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useParams, useNavigate } from "react-router";
 import type { ElementType } from "react";
 import {
@@ -32,6 +32,8 @@ import {
   LayoutList,
   Table2,
   Bell,
+  PlusCircle,
+  MinusCircle,
 } from "lucide-react";
 import { PaymentReminderDialog } from "@/components/reminders/PaymentReminderDialog";
 import {
@@ -202,17 +204,18 @@ const statusConfig: Record<PaymentStatus, { label: string; className: string }> 
   },
 };
 
-const renderStatusBadges = (status: PaymentStatus) => {
+const renderStatusBadges = (status: PaymentStatus, mlAuto = true) => {
+  const marginClass = mlAuto ? "ml-auto" : "";
   if (status === "paid") {
     return (
-      <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm text-[10px] px-1.5 py-0 shrink-0 ml-auto">
+      <Badge className={`border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold shadow-sm text-[10px] px-1.5 py-0 shrink-0 ${marginClass}`}>
         Đã thanh toán
       </Badge>
     );
   }
   if (status === "overpaid") {
     return (
-      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+      <div className={`flex items-center gap-1.5 shrink-0 ${marginClass}`}>
         <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700 text-[10px] px-1.5 py-0">
           Thanh toán dư
         </Badge>
@@ -225,14 +228,14 @@ const renderStatusBadges = (status: PaymentStatus) => {
   if (status === "overdue" || status === "grace-period" || status === "deposit-forfeited") {
     const label = status === "deposit-forfeited" ? "Mất cọc" : (status === "grace-period" ? "Trong thời gian ân hạn" : "Quá hạn");
     return (
-      <Badge className="border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm text-[10px] px-1.5 py-0 shrink-0 ml-auto">
+      <Badge className={`border-red-300 bg-red-50 text-red-700 font-semibold shadow-sm text-[10px] px-1.5 py-0 shrink-0 ${marginClass}`}>
         {label}
       </Badge>
     );
   }
   if (status === "partial") {
     return (
-      <div className="flex items-center gap-1.5 ml-auto shrink-0">
+      <div className={`flex items-center gap-1.5 shrink-0 ${marginClass}`}>
         <Badge className="border-orange-200 bg-orange-50 text-orange-700 text-[10px] px-1.5 py-0">
           Thanh toán một phần
         </Badge>
@@ -249,7 +252,7 @@ const renderStatusBadges = (status: PaymentStatus) => {
     </Badge>
   ) : null;
   return (
-    <div className="flex items-center gap-1.5 ml-auto shrink-0">
+    <div className={`flex items-center gap-1.5 shrink-0 ${marginClass}`}>
       {extraTag}
       <Badge className="border-blue-300 bg-blue-50 text-blue-700 font-semibold shadow-sm text-[10px] px-1.5 py-0">
         Sắp đến hạn
@@ -1830,16 +1833,75 @@ import { useMemo } from "react";
 function renderStatusBadge(status: PaymentStatus) {
   switch (status) {
     case "paid":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+          Đã thanh toán
+        </span>
+      );
     case "overpaid":
-      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">Đã thanh toán</span>;
+      return (
+        <div className="flex items-center justify-center gap-1">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200/50">
+            Thanh toán dư
+          </span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+            Đã thanh toán
+          </span>
+        </div>
+      );
     case "overdue":
-      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/50">Quá hạn</span>;
-    case "upcoming":
-      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">Sắp tới hạn</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/50">
+          Quá hạn
+        </span>
+      );
+    case "grace-period":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/50">
+          Trong thời gian ân hạn
+        </span>
+      );
+    case "deposit-forfeited":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/50">
+          Mất cọc
+        </span>
+      );
     case "partial":
-      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200/50">Một phần</span>;
+      return (
+        <div className="flex items-center justify-center gap-1">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200/50">
+            Thanh toán một phần
+          </span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200/50">
+            Quá hạn
+          </span>
+        </div>
+      );
+    case "extended":
+      return (
+        <div className="flex items-center justify-center gap-1">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200/50">
+            Đã gia hạn
+          </span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">
+            Sắp đến hạn
+          </span>
+        </div>
+      );
+    case "not-due":
+    case "upcoming":
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">
+          Sắp đến hạn
+        </span>
+      );
     default:
-      return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200/50">Chưa tới hạn</span>;
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">
+          Sắp đến hạn
+        </span>
+      );
   }
 }
 
@@ -1865,6 +1927,8 @@ function PaymentTable({
     invoice: InvoiceFile;
     record: PaymentRecord;
   } | null>(null);
+
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const [localExtensions, setLocalExtensions] = useState<Map<string, PaymentExtension[]>>(() => {
     const m = new Map<string, PaymentExtension[]>();
@@ -2062,31 +2126,50 @@ function PaymentTable({
         </p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1880px] border-separate border-spacing-0 text-[11px] whitespace-nowrap">
+        <table className="w-full min-w-[2200px] border-separate border-spacing-0 text-[11px] whitespace-nowrap">
           <thead className="text-slate-600">
             <tr>
-              <th className={`${paymentDetailTableHeadClass} w-10 text-center`} style={{ fontWeight: 650 }}>STT</th>
-              <th className={`${paymentDetailTableHeadClass} min-w-[210px] text-left`} style={{ fontWeight: 650 }}>Đợt thanh toán</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày cọc</th>
-              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Số tiền cọc</th>
-              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Tiền cọc lòng chuyển sang cọc</th>
-              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Tiền bổ sung cọc mới</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày ký HĐ</th>
-              <th className={`${paymentDetailTableHeadClass} w-14 text-center`} style={{ fontWeight: 650 }}>% TT</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} w-10 text-center align-middle`} style={{ fontWeight: 650 }}>STT</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} min-w-[210px] text-left align-middle`} style={{ fontWeight: 650 }}>Đợt thanh toán</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-center align-middle`} style={{ fontWeight: 650 }}>Ngày cọc</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-right align-middle`} style={{ fontWeight: 650 }}>Số tiền cọc</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-right align-middle`} style={{ fontWeight: 650 }}>Tiền cọc lòng chuyển sang cọc</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-right align-middle`} style={{ fontWeight: 650 }}>Tiền bổ sung cọc mới</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-center align-middle`} style={{ fontWeight: 650 }}>Ngày ký HĐ</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} w-14 text-center align-middle`} style={{ fontWeight: 650 }}>% TT</th>
+              
+              {/* Nhóm Đợt Hiện Tại */}
+              <th colSpan={7} className="border-b border-r border-[#DDE5F0] bg-[#EFF3F9] px-3 py-1.5 text-center text-[10px] font-bold text-slate-800 uppercase tracking-wider" style={{ fontWeight: 700 }}>
+                Đợt thanh toán hiện tại
+              </th>
+
+              {/* Nhóm Nợ Cũ Đợt Trước Mang Sang */}
+              <th colSpan={5} className="border-b border-r border-[#DDE5F0] bg-[#FDF4E9] px-3 py-1.5 text-center text-[10px] font-bold text-orange-900 uppercase tracking-wider" style={{ fontWeight: 700 }}>
+                Nợ cũ đợt trước mang sang
+              </th>
+
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-center align-middle`} style={{ fontWeight: 650 }}>Ngày gia hạn</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-center align-middle`} style={{ fontWeight: 650 }}>Ngày thanh toán gia hạn</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-center align-middle`} style={{ fontWeight: 650 }}>Tỷ lệ khách hàng thanh toán</th>
+              <th rowSpan={2} className={`${paymentDetailTableHeadClass} text-center align-middle`} style={{ fontWeight: 650 }}>Trạng thái TT</th>
+              <th rowSpan={2} className="border-b border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-center text-[10px] leading-4 text-slate-600 w-14 align-middle" style={{ fontWeight: 650 }}>Hành động</th>
+            </tr>
+            <tr>
+              {/* Cột con của Đợt Hiện Tại */}
               <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Số tiền</th>
               <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày đến hạn</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Dư báo quá hạn</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày dự kiến TT</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày thực tế TT</th>
               <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Tổng đã thu</th>
-              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Dư thiếu đợt trước</th>
-              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Bổ sung</th>
-              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Còn lại</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày gia hạn</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày thanh toán gia hạn</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Tỷ lệ khách hàng thanh toán</th>
-              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Trạng thái TT</th>
-              <th className="border-b border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-center text-[10px] leading-4 text-slate-600 w-14" style={{ fontWeight: 650 }}>Hành động</th>
+              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Dư báo quá hạn</th>
+              <th className={`${paymentDetailTableHeadClass} text-right text-red-600`} style={{ fontWeight: 650 }}>Lãi chậm nộp</th>
+              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Tổng phải thu (chưa lãi)</th>
+              <th className={`${paymentDetailTableHeadClass} text-right font-semibold text-red-700`} style={{ fontWeight: 650 }}>Tổng phải thu (gồm lãi)</th>
+
+              {/* Cột con của Nợ Cũ */}
+              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Ngày thanh toán</th>
+              <th className={`${paymentDetailTableHeadClass} text-right`} style={{ fontWeight: 650 }}>Dư nợ đợt trước</th>
+              <th className={`${paymentDetailTableHeadClass} text-center`} style={{ fontWeight: 650 }}>Số ngày trễ</th>
+              <th className={`${paymentDetailTableHeadClass} text-right text-red-600`} style={{ fontWeight: 650 }}>Lãi chậm nộp</th>
+              <th className={`${paymentDetailTableHeadClass} text-right font-semibold text-red-700`} style={{ fontWeight: 650 }}>Tổng nợ cũ (gồm lãi)</th>
             </tr>
           </thead>
           <tbody className="text-slate-700">
@@ -2112,119 +2195,248 @@ function PaymentTable({
                       ? -Math.max(0, (prevRow.paidAmount ?? 0) - (prevRow.baseAmount + (prevRow.lateInterest ?? 0)))
                       : 0;
 
+              const prevDaysOverdue = prevRow?.daysOverdue ?? prevRow?.daysAfterDue ?? 0;
+              const prevLateFee = prevRow?.lateFee ?? prevRow?.lateInterest ?? 0;
+              const prevTotalDue = (carryForwardIn > 0 ? carryForwardIn : 0) + prevLateFee;
+
               return (
-                <tr key={record.id} className="transition-colors hover:bg-[#F8FAFC]">
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-400`} style={{ fontWeight: 600 }}>{index + 1}</td>
-                  <td className={`${paymentDetailTableCellClass} text-slate-900`} style={{ fontWeight: 600 }}>{record.label}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{index === 0 ? (depositDate ? fmtDate(depositDate) : "—") : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{index === 0 ? formatVND(record.baseAmount) : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{index === 0 ? formatVND(record.paidAmount) : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-right text-slate-400`}>0 ₫</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{signingDate ? fmtDate(signingDate) : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-700`} style={{ fontWeight: 600 }}>{pctTT}%</td>
-                  <td className={`${paymentDetailTableCellClass} text-right tabular-nums text-slate-900`} style={{ fontWeight: 600 }}>{formatVND(record.baseAmount)}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center`}>{fmtDate(record.dueDate)}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-red-600`} style={{ fontWeight: 600 }}>{overdueDays > 0 ? `${overdueDays} ngày` : "0 ngày"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center`}>{fmtDate(record.dueDate)}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center`}>{record.paidDate ? fmtDate(record.paidDate) : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{formatVND(record.paidAmount)}</td>
-                  <td className={`${paymentDetailTableCellClass} text-right tabular-nums ${carryForwardIn > 0 ? "text-orange-600" : carryForwardIn < 0 ? "text-emerald-600" : "text-slate-400"}`} style={carryForwardIn !== 0 ? { fontWeight: 600 } : undefined}>{carryForwardIn < 0 ? `- ${formatVND(-carryForwardIn)}` : formatVND(carryForwardIn)}</td>
-                  <td className={`${paymentDetailTableCellClass} text-right text-slate-400`}>0 ₫</td>
-                  <td className={`${paymentDetailTableCellClass} text-right tabular-nums text-slate-900`} style={{ fontWeight: 600 }}>{formatVND(record.remainingAmount)}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{activeExt ? fmtDate(activeExt.newDueDate) : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{activeExt && activeExt.installments.some(i => i.status === "paid") ? fmtDate(activeExt.installments.find(i => i.status === "paid")?.paidDate || "") : "—"}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center text-slate-700`} style={{ fontWeight: 600 }}>{percentPaid}</td>
-                  <td className={`${paymentDetailTableCellClass} text-center`}>{renderStatusBadge(record.status)}</td>
-                  <td className="border-b border-[#E5EAF3] px-3 py-2.5 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      {/* Rule 10: đợt có gia hạn con thì thanh toán qua từng gia hạn, không xác nhận trực tiếp */}
-                      {!isFullyPaid && !hasExtensions && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
-                          onClick={() => setPaymentConfirmTarget(record)}
-                          title="Xác nhận thanh toán"
-                        >
-                          <BadgeCheck className="size-4" />
-                        </Button>
-                      )}
-                      {!isFullyPaid && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-md text-amber-600 hover:text-amber-700 hover:bg-amber-50 shrink-0"
-                          onClick={() => setReminderTarget(normalizePaymentRecord(record))}
-                          title="Nhắc khách"
-                        >
-                          <Bell className="size-4" />
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                <Fragment key={record.id}>
+                  <tr className="transition-colors hover:bg-[#F8FAFC]">
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-400`} style={{ fontWeight: 600 }}>{index + 1}</td>
+                    <td className={`${paymentDetailTableCellClass} text-slate-900`} style={{ fontWeight: 600 }}>{record.label}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{index === 0 ? (depositDate ? fmtDate(depositDate) : "—") : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{index === 0 ? formatVND(record.baseAmount) : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{index === 0 ? formatVND(record.paidAmount) : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right text-slate-400`}>0 ₫</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{signingDate ? fmtDate(signingDate) : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-700`} style={{ fontWeight: 600 }}>{pctTT}%</td>
+                    
+                    {/* Cột con của Đợt Hiện Tại */}
+                    <td className={`${paymentDetailTableCellClass} text-right tabular-nums text-slate-900`} style={{ fontWeight: 600 }}>{formatVND(record.baseAmount)}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center`}>{fmtDate(record.dueDate)}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{formatVND(record.paidAmount)}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-600`}>{overdueDays > 0 ? `${overdueDays} ngày` : "0 ngày"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right text-red-600 font-medium tabular-nums`}>{formatVND(record.lateFee ?? 0)}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right tabular-nums text-slate-900`} style={{ fontWeight: 600 }}>{formatVND(record.remainingAmount)}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right font-semibold text-red-700 tabular-nums`}>{formatVND((record.status === "paid" || record.status === "overpaid") ? 0 : Math.max(0, record.remainingAmount + (record.lateFee ?? 0)))}</td>
+
+                    {/* Cột con của Nợ Cũ */}
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{record.paidDate ? fmtDate(record.paidDate) : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right tabular-nums ${carryForwardIn > 0 ? "text-orange-600 font-semibold" : "text-slate-500"}`}>{formatVND(carryForwardIn > 0 ? carryForwardIn : 0)}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{prevDaysOverdue > 0 ? `${prevDaysOverdue} ngày` : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right text-slate-500 tabular-nums`}>{prevLateFee > 0 ? formatVND(prevLateFee) : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-right font-semibold text-red-700 tabular-nums`}>{prevTotalDue > 0 ? formatVND(prevTotalDue) : "—"}</td>
+
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{activeExt ? fmtDate(activeExt.newDueDate) : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{activeExt && activeExt.installments.some(i => i.status === "paid") ? fmtDate(activeExt.installments.find(i => i.status === "paid")?.paidDate || "") : "—"}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center text-slate-700`} style={{ fontWeight: 600 }}>{percentPaid}</td>
+                    <td className={`${paymentDetailTableCellClass} text-center`}>{renderStatusBadge(record.status)}</td>
+                    <td className="border-b border-[#E5EAF3] px-3 py-2.5 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        {/* Rule 10: đợt có gia hạn con thì thanh toán qua từng gia hạn, không xác nhận trực tiếp */}
+                        {!isFullyPaid && !hasExtensions && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 rounded-md text-slate-400 hover:text-slate-600 shrink-0"
+                            className="h-7 w-7 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 shrink-0"
+                            onClick={() => setPaymentConfirmTarget(record)}
+                            title="Xác nhận thanh toán"
                           >
-                            <MoreHorizontal className="size-4" />
+                            <BadgeCheck className="size-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="text-xs w-52">
-                          <DropdownMenuItem
-                            className="text-xs gap-2"
-                            onSelect={() => setDebtAdjustTarget(normalizePaymentRecord(record))}
+                        )}
+                        {!isFullyPaid && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-md text-amber-600 hover:text-amber-700 hover:bg-amber-50 shrink-0"
+                            onClick={() => setReminderTarget(normalizePaymentRecord(record))}
+                            title="Nhắc khách"
                           >
-                            <Pencil className="size-3.5 text-muted-foreground" />
-                            Điều chỉnh công nợ
-                          </DropdownMenuItem>
-                          
-                          {(record.status === "overdue" || record.status === "upcoming") && (
+                            <Bell className="size-4" />
+                          </Button>
+                        )}
+                        {hasExtensions && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-7 w-7 rounded-md text-purple-600 hover:text-purple-700 hover:bg-purple-50 shrink-0 ${
+                              expandedRows.has(record.id) ? "bg-purple-50" : ""
+                            }`}
+                            onClick={() => {
+                              const next = new Set(expandedRows);
+                              if (next.has(record.id)) next.delete(record.id);
+                              else next.add(record.id);
+                              setExpandedRows(next);
+                            }}
+                            title={expandedRows.has(record.id) ? "Thu gọn gia hạn" : "Xem chi tiết gia hạn"}
+                          >
+                            {expandedRows.has(record.id) ? (
+                              <MinusCircle className="size-4 text-purple-600" />
+                            ) : (
+                              <PlusCircle className="size-4 text-purple-600" />
+                            )}
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-md text-slate-400 hover:text-slate-600 shrink-0"
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="text-xs w-52">
                             <DropdownMenuItem
                               className="text-xs gap-2"
-                              onSelect={() => setExtDialog({ record, editingIdx: undefined })}
+                              onSelect={() => setDebtAdjustTarget(normalizePaymentRecord(record))}
                             >
-                              <Plus className="size-3.5 text-muted-foreground" />
-                              {getExtList(record.id).length === 0
-                                ? "Gia hạn thanh toán"
-                                : `Gia hạn lần ${getExtList(record.id).length + 1}`}
+                              <Pencil className="size-3.5 text-muted-foreground" />
+                              Điều chỉnh công nợ
                             </DropdownMenuItem>
-                          )}
+                            
+                            {(record.status === "overdue" || record.status === "upcoming") && (
+                              <DropdownMenuItem
+                                className="text-xs gap-2"
+                                onSelect={() => setExtDialog({ record, editingIdx: undefined })}
+                              >
+                                <Plus className="size-3.5 text-muted-foreground" />
+                                {getExtList(record.id).length === 0
+                                  ? "Gia hạn thanh toán"
+                                  : `Gia hạn lần ${getExtList(record.id).length + 1}`}
+                              </DropdownMenuItem>
+                            )}
 
-                          <DropdownMenuItem
-                            className="text-xs gap-2"
-                            onSelect={() => setAuditHistoryRecord(record)}
-                          >
-                            <History className="size-3.5 text-muted-foreground" />
-                            Xem lịch sử công nợ
-                            {(localAuditLogs.get(record.id)?.length ?? 0) === 0 && (
-                              <span className="ml-auto text-[10px] text-muted-foreground">Chưa có</span>
-                            )}
-                          </DropdownMenuItem>
-                          {(record.status === "overdue" ||
-                            record.status === "grace-period" ||
-                            record.status === "partial" ||
-                            record.adjustedLateInterest != null) && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-xs gap-2"
-                                  onSelect={() =>
-                                    onNavigate(
-                                      `/customer/${customerId}/contract/${contractId}/stage/${stage.id}/payment/${record.id}`
-                                    )
-                                  }
-                                >
-                                  <FileText className="size-3.5 text-muted-foreground" />
-                                  Xem chi tiết tính lãi
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </td>
-                </tr>
+                            <DropdownMenuItem
+                              className="text-xs gap-2"
+                              onSelect={() => setAuditHistoryRecord(record)}
+                            >
+                              <History className="size-3.5 text-muted-foreground" />
+                              Xem lịch sử công nợ
+                              {(localAuditLogs.get(record.id)?.length ?? 0) === 0 && (
+                                <span className="ml-auto text-[10px] text-muted-foreground">Chưa có</span>
+                              )}
+                            </DropdownMenuItem>
+                            {(record.status === "overdue" ||
+                              record.status === "grace-period" ||
+                              record.status === "partial" ||
+                              record.adjustedLateInterest != null) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-xs gap-2"
+                                    onSelect={() =>
+                                      onNavigate(
+                                        `/customer/${customerId}/contract/${contractId}/stage/${stage.id}/payment/${record.id}`
+                                      )
+                                    }
+                                  >
+                                    <FileText className="size-3.5 text-muted-foreground" />
+                                    Xem chi tiết tính lãi
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Sub-table for Extensions */}
+                  {hasExtensions && expandedRows.has(record.id) && (
+                    <tr className="bg-slate-50/50">
+                      <td colSpan={25} className="px-12 py-3.5 border-b border-[#E5EAF3]">
+                        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm w-full">
+                          <div className="flex items-center gap-2 mb-3">
+                            <History className="size-4 text-purple-600" />
+                            <h4 className="text-xs font-semibold text-slate-800">
+                              Lịch sử gia hạn & các đợt thanh toán con của đợt này
+                            </h4>
+                          </div>
+                          
+                          <table className="w-full text-left text-[11px] border-collapse">
+                            <thead>
+                              <tr className="border-b border-slate-200 text-slate-500 bg-slate-50/50">
+                                <th className="py-2 px-3 font-semibold">STT</th>
+                                <th className="py-2 px-3 font-semibold">Đợt gia hạn</th>
+                                <th className="py-2 px-3 font-semibold">Ngày đến hạn mới</th>
+                                <th className="py-2 px-3 font-semibold text-right">Số tiền gốc</th>
+                                <th className="py-2 px-3 font-semibold text-right">Phí phạt trễ hạn</th>
+                                <th className="py-2 px-3 font-semibold">Loại gia hạn</th>
+                                <th className="py-2 px-3 font-semibold">Người duyệt</th>
+                                <th className="py-2 px-3 font-semibold text-center">Trạng thái</th>
+                                <th className="py-2 px-3 font-semibold text-center">Hành động</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {getExtList(record.id).flatMap((ext, extIdx) => {
+                                const isLatestExt = extIdx === getExtList(record.id).length - 1;
+                                return ext.installments.map((inst, instIdx) => {
+                                  const instLateFee = ext.type === "with-penalty" ? calcLateFee(inst.amount, ext.penaltyRatePercent, inst.dueDate) : 0;
+                                  const isPaid = inst.status === "paid" || inst.status === "overpaid";
+                                  return (
+                                    <tr key={inst.id} className="border-b border-slate-100 hover:bg-slate-50/40">
+                                      <td className="py-2 px-3 text-slate-400">{instIdx + 1}</td>
+                                      <td className="py-2 px-3 font-medium text-slate-700">{inst.label} (Gia hạn lần {extIdx + 1})</td>
+                                      <td className="py-2 px-3 text-slate-600">{fmtDate(inst.dueDate)}</td>
+                                      <td className="py-2 px-3 text-right text-slate-800 font-semibold tabular-nums">{formatVND(inst.amount)}</td>
+                                      <td className="py-2 px-3 text-right text-orange-600 font-semibold tabular-nums">
+                                        {instLateFee > 0 ? `+${formatVND(instLateFee)}` : "0 ₫"}
+                                      </td>
+                                      <td className="py-2 px-3">
+                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] ${
+                                          ext.type === "with-penalty" ? "bg-orange-50 text-orange-700 border border-orange-200/50" : "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
+                                        }`}>
+                                          {ext.type === "with-penalty" ? "Có phạt" : "Miễn phạt"}
+                                        </span>
+                                      </td>
+                                      <td className="py-2 px-3 text-slate-500">{ext.approvedBy}</td>
+                                      <td className="py-2 px-3 text-center">
+                                        {renderStatusBadge(inst.status)}
+                                      </td>
+                                      <td className="py-2 px-3 text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                          {isLatestExt && !isPaid && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-6 text-[10px] px-2 gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0"
+                                              onClick={() =>
+                                                setConfirmPayTarget({ recordId: record.id, installment: inst })
+                                              }
+                                            >
+                                              <BadgeCheck className="size-3" />
+                                              Thanh toán
+                                            </Button>
+                                          )}
+                                          {isPaid && inst.invoice && (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 text-[10px] px-2 gap-1 text-blue-600 hover:bg-blue-50 shrink-0"
+                                              onClick={() =>
+                                                setActiveInvoice({ invoice: inst.invoice!, record })
+                                              }
+                                            >
+                                              <FileText className="size-3" />
+                                              Xem HĐ
+                                            </Button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                });
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
@@ -2408,7 +2620,8 @@ export function PaymentDetails({ customerId: customerIdProp, contractId: contrac
       "Trạng thái TT"
     ];
 
-    const dataRows = allRows.map(({ stage, record }, index) => {
+    const dataRows: string[][] = [];
+    allRows.forEach(({ stage, record }, index) => {
       const pctTT = Math.round((record.baseAmount / contract.contractValue) * 100);
       const overdueDays = record.status === "overdue" ? (record.daysOverdue || record.daysAfterDue || 0) : 0;
       const hasExtensions = (record.extensions && record.extensions.length > 0);
@@ -2439,7 +2652,8 @@ export function PaymentDetails({ customerId: customerIdProp, contractId: contrac
               ? -Math.max(0, (prevRow.paidAmount ?? 0) - (prevRow.baseAmount + (prevRow.lateInterest ?? 0)))
               : 0;
 
-      return [
+      // 1. Dòng cha
+      dataRows.push([
         (index + 1).toString(),
         record.label,
         index === 0 ? (depositDate ? fmtDate(depositDate) : "—") : "—",
@@ -2461,7 +2675,42 @@ export function PaymentDetails({ customerId: customerIdProp, contractId: contrac
         (activeExt && activeExt.installments.some(i => i.status === "paid")) ? fmtDate(activeExt.installments.find(i => i.status === "paid")?.paidDate || "") : "—",
         percentPaid,
         statusLabel
-      ];
+      ]);
+
+      // 2. Dòng gia hạn con (Giải pháp 1)
+      if (hasExtensions) {
+        const extList = record.extensions!;
+        extList.forEach((ext, extIdx) => {
+          ext.installments.forEach((inst, instIdx) => {
+            const instLateFee = ext.type === "with-penalty" ? calcLateFee(inst.amount, ext.penaltyRatePercent, inst.dueDate) : 0;
+            const instStatusLabel = inst.status === "paid" ? "Đã thanh toán" : inst.status === "overdue" ? "Quá hạn" : "Sắp tới hạn";
+            
+            dataRows.push([
+              `${index + 1}.${extIdx + 1}.${instIdx + 1}`, // STT con (vd: 4.1.1)
+              `   └─ ${inst.label} (Gia hạn lần ${extIdx + 1})`, // Thụt dòng lề trái
+              "—", // Ngày cọc
+              "—", // Số tiền cọc
+              "—", // Tiền cọc lòng
+              "—", // Bổ sung cọc
+              "—", // Ngày ký HĐ
+              "—", // % TT
+              formatVND(inst.amount), // Số tiền gia hạn
+              fmtDate(inst.dueDate), // Ngày gia hạn mới
+              instLateFee > 0 ? `Phạt trễ hạn: ${formatVND(instLateFee)}` : "Miễn phạt", // Lãi phạt
+              "—", // Ngày dự kiến
+              inst.paidDate ? fmtDate(inst.paidDate) : "—", // Ngày thực tế
+              formatVND(inst.status === "paid" ? inst.amount : 0), // Đã thu
+              "—", // Dư thiếu
+              "—", // Bổ sung
+              formatVND(inst.status === "paid" ? 0 : inst.amount), // Còn lại
+              "—", // Ngày gia hạn
+              "—", // Ngày thanh toán gia hạn
+              "—", // Tỷ lệ
+              instStatusLabel // Trạng thái con
+            ]);
+          });
+        });
+      }
     });
 
     const csvContent = [headers, ...dataRows]
@@ -2499,7 +2748,7 @@ export function PaymentDetails({ customerId: customerIdProp, contractId: contrac
                 <h1 className="text-base font-medium text-foreground">
                   Mã hợp đồng: <span className="text-blue-600">{contract.contractCode || contract.id}</span>
                 </h1>
-                {renderStatusBadges(contract.status)}
+                {renderStatusBadges(contract.status, false)}
               </div>
               <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                 Mã căn hộ: <strong className="text-slate-700">{contract.unit}</strong> · Khách hàng chính: <strong className="text-slate-700">{customer.name}</strong> · Dự án: <strong className="text-slate-700">{contract.projectName}</strong> · Nhân viên KD: <strong className="text-slate-700">{contract.salesperson ?? "Nguyễn Hoàng Phúc"}</strong>

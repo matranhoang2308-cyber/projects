@@ -14,7 +14,13 @@
       "Bash(sed -i '' 's|navigate\\(\"/customers\"\\);|window.location.href = \"/customers\";|' src/features/leads/LeadPage.tsx)",
       "Bash(cp /tmp/LeadPage.tsx.bak src/features/leads/LeadPage.tsx)",
       "Bash(rm -f verify-*.tmp.mjs)",
-      "Bash(pkill -f vite)"
+      "Bash(pkill -f vite)",
+      "Bash(kill %1)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python3)",
+      "Bash(echo \"typecheck exit: $?\")",
+      "Bash(echo \"tsc exit code: $?\")",
+      "Bash(npm run *)"
     ]
   }
 }

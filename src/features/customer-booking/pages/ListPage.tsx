@@ -628,16 +628,18 @@ export function CustomerBookingListPage() {
           </div>
 
           {/* Filter theo Thời gian Popover Calendar */}
-          <BookingDateRangePicker
-            preset={timeFilter as TimePresetKey}
-            fromDate={fromDate}
-            toDate={toDate}
-            onApply={(presetKey, fromStr, toStr) => {
-              setTimeFilter(presetKey);
-              setFromDate(fromStr || "");
-              setToDate(toStr || "");
-            }}
-          />
+          <div className="w-56 flex-shrink-0">
+            <BookingDateRangePicker
+              preset={timeFilter as TimePresetKey}
+              fromDate={fromDate}
+              toDate={toDate}
+              onApply={(presetKey, fromStr, toStr) => {
+                setTimeFilter(presetKey);
+                setFromDate(fromStr || "");
+                setToDate(toStr || "");
+              }}
+            />
+          </div>
 
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className={`${compactFilterTriggerClass} w-40 flex-shrink-0`}>

@@ -3,6 +3,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardFilterOptions, DashboardFilters, DatePreset } from "./dashboardApi";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BookingDateRangePicker, type TimePresetKey } from "@/features/customer-booking/components/BookingDateRangePicker";
 
 export const defaultDashboardFilters: DashboardFilters = { datePreset: "30d" };
 
@@ -85,16 +86,27 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
             </Select>
           </Field>
           <Field label="Thời gian">
-            <Select disabled={disabled} value={filters.datePreset} onValueChange={(val) => update("datePreset", val)}>
-              <SelectTrigger className={controlClass}>
-                <SelectValue placeholder="Thời gian" />
-              </SelectTrigger>
-              <SelectContent>
-                {dateOptions.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <BookingDateRangePicker
+              preset={
+                filters.datePreset === "today" ? "today" :
+                filters.datePreset === "7d" ? "this_week" :
+                filters.datePreset === "30d" ? "this_month" :
+                filters.datePreset === "quarter" ? "this_quarter" :
+                filters.datePreset === "year" ? "this_year" : "this_month"
+              }
+              fromDate={filters.from}
+              toDate={filters.to}
+              onApply={(presetKey, fromStr, toStr) => {
+                let p: DatePreset = "30d";
+                if (presetKey === "today") p = "today";
+                else if (presetKey === "this_week") p = "7d";
+                else if (presetKey === "this_month") p = "30d";
+                else if (presetKey === "this_quarter") p = "quarter";
+                else if (presetKey === "this_year") p = "year";
+                else p = "custom";
+                onChange({ ...filters, datePreset: p, from: fromStr, to: toStr });
+              }}
+            />
           </Field>
           <Field label="Khách hàng">
             <Select disabled={disabled} value={filters.customerId ?? "_all_"} onValueChange={(val) => update("customerId", val)}>
@@ -178,16 +190,27 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
       ) : (
         <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
           <Field label="Thời gian">
-            <Select disabled={disabled} value={filters.datePreset} onValueChange={(val) => update("datePreset", val)}>
-              <SelectTrigger className={controlClass}>
-                <SelectValue placeholder="Thời gian" />
-              </SelectTrigger>
-              <SelectContent>
-                {dateOptions.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <BookingDateRangePicker
+              preset={
+                filters.datePreset === "today" ? "today" :
+                filters.datePreset === "7d" ? "this_week" :
+                filters.datePreset === "30d" ? "this_month" :
+                filters.datePreset === "quarter" ? "this_quarter" :
+                filters.datePreset === "year" ? "this_year" : "this_month"
+              }
+              fromDate={filters.from}
+              toDate={filters.to}
+              onApply={(presetKey, fromStr, toStr) => {
+                let p: DatePreset = "30d";
+                if (presetKey === "today") p = "today";
+                else if (presetKey === "this_week") p = "7d";
+                else if (presetKey === "this_month") p = "30d";
+                else if (presetKey === "this_quarter") p = "quarter";
+                else if (presetKey === "this_year") p = "year";
+                else p = "custom";
+                onChange({ ...filters, datePreset: p, from: fromStr, to: toStr });
+              }}
+            />
           </Field>
           <Field label="Đơn vị phân phối">
             <Select disabled={disabled} value={filters.agency ?? "_all_"} onValueChange={(val) => update("agency", val)}>

@@ -1,17 +1,15 @@
-import { useState } from "react";
-import type { ElementType } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   Search,
-  Filter,
   TrendingUp,
   AlertCircle,
   Wallet,
   Users,
-  Eye,
-  Info,
   FileText,
   FileSpreadsheet,
+  RotateCcw,
+  Filter,
 } from "lucide-react";
 
 import {
@@ -19,40 +17,12 @@ import {
   formatVND,
   getCustomerTotalValue,
   getCustomerTotalPaid,
-  getCustomerProgress,
   getCustomerWorstStatus,
-  getCustomerNextDue,
   getCustomerTotalLateFee,
-  type PaymentStatus,
 } from "@/data/mockDataCongNo";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -62,130 +32,54 @@ import {
 } from "@/components/ui/select";
 import { CoreMetricCard } from "@/components/crm/CoreMetricCard";
 
+// ─── Imports from debt-tracking ──────────────────────────────────────────────
+import { mockContracts } from "../debt-tracking/mock/mockContracts";
+import { VerticalRowData } from "../debt-tracking/columns/verticalColumns";
+import { ViewToggle } from "../debt-tracking/components/ViewToggle";
+import { DebtTableVertical } from "../debt-tracking/components/DebtTableVertical";
+import { DebtTableHorizontal } from "../debt-tracking/components/DebtTableHorizontal";
+import { computeDaysOverdue, computeStatus, computeAgingBucket } from "../debt-tracking/utils/derived";
+import * as XLSX from "xlsx";
+
+import { cn } from "@/components/ui/utils";
+
 const compactFilterTriggerClass = "h-9 rounded-[8px] border-[#E5EAF3] bg-white px-3 text-xs text-slate-700 shadow-none hover:bg-slate-50";
+const getFilterTriggerClass = (isActive: boolean) =>
+  cn(
+    "h-9 rounded-[8px] px-3 text-xs transition-all shadow-2xs font-medium cursor-pointer",
+    isActive
+      ? "bg-blue-50/90 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-700 font-semibold ring-1 ring-blue-400/30"
+      : "border-[#E5EAF3] bg-white text-slate-700 hover:bg-slate-50"
+  );
 const debtPanelClass = "max-w-full gap-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white shadow-sm shadow-slate-200/50";
 const debtPanelHeaderClass = "border-b border-[#E5EAF3] bg-white px-4 py-3";
 const debtPanelToolbarClass = "border-b border-[#E5EAF3] bg-[#F8FAFC] px-3 py-2.5";
 const debtPanelFooterClass = "flex min-h-11 flex-col gap-2 border-t border-[#E5EAF3] bg-[#F8FAFC] px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between";
 const debtPanelMetaClass = "inline-flex h-6 items-center rounded-md border border-[#E5EAF3] bg-[#F8FAFC] px-2.5 text-[11px] leading-none text-slate-600";
-const debtTableHeaderClass = "h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600";
-const debtTableCellClass = "h-11 border-b border-r border-[#E5EAF3] bg-white px-3 py-1.5 align-middle transition-colors group-hover:bg-[#F8FAFC]";
-const debtStickyActionClass = "bg-white transition-colors group-hover:bg-[#F8FAFC]";
-const debtStatusBadgeBaseClass = "inline-flex h-6 max-w-full items-center justify-center rounded-md border-transparent px-2.5 text-[11px] leading-none ring-1";
-
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const statusConfig: Record<PaymentStatus, { label: string; className: string }> = {
-  "not-due": {
-    label: "Sắp đến hạn",
-    className: "bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-50",
-  },
-  upcoming: {
-    label: "Sắp đến hạn",
-    className: "bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-50",
-  },
-  paid: {
-    label: "Đã thanh toán",
-    className: "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-50",
-  },
-  partial: {
-    label: "Quá hạn",
-    className: "bg-red-50 text-red-700 ring-red-200 hover:bg-red-50",
-  },
-  overpaid: {
-    label: "Đã thanh toán",
-    className: "bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-50",
-  },
-  overdue: {
-    label: "Quá hạn",
-    className: "bg-red-50 text-red-700 ring-red-200 hover:bg-red-50",
-  },
-  "grace-period": {
-    label: "Quá hạn",
-    className: "bg-red-50 text-red-700 ring-red-200 hover:bg-red-50",
-  },
-  "deposit-forfeited": {
-    label: "Quá hạn",
-    className: "bg-red-50 text-red-700 ring-red-200 hover:bg-red-50",
-  },
-  extended: {
-    label: "Sắp đến hạn",
-    className: "bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-50",
-  },
-};
-
-const progressColorMap: Record<PaymentStatus, string> = {
-  "not-due": "[&>[data-slot=progress-indicator]]:bg-slate-400",
-  upcoming: "[&>[data-slot=progress-indicator]]:bg-blue-500",
-  paid: "[&>[data-slot=progress-indicator]]:bg-emerald-500",
-  partial: "[&>[data-slot=progress-indicator]]:bg-amber-500",
-  overpaid: "[&>[data-slot=progress-indicator]]:bg-cyan-500",
-  overdue: "[&>[data-slot=progress-indicator]]:bg-red-500",
-  "grace-period": "[&>[data-slot=progress-indicator]]:bg-orange-500",
-  "deposit-forfeited": "[&>[data-slot=progress-indicator]]:bg-rose-500",
-  extended: "[&>[data-slot=progress-indicator]]:bg-purple-500",
-};
-
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-
-
-// ─── Multi-Status Badge ───────────────────────────────────────────────────────
-
-/**
- * Hiển thị tất cả trạng thái phân biệt của 1 khách hàng.
- * - 1 trạng thái  → badge đơn (không kèm số lượng)
- * - 2+ trạng thái → mỗi badge kèm số lượng HĐ tương ứng
- */
-function StatusBadgeGroup({
-  contracts,
-}: {
-  contracts: { status: PaymentStatus }[];
-}) {
-  const counts: Record<PaymentStatus, number> = {
-    overdue: contracts.filter((c) => c.status === "overdue").length,
-    upcoming: contracts.filter((c) => c.status === "upcoming").length,
-    paid: contracts.filter((c) => c.status === "paid").length,
-  };
-
-  const active = (["overdue", "upcoming", "paid"] as PaymentStatus[]).filter(
-    (s) => counts[s] > 0
-  );
-  const multi = active.length > 1;
-
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      {active.map((s) => (
-        <Badge
-          key={s}
-          className={`${debtStatusBadgeBaseClass} w-fit whitespace-nowrap ${statusConfig[s].className}`}
-          style={{ fontWeight: 650 }}
-        >
-          {multi && (
-            <span className="mr-0.5 opacity-75">{counts[s]}</span>
-          )}
-          {statusConfig[s].label}
-        </Badge>
-      ))}
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function DebtDashboard() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // ── Derived stats
+  // 1. Chế độ xem (Dọc / Ngang) & Lưu vào localStorage
+  const [viewMode, setViewMode] = useState<"vertical" | "horizontal">(() => {
+    const saved = localStorage.getItem("debt-tracking-view-mode");
+    return (saved === "vertical" || saved === "horizontal") ? saved : "vertical";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("debt-tracking-view-mode", viewMode);
+  }, [viewMode]);
+
+  // 2. State các bộ lọc
+  const [search, setSearch] = useState("");
+  const [selectedMaSanPham, setSelectedMaSanPham] = useState<string>("ALL");
+  const [selectedTinhTrangGD, setSelectedTinhTrangGD] = useState<string>("ALL");
+  const [selectedDot, setSelectedDot] = useState<string>("ALL");
+  const [selectedLoaiSp, setSelectedLoaiSp] = useState<string>("ALL");
+  const [selectedPhanKhu, setSelectedPhanKhu] = useState<string>("ALL");
+  const [selectedTrangThaiNo, setSelectedTrangThaiNo] = useState<string>("ALL");
+
+  // ── Derived stats (cho KPI cards từ mock data công nợ cũ)
   const allContracts = customers.flatMap((c) => c.contracts);
   const totalValue = allContracts.reduce((s, ct) => s + ct.contractValue, 0);
   const totalPaid = allContracts.reduce((s, ct) => s + ct.paidAmount, 0);
@@ -198,428 +92,502 @@ export function DebtDashboard() {
     0
   );
 
-  // ── Filter
-  // Khớp nếu bất kỳ HĐ nào của KH có trạng thái trong filter
-  const filtered = customers.filter((c) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q) ||
-      c.contracts.some(
-        (ct) =>
-          ct.projectName.toLowerCase().includes(q) ||
-          ct.unit.toLowerCase().includes(q)
-      );
-    const matchStatus =
-      statusFilter === "all" ||
-      c.contracts.some((ct) => ct.status === statusFilter);
-    return matchSearch && matchStatus;
-  });
+  // 3. Chuẩn bị & Flatten dữ liệu công nợ HDMB (1 dòng = 1 đợt)
+  const allRowData = useMemo<VerticalRowData[]>(() => {
+    const rows: VerticalRowData[] = [];
+
+    mockContracts.forEach((contract) => {
+      const contractRows: any[] = [];
+
+      // Dòng Cọc
+      if (contract.kyCoc) {
+        const conLai = contract.kyCoc.conThu;
+        const soNgayQuaHan = computeDaysOverdue(contract.kyCoc.ngayCoc, conLai);
+        const trangThai = computeStatus(contract.kyCoc.ngayCoc, conLai);
+        const nhomTuoiNo = computeAgingBucket(soNgayQuaHan);
+
+        contractRows.push({
+          soDot: "coc",
+          phanTramTT: contract.kyCoc.phaiThu / (contract.giaTriHD.giaBan || 1),
+          soTienPhaiThu: contract.kyCoc.phaiThu,
+          ngayDenHan: contract.kyCoc.ngayCoc,
+          ngayDuKienTT: contract.kyCoc.ngayCoc,
+          ngayThucTeTT: contract.kyCoc.daThu >= contract.kyCoc.phaiThu ? contract.kyCoc.ngayCoc : null,
+          daThu: contract.kyCoc.daThu,
+          duThieuKyTruoc: 0,
+          boSung: contract.kyCoc.boSungCocMoi,
+          conLai: conLai,
+          tyLeKHTT: contract.kyCoc.daThu >= contract.kyCoc.phaiThu ? 1.0 : contract.kyCoc.daThu / (contract.kyCoc.phaiThu || 1),
+          duBaoQuaHan: null,
+          ghiChu: "Ký phiếu đặt cọc",
+          soNgayQuaHan,
+          trangThai,
+          nhomTuoiNo,
+        });
+      }
+
+      // Các dòng đợt
+      contract.installments.forEach((inst) => {
+        const soNgayQuaHan = computeDaysOverdue(inst.ngayDenHan, inst.conLai);
+        const trangThai = computeStatus(inst.ngayDenHan, inst.conLai);
+        const nhomTuoiNo = computeAgingBucket(soNgayQuaHan);
+
+        contractRows.push({
+          ...inst,
+          soNgayQuaHan,
+          trangThai,
+          nhomTuoiNo,
+        });
+      });
+
+      // Flat map và đánh dấu merge cells
+      contractRows.forEach((rowInst, idx) => {
+        rows.push({
+          id: `${contract.id}-${rowInst.soDot}`,
+          contract,
+          installment: rowInst,
+          indexInContract: idx,
+          isFirstRowOfContract: idx === 0,
+          totalInstallmentsCount: contractRows.length,
+        });
+      });
+    });
+
+    return rows;
+  }, []);
+
+  // 4. Lấy danh sách duy nhất phục vụ bộ lọc dropdown
+  const uniqueProducts = useMemo(() => {
+    const list = new Set<string>();
+    mockContracts.forEach((c) => {
+      if (c.maSanPham) list.add(c.maSanPham);
+    });
+    return Array.from(list).sort();
+  }, []);
+
+  const uniquePhanKhuList = useMemo(() => {
+    const list = new Set<string>();
+    mockContracts.forEach((c) => {
+      if (c.phanKhu) list.add(c.phanKhu);
+    });
+    return Array.from(list).sort();
+  }, []);
+
+  // 5. Reset bộ lọc
+  const handleResetFilters = () => {
+    setSearch("");
+    setSelectedMaSanPham("ALL");
+    setSelectedTinhTrangGD("ALL");
+    setSelectedDot("ALL");
+    setSelectedLoaiSp("ALL");
+    setSelectedPhanKhu("ALL");
+    setSelectedTrangThaiNo("ALL");
+  };
+
+  // 6. Thực hiện bộ lọc kết hợp
+  const filteredRowData = useMemo(() => {
+    return allRowData.filter((row) => {
+      // Gõ tìm kiếm theo tên KH hoặc mã căn
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        const matchName = row.contract.tenKhachHang.toLowerCase().includes(query);
+        const matchCode = row.contract.maSanPham.toLowerCase().includes(query);
+        if (!matchName && !matchCode) return false;
+      }
+
+      // Bộ lọc: Mã sản phẩm
+      if (selectedMaSanPham !== "ALL" && row.contract.maSanPham !== selectedMaSanPham) {
+        return false;
+      }
+
+      // Bộ lọc: Tình trạng giao dịch
+      if (selectedTinhTrangGD !== "ALL" && row.contract.tinhTrangGD !== selectedTinhTrangGD) {
+        return false;
+      }
+
+      // Bộ lọc: Đợt thanh toán
+      if (selectedDot !== "ALL") {
+        if (selectedDot === "coc" && row.installment.soDot !== "coc") return false;
+        if (selectedDot !== "coc" && row.installment.soDot !== parseInt(selectedDot)) return false;
+      }
+
+      // Bộ lọc: Loại sản phẩm
+      if (selectedLoaiSp !== "ALL" && row.contract.sanPham.loaiSp !== selectedLoaiSp) {
+        return false;
+      }
+
+      // Bộ lọc: Phân khu
+      if (selectedPhanKhu !== "ALL" && row.contract.phanKhu !== selectedPhanKhu) {
+        return false;
+      }
+
+      // Bộ lọc: Trạng thái công nợ
+      if (selectedTrangThaiNo !== "ALL" && row.installment.trangThai !== selectedTrangThaiNo) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [allRowData, search, selectedMaSanPham, selectedTinhTrangGD, selectedDot, selectedLoaiSp, selectedPhanKhu, selectedTrangThaiNo]);
+
+  const filteredContracts = useMemo(() => {
+    return mockContracts.filter((contract) => {
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        const matchName = contract.tenKhachHang.toLowerCase().includes(query);
+        const matchCode = contract.maSanPham.toLowerCase().includes(query);
+        if (!matchName && !matchCode) return false;
+      }
+
+      if (selectedMaSanPham !== "ALL" && contract.maSanPham !== selectedMaSanPham) {
+        return false;
+      }
+
+      if (selectedTinhTrangGD !== "ALL" && contract.tinhTrangGD !== selectedTinhTrangGD) {
+        return false;
+      }
+
+      if (selectedLoaiSp !== "ALL" && contract.sanPham.loaiSp !== selectedLoaiSp) {
+        return false;
+      }
+
+      if (selectedPhanKhu !== "ALL" && contract.phanKhu !== selectedPhanKhu) {
+        return false;
+      }
+
+      if (selectedDot !== "ALL") {
+        const hasDot = contract.installments.some((inst) => {
+          if (selectedDot === "coc") return false;
+          return inst.soDot === parseInt(selectedDot);
+        });
+        const hasCoc = selectedDot === "coc" && !!contract.kyCoc;
+        if (!hasDot && !hasCoc) return false;
+      }
+
+      if (selectedTrangThaiNo !== "ALL") {
+        const matchesCoc = contract.kyCoc && computeStatus(contract.kyCoc.ngayCoc, contract.kyCoc.conThu) === selectedTrangThaiNo;
+        const matchesInst = contract.installments.some((inst) => computeStatus(inst.ngayDenHan, inst.conLai) === selectedTrangThaiNo);
+        if (!matchesCoc && !matchesInst) return false;
+      }
+
+      return true;
+    });
+  }, [search, selectedMaSanPham, selectedTinhTrangGD, selectedLoaiSp, selectedPhanKhu, selectedDot, selectedTrangThaiNo]);
+
+  const activeFilters = useMemo(() => ({
+    maSanPham: selectedMaSanPham !== "ALL",
+    dot: viewMode === "vertical" && selectedDot !== "ALL",
+    loaiSp: selectedLoaiSp !== "ALL",
+    phanKhu: selectedPhanKhu !== "ALL",
+    trangThaiNo: selectedTrangThaiNo !== "ALL",
+    search: search.trim() !== "",
+  }), [selectedMaSanPham, selectedDot, selectedLoaiSp, selectedPhanKhu, selectedTrangThaiNo, search, viewMode]);
+
+  // NOTE: Tạm thời ẩn lớp thứ 2 (/debt/customer/:customerId - CustomerContracts).
+  // Khi bấm từ bảng ngoài sẽ vào thẳng Chi tiết Hợp đồng.
+  // Lớp 2 vẫn được giữ nguyên trong codebase và đường dẫn routes.tsx (KHÔNG XOÁ).
+  // Để mở lại lớp thứ 2 sau này, chỉ cần đổi flag bên dưới thành true.
+  const ENABLE_LAYER_2_CUSTOMER_OVERVIEW = false;
+
+  // 7. Logic click hàng để chuyển tiếp tới chi tiết
+  const handleRowClick = (rowData: VerticalRowData) => {
+    // Ánh xạ mã hợp đồng "HD-001" -> customerId "1", contractId "c1-1"
+    const numPart = rowData.contract.id.replace("HD-", "");
+    const customerId = String(parseInt(numPart, 10));
+    const contractId = `c${customerId}-1`;
+
+    if (ENABLE_LAYER_2_CUSTOMER_OVERVIEW) {
+      navigate(`/debt/customer/${customerId}`);
+    } else {
+      navigate(`/debt/customer/${customerId}/contract/${contractId}`);
+    }
+  };
+
+  // 8. Xuất Excel
+  const handleExportExcel = () => {
+    const exportData = filteredRowData.map((row, idx) => ({
+      "STT": idx + 1,
+      "Tình trạng GD": row.contract.tinhTrangGD === "DA_KY_HDMB" ? "Đã ký HĐMB" : row.contract.tinhTrangGD === "CHUA_KY_HDMB" ? "Chưa ký HĐMB" : row.contract.tinhTrangGD === "DA_THANH_LY" ? "Đã thanh lý" : "Chuyển nhượng",
+      "Phân khu": row.contract.phanKhu,
+      "Mã sản phẩm": row.contract.maSanPham,
+      "Tên khách hàng": row.contract.tenKhachHang,
+      "NVTV": row.contract.donViPhanPhoi.nvtv,
+      "Đơn vị": row.contract.donViPhanPhoi.donVi,
+      "Loại SP": row.contract.sanPham.loaiSp,
+      "Giá bán (sau CK)": row.contract.giaTriHD.giaBan,
+      "Đợt TT": row.installment.soDot === "coc" ? "Cọc" : `Đợt ${row.installment.soDot}`,
+      "% thanh toán": row.installment.phanTramTT,
+      "Số tiền phải thu": row.installment.soTienPhaiThu,
+      "Ngày đến hạn": row.installment.ngayDenHan,
+      "Đã thu": row.installment.daThu,
+      "Còn lại": row.installment.conLai,
+      "Số ngày quá hạn": row.installment.soNgayQuaHan,
+      "Trạng thái": row.installment.trangThai === "DA_THANH_TOAN" ? "Đã thanh toán" : row.installment.trangThai === "QUA_HAN" ? "Quá hạn" : "Sắp đến hạn",
+      "Ghi chú": row.installment.ghiChu || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "CongNo_HDMB");
+    XLSX.writeFile(workbook, "Danh_Sach_Cong_No_HDMB.xlsx");
+  };
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <div className="min-h-full space-y-4 p-4 md:p-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-slate-950" style={{ fontWeight: 750 }}>Quản lý công nợ</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Theo dõi tiến độ thanh toán và tình trạng nợ của toàn bộ khách hàng
-            </p>
-          </div>
-          <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-            <Button
-              variant="outline"
-              size="icon"
-              className="hidden h-10 w-10 border-slate-200 bg-white shadow-sm hover:bg-emerald-50 sm:inline-flex"
-              onClick={() => {
-                const escapeCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
-                const headers = ["Khách hàng", "Hợp đồng", "Tổng giá trị", "Đã thu", "Còn phải thu", "Tiến độ thanh toán", "Hạn gần nhất"];
-                const rows = [
-                  headers,
-                  ...filtered.map((c) => {
-                    const totalVal = getCustomerTotalValue(c);
-                    const totalPd = getCustomerTotalPaid(c);
-                    const progress = getCustomerProgress(c);
-                    const nextDue = getCustomerNextDue(c);
-                    return [
-                      c.name,
-                      `${c.contracts.length} hợp đồng`,
-                      formatVND(totalVal),
-                      formatVND(totalPd),
-                      formatVND(totalVal - totalPd),
-                      `${progress}%`,
-                      nextDue ? nextDue.date : "—"
-                    ];
-                  })
-                ];
-                const csv = `\uFEFF${rows.map((row) => row.map(escapeCell).join(",")).join("\n")}`;
-                const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = "danh-sach-cong-no.csv";
-                link.click();
-                URL.revokeObjectURL(url);
-              }}
-              aria-label="Xuất Excel"
-              title="Xuất Excel"
-            >
-              <FileSpreadsheet className="size-5 text-emerald-600" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="hidden h-10 w-10 border-slate-200 bg-white shadow-sm hover:bg-red-50 sm:inline-flex"
-              onClick={() => window.print()}
-              aria-label="Xuất PDF"
-              title="Xuất PDF"
-            >
-              <FileText className="size-5 text-red-500" />
-            </Button>
+    <div className="min-h-full space-y-4 p-4 md:p-6 bg-slate-50/50 dark:bg-slate-900/10">
+      {/* Header */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-slate-950 font-bold text-xl" style={{ fontWeight: 750 }}>
+            Quản lý công nợ
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Theo dõi tiến độ thanh toán và tình trạng nợ theo từng đợt của hợp đồng mua bán (HDMB)
+          </p>
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+          <ViewToggle viewMode={viewMode} onChange={setViewMode} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1.5 h-9 text-xs border-slate-200 bg-white hover:bg-slate-100 cursor-pointer"
+            onClick={handleExportExcel}
+            aria-label="Xuất Excel"
+            title="Xuất Excel"
+          >
+            <FileSpreadsheet className="size-4 text-emerald-600" />
+            Xuất Excel
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <CoreMetricCard
+          icon={Users}
+          label="Tổng khách hàng"
+          value={`${customers.length} khách`}
+          sub={`${allContracts.length} hợp đồng · ${overdueCustomers.length} quá hạn`}
+          iconClass="bg-slate-100"
+        />
+        <CoreMetricCard
+          icon={Wallet}
+          label="Tổng giá trị hợp đồng"
+          value={formatVND(totalValue)}
+          sub={`${allContracts.length} hợp đồng`}
+          iconClass="bg-blue-50"
+        />
+        <CoreMetricCard
+          icon={TrendingUp}
+          label="Đã thu"
+          value={formatVND(totalPaid)}
+          sub={`${Math.round((totalPaid / totalValue) * 100)}% tổng danh mục`}
+          iconClass="bg-emerald-50"
+          valueClass="text-emerald-700"
+        />
+        <CoreMetricCard
+          icon={AlertCircle}
+          label="Phạt trễ hạn (ước tính)"
+          value={formatVND(totalLateFee)}
+          sub={`${overdueContracts.length} hợp đồng quá hạn`}
+          iconClass="bg-red-50"
+          valueClass={totalLateFee > 0 ? "text-red-600" : "text-foreground"}
+        />
+      </div>
+
+      {/* Customer / Installment Table Panel */}
+      <Card className={debtPanelClass}>
+        <div className={debtPanelHeaderClass}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-900">Danh sách công nợ đợt thanh toán</h2>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                {filteredRowData.length} đợt phù hợp bộ lọc · Bấm vào dòng để xem chi tiết thanh toán của hợp đồng
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <span className={debtPanelMetaClass}>{filteredRowData.length} đợt thanh toán</span>
+              <span className="hidden text-xs text-slate-500 lg:inline">Bấm vào dòng để xem chi tiết</span>
+            </div>
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <CoreMetricCard
-            icon={Users}
-            label="Tổng khách hàng"
-            value={`${customers.length} khách`}
-            sub={`${allContracts.length} hợp đồng · ${overdueCustomers.length} quá hạn`}
-            iconClass="bg-slate-100"
-          />
-          <CoreMetricCard
-            icon={Wallet}
-            label="Tổng giá trị hợp đồng"
-            value={formatVND(totalValue)}
-            sub={`${allContracts.length} hợp đồng`}
-            iconClass="bg-blue-50"
-          />
-          <CoreMetricCard
-            icon={TrendingUp}
-            label="Đã thu"
-            value={formatVND(totalPaid)}
-            sub={`${Math.round((totalPaid / totalValue) * 100)}% tổng danh mục`}
-            iconClass="bg-emerald-50"
-            valueClass="text-emerald-700"
-          />
-          <CoreMetricCard
-            icon={AlertCircle}
-            label="Phạt trễ hạn (ước tính)"
-            value={formatVND(totalLateFee)}
-            sub={`${overdueContracts.length} hợp đồng quá hạn`}
-            iconClass="bg-red-50"
-            valueClass={totalLateFee > 0 ? "text-red-600" : "text-foreground"}
-          />
-        </div>
-
-          {/* Customer Table */}
-          <Card className={debtPanelClass}>
-            <div className={debtPanelHeaderClass}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <h2 className="text-sm font-semibold text-slate-900">Danh sách công nợ</h2>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                    {filtered.length} khách hàng phù hợp · Bấm vào dòng để xem chi tiết
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  <span className={debtPanelMetaClass}>{filtered.length} kết quả</span>
-                  <span className={debtPanelMetaClass}>{allContracts.length} hợp đồng</span>
-                  <span className="hidden text-xs text-slate-500 lg:inline">Bấm vào dòng để xem chi tiết công nợ</span>
-                </div>
-              </div>
+        {/* Toolbar & Filters */}
+        <div className={debtPanelToolbarClass}>
+          <div className="flex flex-col gap-3.5">
+            {/* Search */}
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo Tên khách hàng hoặc Mã sản phẩm..."
+                className="pl-9 h-9 text-xs w-full bg-white border border-[#E5EAF3]"
+              />
             </div>
 
-            <div className={debtPanelToolbarClass}>
-              <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-2 overflow-x-auto pb-1 scrollbar-none whitespace-nowrap">
-                <div className="relative min-w-[180px] flex-1 flex-shrink-0 lg:max-w-xs">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search"
-                    aria-label="Tìm trong danh sách công nợ"
-                    className="h-9 w-full rounded-[8px] border border-[#E5EAF3] bg-white py-1.5 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                  />
+            {/* Selector Filters Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+              {/* Lọc Mã sản phẩm */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-wider", activeFilters.maSanPham ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-400")}>
+                    Mã sản phẩm
+                  </span>
+                  {activeFilters.maSanPham && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
                 </div>
-
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger aria-label="Lọc theo trạng thái công nợ" className={`${compactFilterTriggerClass} w-48 flex-shrink-0`}>
-                    <SelectValue placeholder="Trạng thái công nợ" />
+                <Select value={selectedMaSanPham} onValueChange={setSelectedMaSanPham}>
+                  <SelectTrigger className={getFilterTriggerClass(activeFilters.maSanPham)}>
+                    <SelectValue placeholder="Tất cả" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                    <SelectItem value="paid">Đã thanh toán</SelectItem>
-                    <SelectItem value="upcoming">Sắp đến hạn</SelectItem>
-                    <SelectItem value="overdue">Quá hạn</SelectItem>
+                    <SelectItem value="ALL">Tất cả sản phẩm</SelectItem>
+                    {uniqueProducts.map((code) => (
+                      <SelectItem key={code} value={code}>
+                        {code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lọc Đợt thanh toán */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-wider", activeFilters.dot ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-400")}>
+                    Đợt thanh toán {viewMode === "horizontal" && <span className="text-[9px] font-normal text-slate-400 lowercase italic">(hiện đủ 11 đợt)</span>}
+                  </span>
+                  {activeFilters.dot && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </div>
+                <Select disabled={viewMode === "horizontal"} value={viewMode === "horizontal" ? "ALL" : selectedDot} onValueChange={setSelectedDot}>
+                  <SelectTrigger className={cn(getFilterTriggerClass(activeFilters.dot), viewMode === "horizontal" && "opacity-60 cursor-not-allowed bg-slate-100/80 text-slate-400 dark:bg-slate-900/50")}>
+                    <SelectValue placeholder={viewMode === "horizontal" ? "Hiện đủ 11 đợt" : "Tất cả"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả đợt</SelectItem>
+                    <SelectItem value="coc">Cọc</SelectItem>
+                    {Array.from({ length: 11 }, (_, i) => i + 1).map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        Đợt {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lọc Loại sản phẩm */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-wider", activeFilters.loaiSp ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-400")}>
+                    Loại sản phẩm
+                  </span>
+                  {activeFilters.loaiSp && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </div>
+                <Select value={selectedLoaiSp} onValueChange={setSelectedLoaiSp}>
+                  <SelectTrigger className={getFilterTriggerClass(activeFilters.loaiSp)}>
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả loại SP</SelectItem>
+                    <SelectItem value="SKY_GARDEN">Sky Garden</SelectItem>
+                    <SelectItem value="PENHOUSE">Penhouse</SelectItem>
+                    <SelectItem value="SKY_VILLA_RESIDENCE">Sky Villa Residence</SelectItem>
+                    <SelectItem value="DUPLEX_GARDEN">Duplex Garden</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lọc Phân khu */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-wider", activeFilters.phanKhu ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-400")}>
+                    Phân khu
+                  </span>
+                  {activeFilters.phanKhu && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </div>
+                <Select value={selectedPhanKhu} onValueChange={setSelectedPhanKhu}>
+                  <SelectTrigger className={getFilterTriggerClass(activeFilters.phanKhu)}>
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả phân khu</SelectItem>
+                    <SelectItem value="Vitalis">Vitalis</SelectItem>
+                    <SelectItem value="Harmonie">Harmonie</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lọc Trạng thái công nợ */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("text-[10px] font-semibold uppercase tracking-wider", activeFilters.trangThaiNo ? "text-blue-600 dark:text-blue-400 font-bold" : "text-slate-400")}>
+                    Trạng thái công nợ
+                  </span>
+                  {activeFilters.trangThaiNo && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </div>
+                <Select value={selectedTrangThaiNo} onValueChange={setSelectedTrangThaiNo}>
+                  <SelectTrigger className={getFilterTriggerClass(activeFilters.trangThaiNo)}>
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Tất cả trạng thái</SelectItem>
+                    <SelectItem value="DA_THANH_TOAN">Đã thanh toán</SelectItem>
+                    <SelectItem value="QUA_HAN">Quá hạn</SelectItem>
+                    <SelectItem value="SAP_TOI_HAN">Sắp đến hạn</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="divide-y divide-slate-100 sm:hidden">
-              {filtered.length === 0 ? (
-                <div className="px-4 py-12 text-center text-sm text-slate-400">Không tìm thấy kết quả</div>
-              ) : filtered.map((customer) => {
-                const totalVal = getCustomerTotalValue(customer);
-                const totalPd = getCustomerTotalPaid(customer);
-                const progress = getCustomerProgress(customer);
-                const worst = getCustomerWorstStatus(customer);
-                return (
-                  <button
-                    key={customer.id}
-                    type="button"
-                    className="w-full space-y-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-slate-400"
-                    onClick={() => navigate(`/debt/customer/${customer.id}`)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs text-white ${customer.avatarColor}`} style={{ fontWeight: 700 }}>
-                        {customer.initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-900">{customer.name}</p>
-                        <p className="truncate text-xs text-slate-400">{customer.email}</p>
-                      </div>
-                      <StatusBadgeGroup contracts={customer.contracts} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div><p className="text-slate-400">Tổng giá trị</p><p className="mt-0.5 font-semibold tabular-nums text-slate-800">{formatVND(totalVal)}</p></div>
-                      <div><p className="text-slate-400">Còn phải thu</p><p className="mt-0.5 font-semibold tabular-nums text-slate-800">{formatVND(totalVal - totalPd)}</p></div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs text-slate-400"><span>Tiến độ thanh toán</span><span>{progress}%</span></div>
-                      <Progress value={progress} className={`h-1.5 ${progressColorMap[worst]}`} />
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Reset Button */}
+            <div className="flex justify-end">
+              <Button
+                onClick={handleResetFilters}
+                variant="ghost"
+                className="h-8 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center gap-1.5 border border-dashed border-slate-200 px-3 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Xóa bộ lọc
+              </Button>
             </div>
+          </div>
+        </div>
 
-            <div className="hidden max-h-[calc(100dvh-320px)] min-h-[420px] max-w-full overflow-x-auto overflow-y-auto bg-white sm:block">
-              <Table className="min-w-[1120px] w-full table-fixed border-separate border-spacing-0 text-2sm">
-                <TableHeader className="sticky top-0 z-20">
-                  <TableRow>
-                    <TableHead className={`${debtTableHeaderClass} w-52`} style={{ fontWeight: 650 }}>
-                      Khách hàng
-                    </TableHead>
-                    <TableHead className={`${debtTableHeaderClass} w-44`} style={{ fontWeight: 650 }}>
-                      Hợp đồng
-                    </TableHead>
-                    <TableHead className={`${debtTableHeaderClass} w-44 text-right`} style={{ fontWeight: 650 }}>
-                      Tổng giá trị
-                    </TableHead>
-                    <TableHead className={`${debtTableHeaderClass} w-52`} style={{ fontWeight: 650 }}>
-                      Tiến độ thanh toán
-                    </TableHead>
-                    <TableHead className={`${debtTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>
-                      Hạn gần nhất
-                    </TableHead>
-                    <TableHead className={`${debtTableHeaderClass} w-40`} style={{ fontWeight: 650 }}>
-                      Trạng thái
-                    </TableHead>
-                    <TableHead className="sticky right-0 z-40 h-10 w-14 border-b border-l border-[#DDE5F0] bg-[#F6F8FB] px-0 py-2 text-center text-[11px] text-slate-600 shadow-[-6px_0_12px_-10px_rgba(15,23,42,0.45)]" style={{ fontWeight: 650 }}>...</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="px-4 py-12 text-center text-sm text-slate-400">
-                        Không tìm thấy kết quả phù hợp bộ lọc
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.map((customer) => {
-                      const totalVal = getCustomerTotalValue(customer);
-                      const totalPd = getCustomerTotalPaid(customer);
-                      const progress = getCustomerProgress(customer);
-                      const worst = getCustomerWorstStatus(customer);
-                      const nextDue = getCustomerNextDue(customer);
-                      const lateFee = getCustomerTotalLateFee(customer);
-                      const overdueContracts = customer.contracts.filter(
-                        (ct) => ct.status === "overdue"
-                      );
-                      const isOverdue = worst === "overdue";
-                      const contractCount = customer.contracts.length;
-
-                      return (
-                        <TableRow
-                          key={customer.id}
-                          className="group h-11 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300"
-                          onClick={() => navigate(`/debt/customer/${customer.id}`)}
-                        >
-                          {/* Customer */}
-                          <TableCell className={`${debtTableCellClass} w-52`}>
-                            <div className="flex items-center gap-3">
-                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white ${customer.avatarColor}`} style={{ fontWeight: 750 }}>
-                                {customer.initials}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="truncate text-xs leading-5 text-slate-900 group-hover:text-blue-700" style={{ fontWeight: 600 }}>
-                                  {customer.name}
-                                </p>
-                                <p className="truncate text-[11px] text-slate-400">
-                                  {customer.email}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          {/* Contracts */}
-                          <TableCell className={`${debtTableCellClass} w-44`}>
-                            {contractCount === 1 ? (
-                              <>
-                                <p className="truncate text-xs leading-5 text-slate-800" style={{ fontWeight: 600 }}>
-                                  {customer.contracts[0].projectName}
-                                </p>
-                                <p className="truncate text-[11px] text-slate-400">
-                                  Căn {customer.contracts[0].unit}
-                                </p>
-                              </>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-1.5">
-                                  <FileText className="size-3.5 text-slate-400 shrink-0" />
-                                  <span className="text-xs leading-5 text-slate-800" style={{ fontWeight: 600 }}>
-                                    {contractCount} hợp đồng
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-slate-400 mt-0.5 truncate max-w-[160px]">
-                                  {customer.contracts
-                                    .map((ct) => ct.projectName.split(" ").slice(-2).join(" "))
-                                    .join(" · ")}
-                                </p>
-                              </>
-                            )}
-                          </TableCell>
-
-                          {/* Total Value */}
-                          <TableCell className={`${debtTableCellClass} w-44 text-right`}>
-                            <p className="text-xs leading-5 tabular-nums text-slate-900" style={{ fontWeight: 600 }}>
-                              {formatVND(totalVal)}
-                            </p>
-                            <p className="text-[11px] text-slate-400">
-                              Đã thu: {formatVND(totalPd)}
-                            </p>
-                          </TableCell>
-
-                          {/* Progress */}
-                          <TableCell className={`${debtTableCellClass} w-52`}>
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                                <span>{progress}%</span>
-                                <span>Còn: {formatVND(totalVal - totalPd)}</span>
-                              </div>
-                              <div className="h-1.5 rounded-full bg-slate-100 relative">
-                                <div
-                                  className={`h-1.5 rounded-full ${
-                                    isOverdue
-                                      ? "bg-red-500"
-                                      : worst === "upcoming"
-                                      ? "bg-blue-500"
-                                      : "bg-emerald-500"
-                                  }`}
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                              {isOverdue && lateFee > 0 && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex items-center gap-1 cursor-help w-fit">
-                                      <Info className="size-3 text-red-500 shrink-0" />
-                                      <span className="text-[10px] text-red-600">
-                                        Phạt trễ: <span className="font-medium">{formatVND(lateFee)}</span>
-                                      </span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom" className="text-xs max-w-56 bg-slate-900 text-white p-2 rounded shadow-md z-50">
-                                    <p className="font-medium">
-                                      {overdueContracts.length > 1
-                                        ? `${overdueContracts.length} hợp đồng quá hạn`
-                                        : overdueContracts[0]?.projectName}
-                                    </p>
-                                    {overdueContracts.map((ct) => (
-                                      <p key={ct.id} className="mt-1 text-slate-300">
-                                        {ct.projectName}: +{formatVND(ct.lateFee ?? 0)} ({ct.daysOverdue} ngày)
-                                      </p>
-                                    ))}
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                          </TableCell>
-
-                          {/* Next Due */}
-                          <TableCell className={`${debtTableCellClass} w-40`}>
-                            {nextDue ? (
-                              <>
-                                <p className={`text-xs leading-5 ${isOverdue ? "text-red-600" : "text-slate-800"}`} style={{ fontWeight: 600 }}>
-                                  {fmtDate(nextDue.date)}
-                                </p>
-                                {isOverdue && nextDue.contract.daysOverdue != null && (
-                                  <p className="text-[11px] text-red-500">
-                                    {overdueContracts.length > 1
-                                      ? `${overdueContracts.length} HĐ quá hạn`
-                                      : `${nextDue.contract.daysOverdue} ngày trước`}
-                                  </p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="text-xs text-slate-300">—</p>
-                            )}
-                          </TableCell>
-
-                          {/* Status Badge Group */}
-                          <TableCell className={`${debtTableCellClass} w-40`}>
-                            <StatusBadgeGroup contracts={customer.contracts} />
-                          </TableCell>
-
-                          {/* Action Button */}
-                          <TableCell className={`td-actions sticky right-0 z-10 h-11 w-14 border-b border-l border-[#E5EAF3] px-0 py-1.5 text-center shadow-[-6px_0_12px_-12px_rgba(15,23,42,0.45)] ${debtStickyActionClass}`} onClick={(e) => e.stopPropagation()}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  aria-label={`Xem công nợ của ${customer.name}`}
-                                  className="h-8 w-8 rounded-md p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-slate-300"
-                                  onClick={() => navigate(`/debt/customer/${customer.id}`)}
-                                >
-                                  <Eye className="h-4 w-4 text-slate-400" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left" className="text-xs bg-slate-900 text-white p-1 px-2 rounded shadow-md z-50">
-                                Xem hợp đồng khách hàng
-                              </TooltipContent>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            <div className={debtPanelFooterClass}>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <div>Hiển thị {filtered.length} / {customers.length} khách hàng</div>
-                <span className="text-slate-300">|</span>
-                <span className="text-slate-400">Cập nhật lần cuối: 20/04/2026</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="tabular-nums font-medium text-slate-600">
-                  {filtered.length === 0 ? "0-0" : `1-${filtered.length}`} / {filtered.length}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>‹</Button>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 rounded-[8px] p-0 text-slate-500 disabled:opacity-40" disabled>›</Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-      </div>
-    </TooltipProvider>
+        <div className="p-4 bg-white dark:bg-slate-950">
+          {viewMode === "vertical" ? (
+            <DebtTableVertical
+              data={filteredRowData}
+              onRowClick={handleRowClick}
+              isFilteredByMaSp={selectedMaSanPham !== "ALL"}
+              activeFilters={activeFilters}
+            />
+          ) : (
+            <DebtTableHorizontal
+              data={filteredContracts}
+              activeFilters={activeFilters}
+              onRowClick={(contract) => {
+                const numPart = contract.id.replace("HD-", "");
+                const customerId = String(parseInt(numPart, 10));
+                const contractId = `c${customerId}-1`;
+                if (ENABLE_LAYER_2_CUSTOMER_OVERVIEW) {
+                  navigate(`/debt/customer/${customerId}`);
+                } else {
+                  navigate(`/debt/customer/${customerId}/contract/${contractId}`);
+                }
+              }}
+            />
+          )}
+        </div>
+      </Card>
+    </div>
   );
 }

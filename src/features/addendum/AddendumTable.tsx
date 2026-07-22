@@ -171,7 +171,7 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
             />
           </div>
           <Select value={employeeFilter} onValueChange={(v) => { setEmployeeFilter(v); setPage(1); }}>
-            <SelectTrigger className={cn(addendumCompactFilterTriggerClass, "w-[180px] flex-shrink-0")}>
+            <SelectTrigger className={cn(addendumCompactFilterTriggerClass, "w-[180px] flex-shrink-0")} isActive={employeeFilter !== ALL}>
               <SelectValue placeholder="Nhân viên thay đổi" />
             </SelectTrigger>
             <SelectContent>
@@ -182,7 +182,7 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
             </SelectContent>
           </Select>
           <Select value={towerFilter} onValueChange={(v) => { setTowerFilter(v); setPage(1); }}>
-            <SelectTrigger className={cn(addendumCompactFilterTriggerClass, "w-[140px] flex-shrink-0")}>
+            <SelectTrigger className={cn(addendumCompactFilterTriggerClass, "w-[140px] flex-shrink-0")} isActive={towerFilter !== ALL}>
               <SelectValue placeholder="Tháp/block" />
             </SelectTrigger>
             <SelectContent>
@@ -193,7 +193,7 @@ export function AddendumTable({ onView, onHistory }: AddendumTableProps) {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className={cn(addendumCompactFilterTriggerClass, "w-[130px] flex-shrink-0")}>
+            <SelectTrigger className={cn(addendumCompactFilterTriggerClass, "w-[130px] flex-shrink-0")} isActive={statusFilter !== ALL}>
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>

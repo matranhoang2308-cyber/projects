@@ -73,7 +73,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
         <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 xl:grid-cols-4">
           <Field label="Đợt thanh toán">
             <Select disabled={disabled} value={filters.paymentStage ?? "_all_"} onValueChange={(val) => update("paymentStage", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.paymentStage && filters.paymentStage !== "_all_")}>
                 <SelectValue placeholder="Tất cả đợt" />
               </SelectTrigger>
               <SelectContent>
@@ -98,7 +98,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
           </Field>
           <Field label="Khách hàng">
             <Select disabled={disabled} value={filters.customerId ?? "_all_"} onValueChange={(val) => update("customerId", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.customerId && filters.customerId !== "_all_")}>
                 <SelectValue placeholder="Tất cả khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -111,7 +111,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
           </Field>
           <Field label="Đơn vị bán hàng">
             <Select disabled={disabled} value={filters.salesUnit ?? "_all_"} onValueChange={(val) => update("salesUnit", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.salesUnit && filters.salesUnit !== "_all_")}>
                 <SelectValue placeholder="Tất cả đơn vị" />
               </SelectTrigger>
               <SelectContent>
@@ -124,7 +124,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
           </Field>
           <Field label="Phân khu">
             <Select disabled={disabled} value={filters.zone ?? "_all_"} onValueChange={(val) => update("zone", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.zone && filters.zone !== "_all_")}>
                 <SelectValue placeholder="Tất cả phân khu" />
               </SelectTrigger>
               <SelectContent>
@@ -137,7 +137,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
           </Field>
           <Field label="Loại căn">
             <Select disabled={disabled} value={filters.apartmentType ?? "_all_"} onValueChange={(val) => update("apartmentType", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.apartmentType && filters.apartmentType !== "_all_")}>
                 <SelectValue placeholder="Tất cả loại căn" />
               </SelectTrigger>
               <SelectContent>
@@ -150,7 +150,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
           </Field>
           <Field label="Sản phẩm">
             <Select disabled={disabled} value={filters.productId ?? "_all_"} onValueChange={(val) => update("productId", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.productId && filters.productId !== "_all_")}>
                 <SelectValue placeholder="Tất cả sản phẩm" />
               </SelectTrigger>
               <SelectContent>
@@ -163,7 +163,7 @@ export function SharedFilters({ filters, options, reportType, disabled, onChange
           </Field>
           <Field label="Tình trạng thanh toán">
             <Select disabled={disabled} value={filters.paymentStatus ?? "_all_"} onValueChange={(val) => update("paymentStatus", val)}>
-              <SelectTrigger className={controlClass}>
+              <SelectTrigger className={controlClass} isActive={Boolean(filters.paymentStatus && filters.paymentStatus !== "_all_")}>
                 <SelectValue placeholder="Tất cả tình trạng" />
               </SelectTrigger>
               <SelectContent>

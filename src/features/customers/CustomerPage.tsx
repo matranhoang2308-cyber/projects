@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
+import { toast } from "sonner";
 import {
   Search, Users, Building2, User, FileText,
   DollarSign, MoreHorizontal, CheckCircle2,
@@ -158,6 +159,14 @@ export function CustomerPage() {
         next.delete("openCustomer");
         setSearchParams(next, { replace: true });
       }
+    }
+
+    const bookingId = searchParams.get("bookingId");
+    if (bookingId) {
+      toast.info(`Đã điều hướng từ phiếu đặt chỗ #${bookingId}`);
+      const next = new URLSearchParams(searchParams);
+      next.delete("bookingId");
+      setSearchParams(next, { replace: true });
     }
   }, [searchParams, customerList, setSearchParams]);
 
@@ -355,7 +364,7 @@ export function CustomerPage() {
             </div>
 
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`}>
+              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`} isActive={typeFilter !== "all"}>
                 <SelectValue placeholder="Loại khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -366,7 +375,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={groupFilter} onValueChange={setGroupFilter}>
-              <SelectTrigger aria-label="Lọc theo nhóm khách hàng" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`}>
+              <SelectTrigger aria-label="Lọc theo nhóm khách hàng" className={`${compactFilterTriggerClass} w-36 flex-shrink-0`} isActive={groupFilter !== "all"}>
                 <SelectValue placeholder="Nhóm khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -379,7 +388,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={customerStatusFilter} onValueChange={setCustomerStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái khách hàng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
+              <SelectTrigger aria-label="Lọc theo trạng thái khách hàng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`} isActive={customerStatusFilter !== "all"}>
                 <SelectValue placeholder="Trạng thái khách hàng" />
               </SelectTrigger>
               <SelectContent>
@@ -390,7 +399,7 @@ export function CustomerPage() {
             </Select>
 
             <Select value={actFilter} onValueChange={setActFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`}>
+              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-44 flex-shrink-0`} isActive={actFilter !== "all"}>
                 <SelectValue placeholder="Trạng thái hợp đồng" />
               </SelectTrigger>
               <SelectContent>

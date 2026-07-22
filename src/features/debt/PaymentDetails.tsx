@@ -2203,7 +2203,33 @@ function PaymentTable({
                 <Fragment key={record.id}>
                   <tr className="transition-colors hover:bg-[#F8FAFC]">
                     <td className={`${paymentDetailTableCellClass} text-center text-slate-400`} style={{ fontWeight: 600 }}>{index + 1}</td>
-                    <td className={`${paymentDetailTableCellClass} text-slate-900`} style={{ fontWeight: 600 }}>{record.label}</td>
+                    <td className={`${paymentDetailTableCellClass} text-slate-900`} style={{ fontWeight: 600 }}>
+                      <div className="flex items-center gap-1.5">
+                        {hasExtensions && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-5 w-5 rounded-md text-purple-600 hover:text-purple-700 hover:bg-purple-50 shrink-0 p-0 ${
+                              expandedRows.has(record.id) ? "bg-purple-100" : ""
+                            }`}
+                            onClick={() => {
+                              const next = new Set(expandedRows);
+                              if (next.has(record.id)) next.delete(record.id);
+                              else next.add(record.id);
+                              setExpandedRows(next);
+                            }}
+                            title={expandedRows.has(record.id) ? "Thu gọn gia hạn" : "Xem chi tiết gia hạn"}
+                          >
+                            {expandedRows.has(record.id) ? (
+                              <MinusCircle className="size-3.5 text-purple-600" />
+                            ) : (
+                              <PlusCircle className="size-3.5 text-purple-600" />
+                            )}
+                          </Button>
+                        )}
+                        <span>{record.label}</span>
+                      </div>
+                    </td>
                     <td className={`${paymentDetailTableCellClass} text-center text-slate-500`}>{index === 0 ? (depositDate ? fmtDate(depositDate) : "—") : "—"}</td>
                     <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{index === 0 ? formatVND(record.baseAmount) : "—"}</td>
                     <td className={`${paymentDetailTableCellClass} text-right tabular-nums`}>{index === 0 ? formatVND(record.paidAmount) : "—"}</td>
@@ -2254,28 +2280,6 @@ function PaymentTable({
                             title="Nhắc khách"
                           >
                             <Bell className="size-4" />
-                          </Button>
-                        )}
-                        {hasExtensions && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={`h-7 w-7 rounded-md text-purple-600 hover:text-purple-700 hover:bg-purple-50 shrink-0 ${
-                              expandedRows.has(record.id) ? "bg-purple-50" : ""
-                            }`}
-                            onClick={() => {
-                              const next = new Set(expandedRows);
-                              if (next.has(record.id)) next.delete(record.id);
-                              else next.add(record.id);
-                              setExpandedRows(next);
-                            }}
-                            title={expandedRows.has(record.id) ? "Thu gọn gia hạn" : "Xem chi tiết gia hạn"}
-                          >
-                            {expandedRows.has(record.id) ? (
-                              <MinusCircle className="size-4 text-purple-600" />
-                            ) : (
-                              <PlusCircle className="size-4 text-purple-600" />
-                            )}
                           </Button>
                         )}
                         <DropdownMenu>
@@ -2738,7 +2742,7 @@ export function PaymentDetails({ customerId: customerIdProp, contractId: contrac
               variant="ghost"
               size="icon"
               className="size-8 mt-1 shrink-0 text-muted-foreground hover:text-foreground border"
-              onClick={() => (onClose ? onClose() : navigate(`/customer/${customer.id}`))}
+              onClick={() => (onClose ? onClose() : (window.history.length > 1 ? navigate(-1) : navigate("/debt")))}
             >
               <ArrowLeft className="size-4" />
             </Button>

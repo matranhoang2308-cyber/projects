@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "@/components/layout/Layout";
 
 const isVercel = import.meta.env.VITE_IS_VERCEL === "true" || import.meta.env.VITE_IS_VERCEL === true;
@@ -37,6 +37,20 @@ export const router = createBrowserRouter([
       {
         path: "leads",
         lazy: () => import("@/features/leads/LeadPage").then((m) => ({ Component: m.LeadPage }))
+      },
+
+      // Phân hệ Khách hàng đặt chỗ
+      {
+        path: "customer-booking",
+        element: <Navigate to="/customer-booking/dashboard" replace />
+      },
+      {
+        path: "customer-booking/dashboard",
+        lazy: () => import("@/features/customer-booking/pages/DashboardPage").then((m) => ({ Component: m.CustomerBookingDashboardPage }))
+      },
+      {
+        path: "customer-booking/list",
+        lazy: () => import("@/features/customer-booking/pages/ListPage").then((m) => ({ Component: m.CustomerBookingListPage }))
       },
 
       // Phân hệ Quản lý bất động sản

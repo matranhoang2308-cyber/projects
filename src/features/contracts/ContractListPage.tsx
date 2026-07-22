@@ -2751,23 +2751,23 @@ export function ContractListPage() {
             </div>
 
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger aria-label="Lọc theo dự án" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Dự án" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo dự án" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`} isActive={projectFilter !== "all"}><SelectValue placeholder="Dự án" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Dự án</SelectItem><SelectItem value="iki-village">Iki village</SelectItem></SelectContent>
             </Select>
             <Select value={towerFilter} onValueChange={setTowerFilter}>
-              <SelectTrigger aria-label="Lọc theo block" className={`${compactFilterTriggerClass} w-24 flex-shrink-0`}><SelectValue placeholder="Block" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo block" className={`${compactFilterTriggerClass} w-24 flex-shrink-0`} isActive={towerFilter !== "all"}><SelectValue placeholder="Block" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Block</SelectItem>{towerOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger aria-label="Lọc theo thời gian" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Thời gian" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo thời gian" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`} isActive={timeFilter !== "all"}><SelectValue placeholder="Thời gian" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Thời gian</SelectItem><SelectItem value="2025">2025</SelectItem><SelectItem value="2026">2026</SelectItem></SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái kiểm tra" className={`${compactFilterTriggerClass} w-40 flex-shrink-0`}><SelectValue placeholder="Kiểm tra hồ sơ" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo trạng thái kiểm tra" className={`${compactFilterTriggerClass} w-40 flex-shrink-0`} isActive={statusFilter !== "all"}><SelectValue placeholder="Kiểm tra hồ sơ" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Kiểm tra hồ sơ</SelectItem><SelectItem value="pending">Chờ kiểm tra</SelectItem><SelectItem value="passed">Đạt</SelectItem><SelectItem value="failed">Không đạt</SelectItem></SelectContent>
             </Select>
             <Select value={contractStatusFilter} onValueChange={setContractStatusFilter}>
-              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-48 flex-shrink-0`}><SelectValue placeholder="Trạng thái hợp đồng" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo trạng thái hợp đồng" className={`${compactFilterTriggerClass} w-48 flex-shrink-0`} isActive={contractStatusFilter !== "all"}><SelectValue placeholder="Trạng thái hợp đồng" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Trạng thái hợp đồng</SelectItem>
                 {CONTRACT_STATUS_FLOW.map((status) => (
@@ -2776,17 +2776,17 @@ export function ContractListPage() {
               </SelectContent>
             </Select>
             <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
-              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`}><SelectValue placeholder="MQH" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo loại khách hàng" className={`${compactFilterTriggerClass} w-28 flex-shrink-0`} isActive={customerTypeFilter !== "all"}><SelectValue placeholder="MQH" /></SelectTrigger>
               <SelectContent><SelectItem value="all">MQH</SelectItem>{customerTypeOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={salesFilter} onValueChange={setSalesFilter}>
-              <SelectTrigger aria-label="Lọc theo phụ trách" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`}><SelectValue placeholder="Phụ trách" /></SelectTrigger>
+              <SelectTrigger aria-label="Lọc theo phụ trách" className={`${compactFilterTriggerClass} w-32 flex-shrink-0`} isActive={salesFilter !== "all"}><SelectValue placeholder="Phụ trách" /></SelectTrigger>
               <SelectContent><SelectItem value="all">Phụ trách</SelectItem>{salesOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
             </Select>
 
             <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
               <PopoverTrigger asChild>
-                <Button type="button" aria-expanded={filtersOpen} variant="outline" className="h-9 w-32 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none">
+                <Button type="button" aria-expanded={filtersOpen} variant="outline" className={cn("h-9 w-32 rounded-[8px] border-[#E5EAF3] bg-white px-2 text-xs text-slate-700 shadow-none", activeFilterCount > 0 && "bg-blue-50/90 text-blue-700 border-blue-300 font-semibold ring-1 ring-blue-400/30")}>
                   <Filter className="h-3.5 w-3.5 text-slate-500" />
                   Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
                 </Button>
@@ -2798,23 +2798,23 @@ export function ContractListPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Select value={customerFilter} onValueChange={setCustomerFilter}>
-                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Khách hàng" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass} isActive={customerFilter !== "all"}><SelectValue placeholder="Khách hàng" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả khách hàng</SelectItem>{customerOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={apartmentFilter} onValueChange={setApartmentFilter}>
-                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Mã căn hộ" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass} isActive={apartmentFilter !== "all"}><SelectValue placeholder="Mã căn hộ" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả mã căn hộ</SelectItem>{apartmentOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={apartmentTypeFilter} onValueChange={setApartmentTypeFilter}>
-                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Loại căn hộ" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass} isActive={apartmentTypeFilter !== "all"}><SelectValue placeholder="Loại căn hộ" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả loại căn hộ</SelectItem>{apartmentTypeOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="PTTT" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass} isActive={paymentMethodFilter !== "all"}><SelectValue placeholder="PTTT" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Tất cả PTTT</SelectItem>{paymentMethodOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                   <Select value={salesUnitFilter} onValueChange={setSalesUnitFilter}>
-                    <SelectTrigger className={detailFilterTriggerClass}><SelectValue placeholder="Đơn vị bán hàng" /></SelectTrigger>
+                    <SelectTrigger className={detailFilterTriggerClass} isActive={salesUnitFilter !== "all"}><SelectValue placeholder="Đơn vị bán hàng" /></SelectTrigger>
                     <SelectContent><SelectItem value="all">Mọi đơn vị bán hàng</SelectItem>{salesUnitOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>

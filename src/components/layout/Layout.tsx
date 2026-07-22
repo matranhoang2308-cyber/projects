@@ -6,6 +6,7 @@ import {
   BookOpen,
   Users,
   ChevronLeft,
+  ChevronDown,
   Search,
   Settings,
   LogOut,
@@ -16,6 +17,8 @@ import {
   Star,
   FolderTree,
   Package,
+  CalendarCheck,
+  List,
 } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 import { Button } from "@/components/ui/button";
@@ -27,7 +30,26 @@ const showDebt = !isVercel || import.meta.env.VITE_SHOW_DEBT === "true";
 const showAddendum = !isVercel || import.meta.env.VITE_SHOW_ADDENDUM === "true";
 const showRealEstate = !isVercel || import.meta.env.VITE_SHOW_REAL_ESTATE === "true";
 
-const navItems = [
+interface NavSingleItem {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+}
+
+interface NavGroupItem {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: NavSingleItem[];
+}
+
+type NavItem = NavSingleItem | NavGroupItem;
+
+interface NavSection {
+  group: string;
+  items: NavItem[];
+}
+
+const navItems: NavSection[] = [
   {
     group: "Tổng quan",
     items: [
@@ -45,6 +67,14 @@ const navItems = [
     items: [
       { label: "Khách hàng tiềm năng", icon: Users, path: "/leads" },
       { label: "Danh sách khách hàng", icon: Users, path: "/customers" },
+      {
+        label: "Khách hàng đặt chỗ",
+        icon: CalendarCheck,
+        children: [
+          { label: "Dashboard", icon: LayoutDashboard, path: "/customer-booking/dashboard" },
+          { label: "DS khách hàng đặt chỗ", icon: List, path: "/customer-booking/list" },
+        ],
+      },
     ],
   },
   ...(showRealEstate ? [{
@@ -74,6 +104,16 @@ export function Layout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    "Khách hàng đặt chỗ": true,
+  });
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  };
 
   const isDebtDetails = /\/customer\/[^/]+\/contract\/[^/]+/.test(location.pathname);
 
@@ -102,15 +142,72 @@ export function Layout() {
               </p>
             )}
             {group.items.map((item) => {
-              const active = item.path === "/"
+              if ("children" in item && Array.isArray(item.children)) {
+                const isExpanded = expandedGroups[item.label] ?? true;
+                return (
+                  <div key={item.label} className="mb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(item.label)}
+                      className={cn(
+                        "w-full flex min-h-10 items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
+                        collapsed && "justify-center px-2"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <item.icon className="w-4 h-4 shrink-0 text-slate-500" />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                      </div>
+                      {!collapsed && (
+                        <ChevronDown
+                          className={cn(
+                            "w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0",
+                            !isExpanded && "-rotate-90"
+                          )}
+                        />
+                      )}
+                    </button>
+                    {isExpanded && (
+                      <div className={cn("space-y-0.5 mt-0.5", !collapsed ? "pl-4" : "pl-0")}>
+                        {item.children.map((child) => {
+                          const active = child.path === "/"
+                            ? location.pathname === "/"
+                            : location.pathname === child.path || location.pathname.startsWith(`${child.path}/`);
+                          return (
+                            <button
+                              key={child.path}
+                              type="button"
+                              onClick={() => { navigate(child.path); setMobileOpen(false); }}
+                              className={cn(
+                                "w-full flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
+                                collapsed && "justify-center px-2",
+                                active
+                                  ? "bg-slate-900 text-white font-medium"
+                                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                              )}
+                            >
+                              <child.icon className="w-3.5 h-3.5 shrink-0" />
+                              {!collapsed && <span>{child.label}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const singleItem = item as NavSingleItem;
+              const active = singleItem.path === "/"
                 ? location.pathname === "/"
-                : location.pathname === item.path || (
-                  item.path !== "/contracts" && location.pathname.startsWith(`${item.path}/`)
+                : location.pathname === singleItem.path || (
+                  singleItem.path !== "/contracts" && location.pathname.startsWith(`${singleItem.path}/`)
                 );
               return (
                 <button
-                  key={item.path}
-                  onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                  key={singleItem.path}
+                  type="button"
+                  onClick={() => { navigate(singleItem.path); setMobileOpen(false); }}
                   className={cn(
                     "w-full flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors mb-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
                     collapsed && "justify-center px-2",
@@ -119,8 +216,8 @@ export function Layout() {
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   )}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  {!collapsed && <span>{item.label}</span>}
+                  <singleItem.icon className="w-4 h-4 shrink-0" />
+                  {!collapsed && <span>{singleItem.label}</span>}
                 </button>
               );
             })}

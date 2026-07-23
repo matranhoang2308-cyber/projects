@@ -193,21 +193,26 @@ export function BookingDetailSheet({ booking, open, onOpenChange, onEdit }: Book
             {/* Right Main Panel */}
             <div className="flex flex-1 min-h-0 flex-col overflow-hidden bg-slate-50">
               {/* Navigation Tabs Bar */}
-              <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-2.5 flex items-center gap-2 overflow-x-auto">
-                {bookingTabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setActiveTab(tab.value)}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all focus:outline-none whitespace-nowrap ${
-                      activeTab === tab.value
-                        ? "bg-slate-100 text-slate-950 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-3">
+                <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-100/90 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {bookingTabs.map((tab) => {
+                    const isActive = activeTab === tab.value;
+                    return (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => setActiveTab(tab.value)}
+                        className={`h-9 px-4 text-sm rounded-lg transition-all focus:outline-none whitespace-nowrap ${
+                          isActive
+                            ? "bg-white text-slate-950 shadow-sm font-semibold"
+                            : "text-slate-600 hover:text-slate-900 hover:bg-white/50 font-medium"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Tab Panel Content Container */}

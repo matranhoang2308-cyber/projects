@@ -140,7 +140,7 @@ export const DebtTableHorizontal: React.FC<DebtTableHorizontalProps> = ({
                         key={header.id}
                         colSpan={header.colSpan}
                         className={cn(
-                          "h-10 border-b border-r border-[#DDE5F0] dark:border-slate-800 bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600 font-semibold uppercase tracking-wider select-none whitespace-nowrap transition-colors",
+                          "h-10 border-b border-r border-[#DDE5F0] dark:border-slate-800 bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600 font-semibold uppercase tracking-wider whitespace-nowrap transition-colors",
                           getStickyClass(columnId, true),
                           getCellAlignment(columnId),
                           isColumnActive && "bg-blue-50/90 text-blue-700 font-bold border-b-2 border-b-blue-500 dark:bg-blue-950/60 dark:text-blue-300"

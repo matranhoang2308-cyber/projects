@@ -705,7 +705,7 @@ export function CustomerBookingListPage() {
                         key={header.id}
                         onClick={header.column.getToggleSortingHandler()}
                         style={styleObj}
-                        className={`h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600 font-semibold cursor-pointer select-none ${stickyClass}`}
+                        className={`h-10 border-b border-r border-[#DDE5F0] bg-[#F6F8FB] px-3 py-2 text-left align-middle text-[11px] leading-4 text-slate-600 font-semibold cursor-pointer ${stickyClass}`}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {{

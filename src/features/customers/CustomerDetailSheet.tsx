@@ -409,20 +409,19 @@ function CustomerTabsNavigation({
   onTabChange: (tab: CustomerDetailTab) => void;
 }) {
   return (
-    <div className="border-b border-slate-200 bg-white px-5 py-4">
-      <div className="flex h-10 w-full items-center gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="border-b border-slate-200 bg-white px-5 py-3">
+      <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-slate-100/90 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {customerDetailTabs.map((tab) => {
           const isActive = activeTab === tab.value;
           return (
             <button
               key={tab.value}
               type="button"
-              className={`h-8 shrink-0 rounded-md px-3.5 text-sm transition-colors ${
+              className={`h-9 shrink-0 rounded-lg px-4 text-sm transition-all focus:outline-none whitespace-nowrap ${
                 isActive
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
+                  ? "bg-white text-slate-950 shadow-sm font-semibold"
+                  : "text-slate-600 hover:bg-white/50 hover:text-slate-900 font-medium"
               }`}
-              style={{ fontWeight: isActive ? 650 : 500 }}
               aria-pressed={isActive}
               onClick={() => onTabChange(tab.value)}
             >

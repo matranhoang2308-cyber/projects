@@ -242,7 +242,7 @@ export function RefundTab({ bookings, filters }: RefundTabProps) {
         title="Theo phân khúc khách hàng hoàn tiền"
         description="Chân dung đối tượng khách hàng thực hiện rút tiền đặt chỗ"
         badgeText="Demographics"
-        columns={3}
+        columns={2}
       >
         <ChartCard title="Tỷ trọng Hoàn GQUT theo Nhóm KH" description="Cơ cấu nhóm đối tượng khách hàng rút tiền">
           <DonutChartGqut data={charts.refundGroupCount || []} centerLabel="Lượt hoàn" />
@@ -253,18 +253,10 @@ export function RefundTab({ bookings, filters }: RefundTabProps) {
             data={charts.refundGroupAmount || []}
             xKey="name"
             yKey="amount"
+            layout="vertical"
             formatType="currency"
             color="#f59e0b"
             barName="Giá trị hoàn"
-          />
-        </ChartCard>
-
-        <ChartCard title="Khách hàng hoàn theo Giới tính" description="Phân bổ Nam / Nữ thực hiện hoàn phiếu">
-          <BarChartGqut
-            data={(charts.refundGenderData || []).map((d) => ({ ...d, fill: d.gender === "Nam" ? "#2563eb" : "#ec4899" }))}
-            xKey="gender"
-            yKey="count"
-            barName="Số lượt"
           />
         </ChartCard>
 
@@ -274,6 +266,15 @@ export function RefundTab({ bookings, filters }: RefundTabProps) {
             xKey="age"
             yKey="count"
             color="#8b5cf6"
+            barName="Số lượt"
+          />
+        </ChartCard>
+
+        <ChartCard title="Khách hàng hoàn theo Giới tính" description="Phân bổ Nam / Nữ thực hiện hoàn phiếu">
+          <BarChartGqut
+            data={(charts.refundGenderData || []).map((d) => ({ ...d, fill: d.gender === "Nam" ? "#2563eb" : "#ec4899" }))}
+            xKey="gender"
+            yKey="count"
             barName="Số lượt"
           />
         </ChartCard>
